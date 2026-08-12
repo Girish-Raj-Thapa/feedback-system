@@ -7,32 +7,32 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { FormError } from '@/components/ui/FormError';
 import Link from 'next/link';
-import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function handleSignup(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setError('');
-    setSuccess(false);
     setLoading(true);
 
     const supabase = createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
         },
+        emailRedirectTo: `${location.origin}/auth/callback`,
       },
     });
 
@@ -42,10 +42,10 @@ export default function SignupPage() {
       return;
     }
 
-    setSuccess(true);
     setLoading(false);
-
-    toast.success('Account created! Please check your email.');
+    
+    // Redirect to the dedicated check-email page
+    router.push('/check-email');
   }
 
   return (

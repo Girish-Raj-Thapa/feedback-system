@@ -8,7 +8,7 @@ export async function updateSession(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -45,7 +45,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/project') ||
     request.nextUrl.pathname.startsWith('/billing') ||
     request.nextUrl.pathname.startsWith('/account') ||
-    request.nextUrl.pathname.startsWith('/feedback');
+    request.nextUrl.pathname.startsWith('/feedback') ||
+    request.nextUrl.pathname.startsWith('/onboarding');
 
   // Protect internal routes from unauthenticated users
   if (!user && isProtectedRoute) {
