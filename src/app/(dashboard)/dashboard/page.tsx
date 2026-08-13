@@ -1,37 +1,105 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Plus, Globe, Settings } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
 export default function DashboardOverviewPage() {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        if (res.ok) {
+          const data = await res.json();
+          setProjects(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch projects');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProjects();
+  }, []);
+
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink tracking-tight mb-1">
-          Dashboard
-        </h1>
-        <p className="text-ink-muted">
-          Overview of your project's performance.
-        </p>
+    <div className="p-6 lg:p-9 max-w-7xl mx-auto space-y-9">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink tracking-tight mb-1">
+            Dashboard
+          </h1>
+          <p className="text-ink-muted">
+            Overview of your account and projects.
+          </p>
+        </div>
+        <Button 
+          variant="primary" 
+          onClick={() => router.push('/projects/new')}
+          className="flex items-center gap-2"
+        >
+          <Plus size={16} />
+          Create New Project
+        </Button>
       </div>
 
+      {/* Overall Analytics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Metric Card 1 */}
+        <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
+          <h3 className="text-sm font-medium text-ink-muted mb-1">Total Projects</h3>
+          <p className="text-3xl font-bold text-ink">{loading ? '-' : projects.length}</p>
+        </div>
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
           <h3 className="text-sm font-medium text-ink-muted mb-1">Total Feedback</h3>
-          <p className="text-3xl font-bold text-ink">0</p>
+          <p className="text-3xl font-bold text-ink">—</p>
         </div>
-
-        {/* Metric Card 2 */}
-        <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-ink-muted mb-1">New This Week</h3>
-          <p className="text-3xl font-bold text-ink">0</p>
-        </div>
-
-        {/* Metric Card 3 */}
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
           <h3 className="text-sm font-medium text-ink-muted mb-1">Average Sentiment</h3>
           <p className="text-3xl font-bold text-ink">—</p>
         </div>
       </div>
 
-      <div className="bg-bg-primary border border-border-subtle rounded-xl p-12 text-center">
-        <p className="text-ink-muted">No activity data available yet.</p>
+      <div className="space-y-4">
+        <h2 className="text-lg font-medium text-ink">Your Projects</h2>
+
+        {loading ? (
+          <div className="text-ink-muted">Loading projects...</div>
+        ) : projects.length === 0 ? (
+          <div className="bg-bg-primary border border-border-subtle rounded-xl p-12 text-center space-y-4">
+            <p className="text-ink-muted">You don't have any projects yet.</p>
+            <Button variant="primary" onClick={() => router.push('/projects/new')}>
+              Create your first project
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <Link key={project.id} href={`/projects/${project.id}`}>
+                <Card className="hover:border-accent transition-colors cursor-pointer h-full flex flex-col group">
+                  <Card.Body className="flex-1 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-semibold text-ink text-lg">{project.name}</h3>
+                      <div className="p-2 bg-bg-secondary rounded-md text-ink-muted group-hover:text-accent transition-colors">
+                        <Settings size={18} />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-ink-muted">
+                      <Globe size={14} />
+                      <span className="truncate">{project.website_url}</span>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

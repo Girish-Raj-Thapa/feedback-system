@@ -15,7 +15,7 @@ export async function GET() {
     .from('projects')
     .select('*')
     .eq('user_id', user.id)
-    .single();
+    .order('created_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -24,7 +24,7 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
-export async function PATCH(request: Request) {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -36,27 +36,25 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-
-    const updateData = {
-      name: body.name,
-      website_url: body.website_url,
-      widget_position: body.widget_position,
-      widget_color: body.widget_color,
-      widget_text: body.widget_text,
-      widget_theme: body.widget_theme,
-    };
-
-    // Remove undefined values
-    Object.keys(updateData).forEach((key) => {
-      if (updateData[key as keyof typeof updateData] === undefined) {
-        delete updateData[key as keyof typeof updateData];
-      }
-    });
+    
+    if (!body.name || !body.website_url) {
+      return NextResponse.json({ error: 'Name and website URL are required' }, { status: 400 });
+    }
 
     const { data, error } = await supabase
       .from('projects')
-      .update(updateData)
-      .eq('user_id', user.id)
+      .insert({
+        user_id: user.id,
+        name: body.name,
+        website_url: body.website_url,
+        widget_position: body.widget_position || 'bottom-right',
+        widget_color: body.widget_color || '#000000',
+        widget_text: body.widget_text || 'Feedback',
+        widget_theme: body.widget_theme || 'light',
+        widget_border_radius: body.widget_border_radius || '16px',
+        widget_icon: body.widget_icon || 'chat',
+        widget_title: body.widget_title || 'Send Feedback'
+      })
       .select()
       .single();
 
@@ -64,7 +62,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
