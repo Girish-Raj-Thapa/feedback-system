@@ -7,7 +7,7 @@ import {
   Globe, Monitor, Smartphone, MonitorPlay,
   ChevronLeft, ChevronRight, Search,
   ArrowUpDown, ArrowUp, ArrowDown, Archive, Mail,
-  CheckCircle2, Circle, X, Maximize
+  CheckCircle2, Circle, X, Maximize, Download
 } from 'lucide-react';
 
 function timeAgo(dateString: string) {
@@ -130,6 +130,15 @@ export default function FeedbacksPage() {
     }
   };
 
+  const handleDownloadCSV = () => {
+    if (!params?.id) return;
+    const qs = new URLSearchParams({
+      search: debouncedSearch,
+      status: statusFilter,
+    });
+    window.location.href = `/api/projects/${params.id}/feedbacks/export?${qs.toString()}`;
+  };
+
   const DeviceIcon = ({ type }: { type: string }) => {
     switch (type) {
       case 'mobile': return <Smartphone className="w-4 h-4" />;
@@ -147,13 +156,22 @@ export default function FeedbacksPage() {
 
   return (
     <div className="p-6 lg:p-9 max-w-[1400px] mx-auto space-y-9">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink tracking-tight mb-1">
-          Feedback Inbox
-        </h1>
-        <p className="text-ink-muted">
-          Read, search, and manage all feedback submitted through your widget.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink tracking-tight mb-1">
+            Feedback Inbox
+          </h1>
+          <p className="text-ink-muted">
+            Read, search, and manage all feedback submitted through your widget.
+          </p>
+        </div>
+        <button
+          onClick={handleDownloadCSV}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-bg-primary border border-border-subtle hover:bg-bg-secondary text-ink font-medium rounded-lg transition-colors shadow-sm whitespace-nowrap"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </button>
       </div>
 
       {/* Analytics Row */}
