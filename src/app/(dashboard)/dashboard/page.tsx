@@ -40,8 +40,8 @@ export default function DashboardOverviewPage() {
             Overview of your account and projects.
           </p>
         </div>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           onClick={() => router.push('/projects/new')}
           className="flex items-center gap-2"
         >
@@ -53,15 +53,23 @@ export default function DashboardOverviewPage() {
       {/* Overall Analytics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-ink-muted mb-1">Total Projects</h3>
-          <p className="text-3xl font-bold text-ink">{loading ? '-' : projects.length}</p>
+          <h3 className="text-sm font-medium text-ink-muted mb-1">
+            Total Projects
+          </h3>
+          <p className="text-3xl font-bold text-ink">
+            {loading ? '-' : projects.length}
+          </p>
         </div>
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-ink-muted mb-1">Total Feedback</h3>
+          <h3 className="text-sm font-medium text-ink-muted mb-1">
+            Total Feedback
+          </h3>
           <p className="text-3xl font-bold text-ink">—</p>
         </div>
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-ink-muted mb-1">Average Sentiment</h3>
+          <h3 className="text-sm font-medium text-ink-muted mb-1">
+            Average Sentiment
+          </h3>
           <p className="text-3xl font-bold text-ink">—</p>
         </div>
       </div>
@@ -73,10 +81,28 @@ export default function DashboardOverviewPage() {
           <div className="text-ink-muted">Loading projects...</div>
         ) : projects.length === 0 ? (
           <div className="bg-bg-primary border border-border-subtle rounded-xl p-12 text-center space-y-4">
-            <p className="text-ink-muted">You don't have any projects yet.</p>
-            <Button variant="primary" onClick={() => router.push('/projects/new')}>
-              Create your first project
-            </Button>
+            <div className="text-3xl">📭</div>
+            <div className="space-y-2">
+              <p className="text-base font-semibold text-ink">
+                Your feedback inbox is ready.
+              </p>
+              <p className="text-sm text-ink-muted max-w-xs mx-auto">
+                Once you install FeedbackFlow on your website, submissions will
+                appear here.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                variant="ink"
+                onClick={() => router.push('/onboarding')}
+                className="flex items-center gap-2"
+              >
+                Start setup
+              </Button>
+            </div>
+            <p className="text-xs text-ink-muted pt-2">
+              💡 Tip: Add FeedbackFlow to your most-visited page first.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -85,7 +111,9 @@ export default function DashboardOverviewPage() {
                 <Card className="hover:border-accent transition-colors cursor-pointer h-full flex flex-col group">
                   <Card.Body className="flex-1 space-y-4">
                     <div className="flex justify-between items-start">
-                      <h3 className="font-semibold text-ink text-lg">{project.name}</h3>
+                      <h3 className="font-semibold text-ink text-lg">
+                        {project.name}
+                      </h3>
                       <div className="p-2 bg-bg-secondary rounded-md text-ink-muted group-hover:text-accent transition-colors">
                         <Settings size={18} />
                       </div>

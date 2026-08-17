@@ -7,8 +7,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-  'Pragma': 'no-cache',
-  'Expires': '0',
+  Pragma: 'no-cache',
+  Expires: '0',
 };
 
 export async function OPTIONS() {
@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
 
   const { data: project, error } = await supabase
     .from('projects')
-    .select('website_url, widget_position, widget_color, widget_text, widget_theme, widget_border_radius, widget_icon, widget_title')
+    .select(
+      'website_url, widget_position, widget_color, widget_text, widget_theme, widget_border_radius, widget_icon, widget_title',
+    )
     .eq('public_key', key)
     .eq('is_active', true)
     .single();
@@ -42,7 +44,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Security check: Verify the Origin header matches the registered website domain
-  const origin = request.headers.get('origin') || request.headers.get('referer');
+  const origin =
+    request.headers.get('origin') || request.headers.get('referer');
   if (!isAllowedOrigin(origin, project.website_url)) {
     return NextResponse.json(
       { error: 'Unauthorized origin' },

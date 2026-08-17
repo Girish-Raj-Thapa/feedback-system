@@ -3,14 +3,18 @@
  * @param urlOrDomain e.g., 'https://www.hello.com/path', 'api.hello.com'
  * @returns the lowercase hostname, e.g., 'www.hello.com', 'api.hello.com'
  */
-export function extractDomain(urlOrDomain: string | null | undefined): { hostname: string; port: string } | null {
+export function extractDomain(
+  urlOrDomain: string | null | undefined,
+): { hostname: string; port: string } | null {
   if (!urlOrDomain) return null;
   try {
-    const withProtocol = urlOrDomain.includes('://') ? urlOrDomain : `https://${urlOrDomain}`;
+    const withProtocol = urlOrDomain.includes('://')
+      ? urlOrDomain
+      : `https://${urlOrDomain}`;
     const url = new URL(withProtocol);
     return {
       hostname: url.hostname.toLowerCase(),
-      port: url.port || ''
+      port: url.port || '',
     };
   } catch (e) {
     return null;
@@ -24,7 +28,7 @@ export function extractDomain(urlOrDomain: string | null | undefined): { hostnam
  */
 export function isAllowedOrigin(
   originHeader: string | null | undefined,
-  registeredWebsiteUrl: string | null | undefined
+  registeredWebsiteUrl: string | null | undefined,
 ): boolean {
   if (!originHeader || !registeredWebsiteUrl) return false;
 
@@ -48,7 +52,12 @@ export function isAllowedOrigin(
   if (originDomain.endsWith('.' + registeredDomain)) return true;
 
   // Allow localhost for local development testing, but only if the user didn't register a specific IP/localhost
-  if (process.env.NODE_ENV !== 'production' && originDomain === 'localhost' && registeredDomain !== '127.0.0.1' && registeredDomain !== 'localhost') {
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    originDomain === 'localhost' &&
+    registeredDomain !== '127.0.0.1' &&
+    registeredDomain !== 'localhost'
+  ) {
     return true;
   }
 

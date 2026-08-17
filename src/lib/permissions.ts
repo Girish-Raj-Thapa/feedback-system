@@ -30,7 +30,7 @@ const PLAN_FEATURES: Record<Plan, Feature[]> = {
  */
 export function can(plan: Plan | undefined | null, feature: Feature): boolean {
   if (!plan) return false;
-  
+
   // If the plan exists in our matrix, check if the feature is included
   const allowedFeatures = PLAN_FEATURES[plan] || [];
   return allowedFeatures.includes(feature);

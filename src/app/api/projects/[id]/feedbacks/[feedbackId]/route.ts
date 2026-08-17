@@ -3,12 +3,14 @@ import { NextResponse } from 'next/server';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string; feedbackId: string }> }
+  { params }: { params: Promise<{ id: string; feedbackId: string }> },
 ) {
   const { id, feedbackId } = await params;
-  
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -31,7 +33,10 @@ export async function PATCH(
       .single();
 
     if (projectError || !project) {
-      return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Project not found or access denied' },
+        { status: 404 },
+      );
     }
 
     // Update feedback
@@ -45,11 +50,17 @@ export async function PATCH(
 
     if (error) {
       console.error('[API] Failed to update feedback:', error);
-      return NextResponse.json({ error: 'Failed to update feedback' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to update feedback' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json(data);
   } catch (err: any) {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid request body' },
+      { status: 400 },
+    );
   }
 }

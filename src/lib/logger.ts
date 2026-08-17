@@ -9,7 +9,12 @@ interface LogContext {
   [key: string]: any;
 }
 
-function emit(level: LogLevel, message: string, context?: LogContext, error?: any) {
+function emit(
+  level: LogLevel,
+  message: string,
+  context?: LogContext,
+  error?: any,
+) {
   const payload = {
     timestamp: new Date().toISOString(),
     level,
@@ -28,12 +33,19 @@ function emit(level: LogLevel, message: string, context?: LogContext, error?: an
     console[level](JSON.stringify(payload));
   } else {
     // In local development, pretty-print for readability
-    console[level](`[${level.toUpperCase()}] ${message}`, context || '', error || '');
+    console[level](
+      `[${level.toUpperCase()}] ${message}`,
+      context || '',
+      error || '',
+    );
   }
 }
 
 export const logger = {
-  info: (message: string, context?: LogContext) => emit('info', message, context),
-  warn: (message: string, context?: LogContext, error?: any) => emit('warn', message, context, error),
-  error: (message: string, context?: LogContext, error?: any) => emit('error', message, context, error),
+  info: (message: string, context?: LogContext) =>
+    emit('info', message, context),
+  warn: (message: string, context?: LogContext, error?: any) =>
+    emit('warn', message, context, error),
+  error: (message: string, context?: LogContext, error?: any) =>
+    emit('error', message, context, error),
 };

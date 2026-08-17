@@ -10,7 +10,12 @@ export interface RateLimiter {
    * @param identifier - A unique string representing the client (e.g., IP address + project ID).
    * @returns An object containing whether the request is successful and the remaining limit.
    */
-  limit(identifier: string): Promise<{ success: boolean; limit: number; remaining: number; reset: number }>;
+  limit(identifier: string): Promise<{
+    success: boolean;
+    limit: number;
+    remaining: number;
+    reset: number;
+  }>;
 }
 
 /**
@@ -48,18 +53,33 @@ export class InMemoryRateLimiter implements RateLimiter {
       // Create new record
       const resetAt = now + this.windowMs;
       this.store.set(identifier, { count: 1, resetAt });
-      return { success: true, limit: this.maxRequests, remaining: this.maxRequests - 1, reset: resetAt };
+      return {
+        success: true,
+        limit: this.maxRequests,
+        remaining: this.maxRequests - 1,
+        reset: resetAt,
+      };
     }
 
     // Existing record
     if (record.count >= this.maxRequests) {
-      return { success: false, limit: this.maxRequests, remaining: 0, reset: record.resetAt };
+      return {
+        success: false,
+        limit: this.maxRequests,
+        remaining: 0,
+        reset: record.resetAt,
+      };
     }
 
     // Increment count
     record.count += 1;
     this.store.set(identifier, record);
-    return { success: true, limit: this.maxRequests, remaining: this.maxRequests - record.count, reset: record.resetAt };
+    return {
+      success: true,
+      limit: this.maxRequests,
+      remaining: this.maxRequests - record.count,
+      reset: record.resetAt,
+    };
   }
 }
 

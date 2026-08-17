@@ -12,7 +12,7 @@ export function Card({
     <div
       className={cn(
         'bg-bg-primary border border-border-subtle rounded-md flex flex-col',
-        className
+        className,
       )}
     >
       {children}
@@ -52,7 +52,12 @@ export function CardFooter({
   children: ReactNode;
 }) {
   return (
-    <div className={cn('px-6 py-4 border-t border-border-subtle flex justify-end gap-3', className)}>
+    <div
+      className={cn(
+        'px-6 py-4 border-t border-border-subtle flex justify-end gap-3',
+        className,
+      )}
+    >
       {children}
     </div>
   );

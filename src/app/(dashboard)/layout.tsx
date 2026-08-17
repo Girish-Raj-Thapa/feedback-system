@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { LogoutButton } from '@/components/layout/LogoutButton';
 import { Logo } from '@/components/ui/Logo';
 import { SidebarNav } from '@/components/layout/SidebarNav';
+import { ActivationChecklist } from '@/components/layout/ActivationChecklist';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,9 +25,10 @@ export default async function DashboardLayout({
   // Check if user has a project. If not, force onboarding.
   const { data: project } = await supabase
     .from('projects')
-    .select('*')
+    .select('id')
     .eq('user_id', user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   if (!project) {
     redirect('/onboarding');
@@ -37,7 +39,7 @@ export default async function DashboardLayout({
       {/* Sidebar */}
       <aside className="w-64 border-r border-border-subtle bg-bg-primary flex flex-col hidden md:flex">
         {/* Brand Header */}
-        <Link 
+        <Link
           href="/dashboard"
           title="Back to user dashboard"
           className="p-6 border-b border-border-subtle flex items-center gap-2 hover:bg-bg-secondary transition-colors cursor-pointer"
@@ -50,6 +52,9 @@ export default async function DashboardLayout({
 
         {/* Navigation */}
         <SidebarNav />
+
+        {/* Activation checklist — visible until user is fully activated */}
+        {project && <ActivationChecklist projectId={project.id} />}
 
         {/* Footer actions */}
         <div className="p-4 border-t border-border-subtle">

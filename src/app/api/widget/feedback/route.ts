@@ -14,11 +14,7 @@ const CORS_HEADERS = {
 const feedbackSchema = z.object({
   public_key: z.string().min(1),
   message: z.string().trim().min(1, 'Message is required').max(5000),
-  email: z
-    .string()
-    .email('Invalid email address')
-    .optional()
-    .or(z.literal('')),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   page_url: z.string().url().optional().or(z.literal('')),
   page_title: z.string().max(500).optional(),
   browser: z.string().max(200).optional(),
@@ -71,19 +67,23 @@ export async function POST(request: NextRequest) {
   // 1. Honeypot Validation: If a bot fills this hidden field, silently drop the request
   if (ff_website) {
     logger.warn('Honeypot triggered', { public_key });
-    return NextResponse.json({ success: true }, { status: 201, headers: CORS_HEADERS });
+    return NextResponse.json(
+      { success: true },
+      { status: 201, headers: CORS_HEADERS },
+    );
   }
 
   // 2. Rate Limiting: Limit by IP and Project
-  const ip = request.headers.get('x-forwarded-for') || request.ip || 'unknown-ip';
+  const ip =
+    request.headers.get('x-forwarded-for') || request.ip || 'unknown-ip';
   const rateLimitId = `feedback_${public_key}_${ip}`;
-  
+
   const limitResult = await defaultRateLimiter.limit(rateLimitId);
   if (!limitResult.success) {
     logger.warn('Rate limit exceeded', { ip, public_key });
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
-      { status: 429, headers: CORS_HEADERS }
+      { status: 429, headers: CORS_HEADERS },
     );
   }
 
@@ -117,7 +117,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Security check: Verify the Origin header matches the registered website domain
-  const origin = request.headers.get('origin') || request.headers.get('referer');
+  const origin =
+    request.headers.get('origin') || request.headers.get('referer');
   if (!isAllowedOrigin(origin, project.website_url)) {
     return NextResponse.json(
       { error: 'Unauthorized origin' },
@@ -149,5 +150,8 @@ export async function POST(request: NextRequest) {
 
   // Phase C: enqueue BullMQ email notification job here
 
-  return NextResponse.json({ success: true }, { status: 201, headers: CORS_HEADERS });
+  return NextResponse.json(
+    { success: true },
+    { status: 201, headers: CORS_HEADERS },
+  );
 }

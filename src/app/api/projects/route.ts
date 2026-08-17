@@ -36,9 +36,12 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    
+
     if (!body.name || !body.website_url) {
-      return NextResponse.json({ error: 'Name and website URL are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Name and website URL are required' },
+        { status: 400 },
+      );
     }
 
     const { data, error } = await supabase
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
         widget_theme: body.widget_theme || 'light',
         widget_border_radius: body.widget_border_radius || '16px',
         widget_icon: body.widget_icon || 'chat',
-        widget_title: body.widget_title || 'Send Feedback'
+        widget_title: body.widget_title || 'Send Feedback',
       })
       .select()
       .single();

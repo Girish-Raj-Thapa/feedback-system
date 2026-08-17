@@ -1,9 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
-  
+
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -11,15 +14,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const status = searchParams.get('status') || 'all'; // all, open, resolved
   const sortBy = searchParams.get('sortBy') || 'created_at';
   const sortOrder = searchParams.get('sortOrder') || 'desc';
-  
+
   if (page < 1 || limit < 1 || limit > 100) {
-    return NextResponse.json({ error: 'Invalid pagination parameters' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid pagination parameters' },
+      { status: 400 },
+    );
   }
 
   const offset = (page - 1) * limit;
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,20 +42,34 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .single();
 
   if (projectError || !project) {
-    return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Project not found or access denied' },
+      { status: 404 },
+    );
   }
 
   // 1. Fetch Analytics Counts (Total, Open, Archived)
   const [totalCountRes, openCountRes, resolvedCountRes] = await Promise.all([
-    supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id),
-    supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id).eq('status', 'open'),
-    supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id).eq('status', 'resolved')
+    supabase
+      .from('feedback')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id),
+    supabase
+      .from('feedback')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id)
+      .eq('status', 'open'),
+    supabase
+      .from('feedback')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id)
+      .eq('status', 'resolved'),
   ]);
 
   const analytics = {
     total: totalCountRes.count || 0,
     open: openCountRes.count || 0,
-    resolved: resolvedCountRes.count || 0
+    resolved: resolvedCountRes.count || 0,
   };
 
   // 2. Fetch Paginated & Filtered Data
@@ -80,7 +102,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   if (error) {
     console.error('[API] Failed to fetch feedback:', error);
-    return NextResponse.json({ error: 'Failed to fetch feedback' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch feedback' },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({
@@ -91,7 +116,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       limit,
       totalCount: count || 0,
       totalPages: Math.ceil((count || 0) / limit),
-      hasMore: offset + limit < (count || 0)
-    }
+      hasMore: offset + limit < (count || 0),
+    },
   });
 }

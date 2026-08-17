@@ -28,12 +28,16 @@ export function CopyButton({
       onClick={handleCopy}
       className={cn(
         'p-2 rounded-md hover:bg-bg-secondary transition-colors text-ink-muted hover:text-ink',
-        className
+        className,
       )}
       aria-label="Copy to clipboard"
       title="Copy to clipboard"
     >
-      {copied ? <Check size={16} strokeWidth={2} className="text-ink" /> : <Copy size={16} strokeWidth={2} />}
+      {copied ? (
+        <Check size={16} strokeWidth={2} className="text-ink" />
+      ) : (
+        <Copy size={16} strokeWidth={2} />
+      )}
     </button>
   );
 }

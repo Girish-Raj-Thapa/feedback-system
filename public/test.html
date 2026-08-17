@@ -1,69 +1,156 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FeedbackFlow — Widget Test Page</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f8f8f8;
-      color: #111;
-      min-height: 100vh;
-      padding: 60px 32px;
-    }
-    .container { max-width: 640px; margin: 0 auto; }
-    h1 { font-size: 28px; font-weight: 700; margin-bottom: 12px; }
-    p  { font-size: 16px; color: #555; line-height: 1.6; margin-bottom: 16px; }
-    code {
-      background: #eee;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 13px;
-      font-family: monospace;
-    }
-    .tip {
-      margin-top: 32px;
-      background: #fff;
-      border: 1px solid #e5e5e5;
-      border-radius: 12px;
-      padding: 20px 24px;
-    }
-    .tip h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
-    .tip ul  { padding-left: 18px; }
-    .tip li  { font-size: 14px; color: #555; line-height: 1.8; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Widget Test Page</h1>
-    <p>
-      This page tests the FeedbackFlow widget. The floating button should appear
-      in the <strong>bottom-right corner</strong> once the widget loads.
-    </p>
-    <p>
-      Make sure your dev server is running at <code>http://localhost:3000</code>
-      and replace <code>PASTE_YOUR_PUBLIC_KEY_HERE</code> below with your real
-      <code>public_key</code> from the Project Settings page.
-    </p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FeedbackFlow — Local Dev Test Page</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #f8f8f8;
+        color: #111;
+        min-height: 100vh;
+        padding: 60px 32px;
+      }
+      .container {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      p {
+        font-size: 16px;
+        color: #555;
+        line-height: 1.6;
+        margin-bottom: 16px;
+      }
+      code {
+        background: #eee;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: monospace;
+      }
+      .callout {
+        margin-top: 24px;
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+      }
+      .callout h2 {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .callout ul {
+        padding-left: 18px;
+      }
+      .callout li {
+        font-size: 14px;
+        color: #555;
+        line-height: 1.8;
+      }
+      .warning {
+        background: #fffbeb;
+        border-color: #fde68a;
+      }
+      .warning h2 {
+        color: #92400e;
+      }
+      .warning li {
+        color: #78350f;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Widget Test Page (Local Dev)</h1>
+      <p>
+        This page tests the FeedbackFlow widget against your
+        <strong>local</strong>
+        Next.js server (<code>http://localhost:3000</code>). All API calls go to
+        your local Supabase instance.
+      </p>
 
-    <div class="tip">
-      <h2>Checklist</h2>
-      <ul>
-        <li>Widget button appears (correct color, text, position)</li>
-        <li>Clicking the button opens the feedback panel</li>
-        <li>Submitting a message creates a row in Supabase → feedback table</li>
-        <li>Auto-detected fields are populated (browser, OS, device, screen size)</li>
-        <li>An invalid public_key shows an error message in the widget</li>
-      </ul>
+      <div class="callout warning">
+        <h2>⚠️ Before you test</h2>
+        <ul>
+          <li>Make sure <code>npm run dev</code> is running on port 3000</li>
+          <li>
+            Replace <code>PASTE_YOUR_KEY_HERE</code> in the script tag below
+            with your real <code>public_key</code> — find it in
+            <strong>Project Settings → Installation</strong> or the Supabase
+            Studio → projects table
+          </li>
+          <li>
+            Access this page via
+            <code>http://localhost:3000/test.html</code> (not
+            <code>file://</code>) so the widget API calls work
+          </li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <h2>Checklist</h2>
+        <ul>
+          <li>Widget button appears (correct color, text, position)</li>
+          <li>Clicking the button opens the feedback panel</li>
+          <li>
+            Submitting a message creates a row in Supabase → feedback table
+          </li>
+          <li>
+            Auto-detected fields populated (browser, OS, device, screen size)
+          </li>
+          <li>An invalid public_key shows an error message in the widget</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <h2>Verify Installation Test</h2>
+        <ul>
+          <li>
+            Go to the onboarding wizard or Installation Guide page in your
+            dashboard
+          </li>
+          <li>
+            Set your project's <strong>website URL</strong> to
+            <code>http://localhost:3000</code> in Supabase Studio
+          </li>
+          <li>
+            Click <strong>Check installation</strong> — the server will fetch
+            <code>http://localhost:3000/test.html</code> is NOT checked, but
+            <code>http://localhost:3000</code> (the homepage) is. Make sure your
+            homepage also has the widget script tag, or update the
+            <code>website_url</code> to
+            <code>http://localhost:3000/test.html</code>
+          </li>
+        </ul>
+      </div>
     </div>
-  </div>
 
-  <!--
-    Replace PASTE_YOUR_PUBLIC_KEY_HERE with your actual public_key.
-    Find it on the Project Settings page under "Installation".
-  -->
-  <script src="http://localhost:3000/widget.js" data-project="fb_pub_a11205f2a1e64822b34c5e33d2157718"></script>
-</body>
+    <!--
+      Relative src — browser resolves this to whatever host the page is on:
+        http://localhost:3000/test.html  →  http://localhost:3000/widget-v1.js
+        https://www.feedbackflow.app/test.html  →  https://www.feedbackflow.app/widget-v1.js
+
+      Replace PASTE_YOUR_KEY_HERE with your project's public_key.
+      Find it: Supabase Studio → projects table → public_key column
+               OR: Dashboard → Project Settings → Installation
+    -->
+    <!-- Paste before the closing </body> tag -->
+    <script
+      src="http://localhost:3000/widget-v1.js"
+      data-project="fb_pub_61a86974547f46ce857dbe950a63f53d"
+    ></script>
+  </body>
 </html>

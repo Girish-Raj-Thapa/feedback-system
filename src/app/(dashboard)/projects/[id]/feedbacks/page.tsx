@@ -4,10 +4,24 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import {
-  Globe, Monitor, Smartphone, MonitorPlay,
-  ChevronLeft, ChevronRight, Search,
-  ArrowUpDown, ArrowUp, ArrowDown, Archive, Mail,
-  CheckCircle2, Circle, X, Maximize, Download, FileText
+  Globe,
+  Monitor,
+  Smartphone,
+  MonitorPlay,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Archive,
+  Mail,
+  CheckCircle2,
+  Circle,
+  X,
+  Maximize,
+  Download,
+  FileText,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -35,12 +49,20 @@ export default function FeedbacksPage() {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [analytics, setAnalytics] = useState({ total: 0, open: 0, resolved: 0 });
+  const [analytics, setAnalytics] = useState({
+    total: 0,
+    open: 0,
+    resolved: 0,
+  });
 
   // Table State
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [meta, setMeta] = useState<{ totalCount: number, totalPages: number, hasMore: boolean } | null>(null);
+  const [meta, setMeta] = useState<{
+    totalCount: number;
+    totalPages: number;
+    hasMore: boolean;
+  } | null>(null);
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -77,10 +99,12 @@ export default function FeedbacksPage() {
         search: debouncedSearch,
         status: statusFilter,
         sortBy,
-        sortOrder
+        sortOrder,
       });
 
-      const res = await fetch(`/api/projects/${params.id}/feedbacks?${qs.toString()}`);
+      const res = await fetch(
+        `/api/projects/${params.id}/feedbacks?${qs.toString()}`,
+      );
       if (!res.ok) throw new Error('Failed to load feedback');
       const { data, meta, analytics: apiAnalytics } = await res.json();
 
@@ -92,7 +116,15 @@ export default function FeedbacksPage() {
     } finally {
       setLoading(false);
     }
-  }, [params?.id, page, limit, debouncedSearch, statusFilter, sortBy, sortOrder]);
+  }, [
+    params?.id,
+    page,
+    limit,
+    debouncedSearch,
+    statusFilter,
+    sortBy,
+    sortOrder,
+  ]);
 
   useEffect(() => {
     fetchFeedbacks();
@@ -108,18 +140,26 @@ export default function FeedbacksPage() {
     setPage(1);
   };
 
-  const updateFeedbackStatus = async (feedbackId: string, newStatus: string) => {
+  const updateFeedbackStatus = async (
+    feedbackId: string,
+    newStatus: string,
+  ) => {
     try {
       // Optimistic update
-      setFeedbacks(current =>
-        current.map(fb => fb.id === feedbackId ? { ...fb, status: newStatus } : fb)
+      setFeedbacks((current) =>
+        current.map((fb) =>
+          fb.id === feedbackId ? { ...fb, status: newStatus } : fb,
+        ),
       );
 
-      const res = await fetch(`/api/projects/${params.id}/feedbacks/${feedbackId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
+      const res = await fetch(
+        `/api/projects/${params.id}/feedbacks/${feedbackId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        },
+      );
 
       if (!res.ok) throw new Error('Failed to update status');
 
@@ -147,21 +187,23 @@ export default function FeedbacksPage() {
       const qs = new URLSearchParams({
         search: debouncedSearch,
         status: statusFilter,
-        format: 'json'
+        format: 'json',
       });
-      const res = await fetch(`/api/projects/${params.id}/feedbacks/export?${qs.toString()}`);
+      const res = await fetch(
+        `/api/projects/${params.id}/feedbacks/export?${qs.toString()}`,
+      );
       if (!res.ok) throw new Error('Failed to fetch data for PDF');
-      
+
       const { data } = await res.json();
-      
+
       const doc = new jsPDF();
-      
+
       doc.setFontSize(18);
       doc.text('Feedback Report', 14, 22);
       doc.setFontSize(11);
       doc.setTextColor(100);
       doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
-      
+
       const tableData = data.map((fb: any) => [
         new Date(fb.created_at).toLocaleDateString(),
         fb.status,
@@ -176,8 +218,8 @@ export default function FeedbacksPage() {
         styles: { fontSize: 9, cellPadding: 3 },
         headStyles: { fillColor: [41, 128, 185], textColor: 255 },
         columnStyles: {
-          3: { cellWidth: 80 }
-        }
+          3: { cellWidth: 80 },
+        },
       });
 
       doc.save(`feedback_report_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -189,17 +231,23 @@ export default function FeedbacksPage() {
 
   const DeviceIcon = ({ type }: { type: string }) => {
     switch (type) {
-      case 'mobile': return <Smartphone className="w-4 h-4" />;
-      case 'tablet': return <MonitorPlay className="w-4 h-4" />;
-      default: return <Monitor className="w-4 h-4" />;
+      case 'mobile':
+        return <Smartphone className="w-4 h-4" />;
+      case 'tablet':
+        return <MonitorPlay className="w-4 h-4" />;
+      default:
+        return <Monitor className="w-4 h-4" />;
     }
   };
 
   const SortIcon = ({ column }: { column: string }) => {
-    if (sortBy !== column) return <ArrowUpDown className="w-3.5 h-3.5 text-ink-muted/40 ml-1" />;
-    return sortOrder === 'asc'
-      ? <ArrowUp className="w-3.5 h-3.5 text-accent ml-1" />
-      : <ArrowDown className="w-3.5 h-3.5 text-accent ml-1" />;
+    if (sortBy !== column)
+      return <ArrowUpDown className="w-3.5 h-3.5 text-ink-muted/40 ml-1" />;
+    return sortOrder === 'asc' ? (
+      <ArrowUp className="w-3.5 h-3.5 text-accent ml-1" />
+    ) : (
+      <ArrowDown className="w-3.5 h-3.5 text-accent ml-1" />
+    );
   };
 
   return (
@@ -234,11 +282,15 @@ export default function FeedbacksPage() {
       {/* Analytics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-ink-muted mb-1">Total Feedback</h3>
+          <h3 className="text-sm font-medium text-ink-muted mb-1">
+            Total Feedback
+          </h3>
           <p className="text-3xl font-bold text-ink">{analytics.total}</p>
         </div>
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-ink-muted mb-1">Open (Unresolved)</h3>
+          <h3 className="text-sm font-medium text-ink-muted mb-1">
+            Open (Unresolved)
+          </h3>
           <p className="text-3xl font-bold text-ink">{analytics.open}</p>
         </div>
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
@@ -262,7 +314,9 @@ export default function FeedbacksPage() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <label className="text-sm text-ink-muted font-medium whitespace-nowrap">Filter by Status:</label>
+            <label className="text-sm text-ink-muted font-medium whitespace-nowrap">
+              Filter by Status:
+            </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -280,12 +334,22 @@ export default function FeedbacksPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-bg-secondary/50 border-b border-border-subtle text-xs font-medium text-ink-muted uppercase tracking-wider">
-                <th className="px-6 py-4 cursor-pointer hover:bg-bg-secondary transition-colors" onClick={() => toggleSort('created_at')}>
-                  <div className="flex items-center">Date <SortIcon column="created_at" /></div>
+                <th
+                  className="px-6 py-4 cursor-pointer hover:bg-bg-secondary transition-colors"
+                  onClick={() => toggleSort('created_at')}
+                >
+                  <div className="flex items-center">
+                    Date <SortIcon column="created_at" />
+                  </div>
                 </th>
                 <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 cursor-pointer hover:bg-bg-secondary transition-colors" onClick={() => toggleSort('email')}>
-                  <div className="flex items-center">User <SortIcon column="email" /></div>
+                <th
+                  className="px-6 py-4 cursor-pointer hover:bg-bg-secondary transition-colors"
+                  onClick={() => toggleSort('email')}
+                >
+                  <div className="flex items-center">
+                    User <SortIcon column="email" />
+                  </div>
                 </th>
                 <th className="px-6 py-4 max-w-[400px]">Message</th>
                 <th className="px-6 py-4">Context</th>
@@ -301,7 +365,12 @@ export default function FeedbacksPage() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-danger font-medium">{error}</td>
+                  <td
+                    colSpan={6}
+                    className="p-12 text-center text-danger font-medium"
+                  >
+                    {error}
+                  </td>
                 </tr>
               ) : feedbacks.length === 0 ? (
                 <tr>
@@ -320,9 +389,11 @@ export default function FeedbacksPage() {
                       {timeAgo(fb.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize
                         ${fb.status === 'open' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'}
-                      `}>
+                      `}
+                      >
                         {fb.status}
                       </span>
                     </td>
@@ -336,33 +407,50 @@ export default function FeedbacksPage() {
                         <span className="text-ink-muted italic">Anonymous</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-ink max-w-[400px] truncate" title={fb.message}>
+                    <td
+                      className="px-6 py-4 text-sm text-ink max-w-[400px] truncate"
+                      title={fb.message}
+                    >
                       {fb.message}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-ink-muted">
                       <div className="flex items-center gap-3">
                         {fb.device_type && (
-                          <div className="flex items-center gap-1" title={`${fb.browser || 'Browser'} on ${fb.os || 'OS'}`}>
+                          <div
+                            className="flex items-center gap-1"
+                            title={`${fb.browser || 'Browser'} on ${fb.os || 'OS'}`}
+                          >
                             <DeviceIcon type={fb.device_type} />
                           </div>
                         )}
                         {fb.page_url && (
-                          <div className="flex items-center gap-1" title={fb.page_url}>
+                          <div
+                            className="flex items-center gap-1"
+                            title={fb.page_url}
+                          >
                             <Globe className="w-4 h-4" />
                             <span className="truncate max-w-[100px]">
                               {(() => {
-                                try { return new URL(fb.page_url).pathname; }
-                                catch (e) { return fb.page_url; }
+                                try {
+                                  return new URL(fb.page_url).pathname;
+                                } catch (e) {
+                                  return fb.page_url;
+                                }
                               })()}
                             </span>
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-6 py-4 whitespace-nowrap text-right text-sm"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {fb.status === 'open' ? (
                         <button
-                          onClick={() => updateFeedbackStatus(fb.id, 'resolved')}
+                          onClick={() =>
+                            updateFeedbackStatus(fb.id, 'resolved')
+                          }
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:bg-border-subtle rounded-md transition-colors"
                         >
                           <Archive className="w-3.5 h-3.5" />
@@ -389,18 +477,20 @@ export default function FeedbacksPage() {
         {meta && meta.totalPages > 1 && (
           <div className="p-4 border-t border-border-subtle flex items-center justify-between bg-bg-secondary/30">
             <span className="text-sm text-ink-muted">
-              Showing page <span className="font-medium text-ink">{meta.page}</span> of <span className="font-medium text-ink">{meta.totalPages}</span>
+              Showing page{' '}
+              <span className="font-medium text-ink">{meta.page}</span> of{' '}
+              <span className="font-medium text-ink">{meta.totalPages}</span>
             </span>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className="p-1.5 rounded-md text-ink bg-bg-primary border border-border-subtle hover:bg-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setPage(p => p + 1)}
+                onClick={() => setPage((p) => p + 1)}
                 disabled={!meta.hasMore}
                 className="p-1.5 rounded-md text-ink bg-bg-primary border border-border-subtle hover:bg-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -421,11 +511,13 @@ export default function FeedbacksPage() {
             className="bg-bg-primary w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 ease-out"
             onClick={(e) => e.stopPropagation()}
           >
-
             {/* Main Content: The Feedback Message */}
             <div className="flex-1 p-8 md:p-12 overflow-y-auto flex flex-col bg-bg-primary relative">
               <div className="absolute top-8 right-8 md:hidden">
-                <button onClick={() => setSelectedFeedback(null)} className="p-2 text-ink-muted bg-bg-secondary rounded-full">
+                <button
+                  onClick={() => setSelectedFeedback(null)}
+                  className="p-2 text-ink-muted bg-bg-secondary rounded-full"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -433,7 +525,9 @@ export default function FeedbacksPage() {
               <div className="flex-1 max-w-3xl">
                 <div className="inline-flex items-center gap-2 mb-8">
                   <Mail className="w-5 h-5 text-accent" />
-                  <span className="text-sm font-semibold text-accent uppercase tracking-widest">Feedback</span>
+                  <span className="text-sm font-semibold text-accent uppercase tracking-widest">
+                    Feedback
+                  </span>
                 </div>
 
                 <p className="text-base sm:text-lg text-ink leading-relaxed whitespace-pre-wrap break-words">
@@ -447,9 +541,17 @@ export default function FeedbacksPage() {
                   {selectedFeedback.email || 'Anonymous User'}
                 </div>
                 <div className="text-sm font-medium text-ink-muted mt-0.5">
-                  {new Date(selectedFeedback.created_at).toLocaleString(undefined, {
-                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                  })}
+                  {new Date(selectedFeedback.created_at).toLocaleString(
+                    undefined,
+                    {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    },
+                  )}
                 </div>
               </div>
             </div>
@@ -466,15 +568,19 @@ export default function FeedbacksPage() {
               </div>
 
               <div className="space-y-8">
-
                 {/* Status Action */}
                 <div>
-                  <h4 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3">Status</h4>
+                  <h4 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3">
+                    Status
+                  </h4>
                   {selectedFeedback.status === 'open' ? (
                     <button
                       onClick={() => {
                         updateFeedbackStatus(selectedFeedback.id, 'resolved');
-                        setSelectedFeedback({ ...selectedFeedback, status: 'resolved' });
+                        setSelectedFeedback({
+                          ...selectedFeedback,
+                          status: 'resolved',
+                        });
                       }}
                       className="w-full py-3 px-4 bg-accent hover:bg-accent/90 text-white font-medium rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
                     >
@@ -490,7 +596,10 @@ export default function FeedbacksPage() {
                       <button
                         onClick={() => {
                           updateFeedbackStatus(selectedFeedback.id, 'open');
-                          setSelectedFeedback({ ...selectedFeedback, status: 'open' });
+                          setSelectedFeedback({
+                            ...selectedFeedback,
+                            status: 'open',
+                          });
                         }}
                         className="w-full py-2 text-sm font-medium text-ink-muted hover:text-ink transition-colors"
                       >
@@ -514,8 +623,12 @@ export default function FeedbacksPage() {
                         <DeviceIcon type={selectedFeedback.device_type} />
                       </div>
                       <div>
-                        <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">Device</div>
-                        <div className="text-sm font-medium text-ink capitalize">{selectedFeedback.device_type || 'Unknown'}</div>
+                        <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">
+                          Device
+                        </div>
+                        <div className="text-sm font-medium text-ink capitalize">
+                          {selectedFeedback.device_type || 'Unknown'}
+                        </div>
                       </div>
                     </div>
 
@@ -524,8 +637,12 @@ export default function FeedbacksPage() {
                         <Globe className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">Browser</div>
-                        <div className="text-sm font-medium text-ink">{selectedFeedback.browser || 'Unknown'}</div>
+                        <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">
+                          Browser
+                        </div>
+                        <div className="text-sm font-medium text-ink">
+                          {selectedFeedback.browser || 'Unknown'}
+                        </div>
                       </div>
                     </div>
 
@@ -534,8 +651,12 @@ export default function FeedbacksPage() {
                         <MonitorPlay className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">OS</div>
-                        <div className="text-sm font-medium text-ink">{selectedFeedback.os || 'Unknown'}</div>
+                        <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">
+                          OS
+                        </div>
+                        <div className="text-sm font-medium text-ink">
+                          {selectedFeedback.os || 'Unknown'}
+                        </div>
                       </div>
                     </div>
 
@@ -544,9 +665,12 @@ export default function FeedbacksPage() {
                         <Maximize className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">Screen Size</div>
+                        <div className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">
+                          Screen Size
+                        </div>
                         <div className="text-sm font-medium text-ink">
-                          {selectedFeedback.screen_width && selectedFeedback.screen_height
+                          {selectedFeedback.screen_width &&
+                          selectedFeedback.screen_height
                             ? `${selectedFeedback.screen_width}x${selectedFeedback.screen_height}`
                             : 'Unknown'}
                         </div>
@@ -560,7 +684,9 @@ export default function FeedbacksPage() {
                   <>
                     <hr className="border-border-subtle" />
                     <div>
-                      <h4 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3">Origin URL</h4>
+                      <h4 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3">
+                        Origin URL
+                      </h4>
                       <a
                         href={selectedFeedback.page_url}
                         target="_blank"
@@ -574,7 +700,6 @@ export default function FeedbacksPage() {
                     </div>
                   </>
                 )}
-
               </div>
             </div>
           </div>

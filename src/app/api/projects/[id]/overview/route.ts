@@ -1,11 +1,16 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
-  
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,30 +25,44 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .single();
 
   if (projectError || !project) {
-    return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Project not found or access denied' },
+      { status: 404 },
+    );
   }
 
   // 1. Fetch Analytics Counts (Total, Open, Resolved)
   const [totalCountRes, openCountRes, resolvedCountRes] = await Promise.all([
-    supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id),
-    supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id).eq('status', 'open'),
-    supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id).eq('status', 'resolved')
+    supabase
+      .from('feedback')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id),
+    supabase
+      .from('feedback')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id)
+      .eq('status', 'open'),
+    supabase
+      .from('feedback')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', id)
+      .eq('status', 'resolved'),
   ]);
 
   const total = totalCountRes.count || 0;
   const open = openCountRes.count || 0;
   const resolved = resolvedCountRes.count || 0;
-  
+
   const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
 
   // New this week and last week for trend
   const now = new Date();
   const oneWeekAgo = new Date(now);
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  
+
   const twoWeeksAgo = new Date(now);
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-  
+
   const { count: newThisWeek } = await supabase
     .from('feedback')
     .select('*', { count: 'exact', head: true })
@@ -59,12 +78,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const currentWeekCount = newThisWeek || 0;
   const prevWeekCount = newLastWeek || 0;
-  
+
   let newThisWeekTrend = 0;
   if (prevWeekCount === 0) {
     newThisWeekTrend = currentWeekCount > 0 ? 100 : 0;
   } else {
-    newThisWeekTrend = Math.round(((currentWeekCount - prevWeekCount) / prevWeekCount) * 100);
+    newThisWeekTrend = Math.round(
+      ((currentWeekCount - prevWeekCount) / prevWeekCount) * 100,
+    );
   }
 
   // Calculate Average TTR (Time to Resolution)
@@ -77,16 +98,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   let avgTTRHours = 0;
   if (resolvedItems && resolvedItems.length > 0) {
     let totalMs = 0;
-    resolvedItems.forEach(item => {
+    resolvedItems.forEach((item) => {
       const created = new Date(item.created_at).getTime();
       const updated = new Date(item.updated_at).getTime();
-      totalMs += (updated - created);
+      totalMs += updated - created;
     });
     // Convert ms to hours
     avgTTRHours = totalMs / resolvedItems.length / (1000 * 60 * 60);
   }
-  
-  let avgTTRFormatted = "N/A";
+
+  let avgTTRFormatted = 'N/A';
   if (resolvedItems && resolvedItems.length > 0) {
     if (avgTTRHours < 1) {
       avgTTRFormatted = `${Math.round(avgTTRHours * 60)} Mins`;
@@ -122,7 +143,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // 3. Fetch Chart Data & Demographics Data
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
+
   const { data: allFeedbacks } = await supabase
     .from('feedback')
     .select('created_at, browser, os, device_type, page_url, page_title')
@@ -146,23 +167,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   if (allFeedbacks) {
     totalFeedbacksIn30Days = allFeedbacks.length;
-    allFeedbacks.forEach(fb => {
+    allFeedbacks.forEach((fb) => {
       // chart
       const dateStr = fb.created_at.split('T')[0];
       if (chartDataMap[dateStr] !== undefined) {
         chartDataMap[dateStr]++;
       }
-      
+
       // browser
       if (fb.browser) {
         browserMap[fb.browser] = (browserMap[fb.browser] || 0) + 1;
       }
-      
+
       // os
       if (fb.os) {
         osMap[fb.os] = (osMap[fb.os] || 0) + 1;
       }
-      
+
       // top pages
       if (fb.page_url) {
         // clean url by removing query params and hash for grouping, optionally
@@ -176,7 +197,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         } catch {
           // fallback if invalid URL
           if (!pageMap[fb.page_url]) {
-            pageMap[fb.page_url] = { count: 0, title: fb.page_title || fb.page_url };
+            pageMap[fb.page_url] = {
+              count: 0,
+              title: fb.page_title || fb.page_url,
+            };
           }
           pageMap[fb.page_url].count++;
         }
@@ -184,18 +208,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     });
   }
 
-  const chartData = Object.keys(chartDataMap).map(date => ({
+  const chartData = Object.keys(chartDataMap).map((date) => ({
     date,
-    count: chartDataMap[date]
+    count: chartDataMap[date],
   }));
 
   // Format Devices
   const browserData = Object.entries(browserMap)
-    .map(([name, count]) => ({ name, count, percentage: Math.round((count / totalFeedbacksIn30Days) * 100) }))
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / totalFeedbacksIn30Days) * 100),
+    }))
     .sort((a, b) => b.count - a.count);
-    
+
   const osData = Object.entries(osMap)
-    .map(([name, count]) => ({ name, count, percentage: Math.round((count / totalFeedbacksIn30Days) * 100) }))
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / totalFeedbacksIn30Days) * 100),
+    }))
     .sort((a, b) => b.count - a.count);
 
   // Format Pages
@@ -210,8 +242,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     chartData,
     devices: {
       browsers: browserData,
-      os: osData
+      os: osData,
     },
-    topPages
+    topPages,
   });
 }

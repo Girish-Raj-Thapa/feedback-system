@@ -10,6 +10,6 @@ export function escapeCSV(value: any): string {
 
 export function generateCSV(headers: string[], data: any[][]): string {
   const headerRow = headers.map(escapeCSV).join(',');
-  const dataRows = data.map(row => row.map(escapeCSV).join(','));
+  const dataRows = data.map((row) => row.map(escapeCSV).join(','));
   return [headerRow, ...dataRows].join('\n');
 }

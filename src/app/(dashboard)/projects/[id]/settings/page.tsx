@@ -39,7 +39,15 @@ export default function ProjectSettingsPage() {
       setDebouncedPreviewUrl(url);
     }, 150); // 150ms debounce
     return () => clearTimeout(timer);
-  }, [widgetPosition, widgetColor, widgetTheme, widgetText, widgetBorderRadius, widgetIcon, widgetTitle]);
+  }, [
+    widgetPosition,
+    widgetColor,
+    widgetTheme,
+    widgetText,
+    widgetBorderRadius,
+    widgetIcon,
+    widgetTitle,
+  ]);
 
   useEffect(() => {
     async function fetchProject() {
@@ -154,7 +162,9 @@ export default function ProjectSettingsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-9">
             <Card className="self-start">
               <Card.Header>
-                <h2 className="text-lg font-medium text-ink">General Information</h2>
+                <h2 className="text-lg font-medium text-ink">
+                  General Information
+                </h2>
               </Card.Header>
               <Card.Body>
                 <div className="space-y-6">
@@ -190,7 +200,8 @@ export default function ProjectSettingsPage() {
                       required
                     />
                     <p className="mt-1.5 text-xs text-ink-muted">
-                      Please include http:// or https:// (e.g., https://hello.com)
+                      Please include http:// or https:// (e.g.,
+                      https://hello.com)
                     </p>
                   </div>
                 </div>
@@ -220,7 +231,9 @@ export default function ProjectSettingsPage() {
                     <pre className="text-sm text-ink font-mono whitespace-pre-wrap break-all mt-1">
                       {`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget-v1.js" data-project="${project.public_key}"></script>`}
                     </pre>
-                    <CopyButton text={`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget-v1.js" data-project="${project.public_key}"></script>`} />
+                    <CopyButton
+                      text={`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget-v1.js" data-project="${project.public_key}"></script>`}
+                    />
                   </div>
                 </Card.Body>
               </Card>
@@ -233,12 +246,19 @@ export default function ProjectSettingsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-9">
             <Card className="lg:col-span-2">
               <Card.Header>
-                <h2 className="text-lg font-medium text-ink">Design Settings</h2>
+                <h2 className="text-lg font-medium text-ink">
+                  Design Settings
+                </h2>
               </Card.Header>
               <Card.Body>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="widgetTheme" className="block text-sm font-medium text-ink mb-3">Theme</label>
+                    <label
+                      htmlFor="widgetTheme"
+                      className="block text-sm font-medium text-ink mb-3"
+                    >
+                      Theme
+                    </label>
                     <select
                       id="widgetTheme"
                       value={widgetTheme}
@@ -252,7 +272,12 @@ export default function ProjectSettingsPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="widgetColor" className="block text-sm font-medium text-ink mb-3">Primary Color</label>
+                    <label
+                      htmlFor="widgetColor"
+                      className="block text-sm font-medium text-ink mb-3"
+                    >
+                      Primary Color
+                    </label>
                     <div className="flex gap-3">
                       <input
                         type="color"
@@ -271,7 +296,12 @@ export default function ProjectSettingsPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="widgetText" className="block text-sm font-medium text-ink mb-3">Button Text</label>
+                    <label
+                      htmlFor="widgetText"
+                      className="block text-sm font-medium text-ink mb-3"
+                    >
+                      Button Text
+                    </label>
                     <Input
                       id="widgetText"
                       value={widgetText}
@@ -282,7 +312,12 @@ export default function ProjectSettingsPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="widgetIcon" className="block text-sm font-medium text-ink mb-3">Button Icon</label>
+                    <label
+                      htmlFor="widgetIcon"
+                      className="block text-sm font-medium text-ink mb-3"
+                    >
+                      Button Icon
+                    </label>
                     <select
                       id="widgetIcon"
                       value={widgetIcon}
@@ -297,7 +332,12 @@ export default function ProjectSettingsPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="widgetPosition" className="block text-sm font-medium text-ink mb-3">Position</label>
+                    <label
+                      htmlFor="widgetPosition"
+                      className="block text-sm font-medium text-ink mb-3"
+                    >
+                      Position
+                    </label>
                     <select
                       id="widgetPosition"
                       value={widgetPosition}
@@ -308,9 +348,14 @@ export default function ProjectSettingsPage() {
                       <option value="bottom-left">Bottom Left</option>
                     </select>
                   </div>
-                  
+
                   <div>
-                    <label htmlFor="widgetTitle" className="block text-sm font-medium text-ink mb-3">Panel Title</label>
+                    <label
+                      htmlFor="widgetTitle"
+                      className="block text-sm font-medium text-ink mb-3"
+                    >
+                      Panel Title
+                    </label>
                     <Input
                       id="widgetTitle"
                       value={widgetTitle}
@@ -321,7 +366,12 @@ export default function ProjectSettingsPage() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label htmlFor="widgetBorderRadius" className="block text-sm font-medium text-ink mb-3">Border Radius</label>
+                    <label
+                      htmlFor="widgetBorderRadius"
+                      className="block text-sm font-medium text-ink mb-3"
+                    >
+                      Border Radius
+                    </label>
                     <select
                       id="widgetBorderRadius"
                       value={widgetBorderRadius}
@@ -345,12 +395,12 @@ export default function ProjectSettingsPage() {
 
             <Card className="lg:col-span-3">
               <Card.Header className="py-4">
-                 <h2 className="text-sm font-medium text-ink">Live Preview</h2>
+                <h2 className="text-sm font-medium text-ink">Live Preview</h2>
               </Card.Header>
               <div className="flex-1 w-full flex items-center justify-center p-6 bg-bg-secondary h-full min-h-[500px]">
                 <div className="w-[100%] h-full min-h-[400px] bg-bg-primary rounded-lg border border-border-subtle overflow-hidden relative shadow-sm">
                   {debouncedPreviewUrl && (
-                    <iframe 
+                    <iframe
                       src={debouncedPreviewUrl}
                       className="w-full h-full border-none"
                     />

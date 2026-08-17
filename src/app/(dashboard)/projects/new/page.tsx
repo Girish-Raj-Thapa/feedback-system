@@ -36,7 +36,15 @@ export default function NewProjectPage() {
       setDebouncedPreviewUrl(url);
     }, 150);
     return () => clearTimeout(timer);
-  }, [widgetPosition, widgetColor, widgetTheme, widgetText, widgetBorderRadius, widgetIcon, widgetTitle]);
+  }, [
+    widgetPosition,
+    widgetColor,
+    widgetTheme,
+    widgetText,
+    widgetBorderRadius,
+    widgetIcon,
+    widgetTitle,
+  ]);
 
   async function handleSave(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -81,7 +89,8 @@ export default function NewProjectPage() {
           Create New Project
         </h1>
         <p className="text-ink-muted">
-          Set up your project details and customize your widget before generating your installation script.
+          Set up your project details and customize your widget before
+          generating your installation script.
         </p>
       </div>
 
@@ -117,7 +126,9 @@ export default function NewProjectPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-9">
             <Card className="self-start">
               <Card.Header>
-                <h2 className="text-lg font-medium text-ink">General Information</h2>
+                <h2 className="text-lg font-medium text-ink">
+                  General Information
+                </h2>
               </Card.Header>
               <Card.Body>
                 <div className="space-y-6">
@@ -153,7 +164,8 @@ export default function NewProjectPage() {
                       required
                     />
                     <p className="mt-1.5 text-xs text-ink-muted">
-                      Please include http:// or https:// (e.g., https://hello.com)
+                      Please include http:// or https:// (e.g.,
+                      https://hello.com)
                     </p>
                   </div>
                 </div>
@@ -172,7 +184,8 @@ export default function NewProjectPage() {
               </Card.Header>
               <Card.Body>
                 <p className="text-sm text-ink-muted">
-                  Your installation script will be generated after you create the project.
+                  Your installation script will be generated after you create
+                  the project.
                 </p>
               </Card.Body>
             </Card>
@@ -184,11 +197,15 @@ export default function NewProjectPage() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-9">
             <Card className="lg:col-span-2 flex flex-col min-h-[500px]">
               <Card.Header className="py-4 shrink-0">
-                <h2 className="text-sm font-medium text-ink">Design Settings</h2>
+                <h2 className="text-sm font-medium text-ink">
+                  Design Settings
+                </h2>
               </Card.Header>
               <Card.Body className="flex-1 overflow-y-auto min-h-0 space-y-6 p-6">
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-3">Position</label>
+                  <label className="block text-sm font-medium text-ink mb-3">
+                    Position
+                  </label>
                   <select
                     value={widgetPosition}
                     onChange={(e) => setWidgetPosition(e.target.value)}
@@ -200,7 +217,9 @@ export default function NewProjectPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-3">Theme</label>
+                  <label className="block text-sm font-medium text-ink mb-3">
+                    Theme
+                  </label>
                   <select
                     value={widgetTheme}
                     onChange={(e) => setWidgetTheme(e.target.value)}
@@ -213,7 +232,9 @@ export default function NewProjectPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-3">Accent Color</label>
+                  <label className="block text-sm font-medium text-ink mb-3">
+                    Accent Color
+                  </label>
                   <div className="flex items-center gap-3">
                     <input
                       type="color"
@@ -231,7 +252,9 @@ export default function NewProjectPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-3">Border Radius</label>
+                  <label className="block text-sm font-medium text-ink mb-3">
+                    Border Radius
+                  </label>
                   <select
                     value={widgetBorderRadius}
                     onChange={(e) => setWidgetBorderRadius(e.target.value)}
@@ -246,7 +269,9 @@ export default function NewProjectPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-3">Trigger Icon</label>
+                  <label className="block text-sm font-medium text-ink mb-3">
+                    Trigger Icon
+                  </label>
                   <select
                     value={widgetIcon}
                     onChange={(e) => setWidgetIcon(e.target.value)}
@@ -260,7 +285,9 @@ export default function NewProjectPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-3">Trigger Button Text</label>
+                  <label className="block text-sm font-medium text-ink mb-3">
+                    Trigger Button Text
+                  </label>
                   <Input
                     value={widgetText}
                     onChange={(e) => setWidgetText(e.target.value)}
@@ -269,7 +296,9 @@ export default function NewProjectPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-3">Panel Title</label>
+                  <label className="block text-sm font-medium text-ink mb-3">
+                    Panel Title
+                  </label>
                   <Input
                     value={widgetTitle}
                     onChange={(e) => setWidgetTitle(e.target.value)}
@@ -291,7 +320,7 @@ export default function NewProjectPage() {
               <div className="flex-1 w-full flex items-center justify-center p-6 bg-bg-secondary h-full min-h-[500px]">
                 <div className="w-[100%] h-full min-h-[400px] bg-bg-primary rounded-lg border border-border-subtle overflow-hidden relative shadow-sm">
                   {debouncedPreviewUrl && (
-                    <iframe 
+                    <iframe
                       src={debouncedPreviewUrl}
                       className="w-full h-full border-none"
                     />

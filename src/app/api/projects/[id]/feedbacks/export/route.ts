@@ -2,16 +2,21 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { generateCSV } from '@/lib/csv';
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
-  
+
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status') || 'all';
   const search = searchParams.get('search') || '';
   const format = searchParams.get('format') || 'csv';
-  
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -26,7 +31,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .single();
 
   if (projectError || !project) {
-    return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Project not found or access denied' },
+      { status: 404 },
+    );
   }
 
   // Fetch all matching feedbacks for export
@@ -48,7 +56,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   if (error) {
     console.error('[API] Failed to fetch feedback for export:', error);
-    return NextResponse.json({ error: 'Failed to fetch feedback for export' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch feedback for export' },
+      { status: 500 },
+    );
   }
 
   if (format === 'json') {
@@ -64,7 +75,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     'Browser',
     'OS',
     'Screen Size',
-    'URL'
+    'URL',
   ];
 
   const rows = (feedbacks || []).map((fb) => [
@@ -75,8 +86,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     fb.device_type || '',
     fb.browser || '',
     fb.os || '',
-    (fb.screen_width && fb.screen_height) ? `${fb.screen_width}x${fb.screen_height}` : '',
-    fb.page_url || ''
+    fb.screen_width && fb.screen_height
+      ? `${fb.screen_width}x${fb.screen_height}`
+      : '',
+    fb.page_url || '',
   ]);
 
   const csvContent = generateCSV(headers, rows);
@@ -89,7 +102,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${filename}"`
-    }
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
   });
 }

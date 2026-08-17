@@ -24,18 +24,19 @@ export default function CheckEmailPage() {
               ></path>
             </svg>
           </div>
-          
+
           <h2 className="text-2xl font-semibold text-ink mb-4 tracking-tight">
             Check your email
           </h2>
-          
+
           <p className="text-base text-ink-muted mb-6 leading-relaxed">
-            We've sent a temporary login link to your email address. 
-            Please check your inbox and click the link to verify your account.
+            We've sent a temporary login link to your email address. Please
+            check your inbox and click the link to verify your account.
           </p>
 
           <p className="text-sm text-ink-muted mb-10">
-            Can't find it? Check your spam folder or wait a minute before trying again.
+            Can't find it? Check your spam folder or wait a minute before trying
+            again.
           </p>
 
           <Link

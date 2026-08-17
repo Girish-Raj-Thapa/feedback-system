@@ -43,7 +43,7 @@ export default function SignupPage() {
     }
 
     setLoading(false);
-    
+
     // Redirect to the dedicated check-email page
     router.push('/check-email');
   }
