@@ -7,8 +7,10 @@ import {
   Globe, Monitor, Smartphone, MonitorPlay,
   ChevronLeft, ChevronRight, Search,
   ArrowUpDown, ArrowUp, ArrowDown, Archive, Mail,
-  CheckCircle2, Circle, X, Maximize, Download
+  CheckCircle2, Circle, X, Maximize, Download, FileText
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 function timeAgo(dateString: string) {
   const date = new Date(dateString);
@@ -139,6 +141,52 @@ export default function FeedbacksPage() {
     window.location.href = `/api/projects/${params.id}/feedbacks/export?${qs.toString()}`;
   };
 
+  const handleDownloadPDF = async () => {
+    if (!params?.id) return;
+    try {
+      const qs = new URLSearchParams({
+        search: debouncedSearch,
+        status: statusFilter,
+        format: 'json'
+      });
+      const res = await fetch(`/api/projects/${params.id}/feedbacks/export?${qs.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch data for PDF');
+      
+      const { data } = await res.json();
+      
+      const doc = new jsPDF();
+      
+      doc.setFontSize(18);
+      doc.text('Feedback Report', 14, 22);
+      doc.setFontSize(11);
+      doc.setTextColor(100);
+      doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
+      
+      const tableData = data.map((fb: any) => [
+        new Date(fb.created_at).toLocaleDateString(),
+        fb.status,
+        fb.email || 'Anonymous',
+        fb.message,
+      ]);
+
+      autoTable(doc, {
+        startY: 36,
+        head: [['Date', 'Status', 'User', 'Message']],
+        body: tableData,
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        columnStyles: {
+          3: { cellWidth: 80 }
+        }
+      });
+
+      doc.save(`feedback_report_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate PDF');
+    }
+  };
+
   const DeviceIcon = ({ type }: { type: string }) => {
     switch (type) {
       case 'mobile': return <Smartphone className="w-4 h-4" />;
@@ -165,13 +213,22 @@ export default function FeedbacksPage() {
             Read, search, and manage all feedback submitted through your widget.
           </p>
         </div>
-        <button
-          onClick={handleDownloadCSV}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-bg-primary border border-border-subtle hover:bg-bg-secondary text-ink font-medium rounded-lg transition-colors shadow-sm whitespace-nowrap"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleDownloadCSV}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-bg-primary border border-border-subtle hover:bg-bg-secondary text-ink font-medium rounded-lg transition-colors shadow-sm whitespace-nowrap"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-bg-primary border border-border-subtle hover:bg-bg-secondary text-ink font-medium rounded-lg transition-colors shadow-sm whitespace-nowrap"
+          >
+            <FileText className="w-4 h-4" />
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Analytics Row */}

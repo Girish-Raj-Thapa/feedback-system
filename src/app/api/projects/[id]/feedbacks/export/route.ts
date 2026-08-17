@@ -8,6 +8,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status') || 'all';
   const search = searchParams.get('search') || '';
+  const format = searchParams.get('format') || 'csv';
   
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -48,6 +49,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (error) {
     console.error('[API] Failed to fetch feedback for export:', error);
     return NextResponse.json({ error: 'Failed to fetch feedback for export' }, { status: 500 });
+  }
+
+  if (format === 'json') {
+    return NextResponse.json({ data: feedbacks }, { status: 200 });
   }
 
   const headers = [

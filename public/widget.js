@@ -1,6 +1,7 @@
 (function () {
   'use strict';
 
+  try {
   // ─── Metadata helpers ────────────────────────────────────────────────────────
 
   function getBrowser(ua) {
