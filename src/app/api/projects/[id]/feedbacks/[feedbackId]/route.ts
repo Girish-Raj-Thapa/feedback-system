@@ -18,7 +18,7 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body;
 
-    if (!['open', 'archived'].includes(status)) {
+    if (!['open', 'resolved'].includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 

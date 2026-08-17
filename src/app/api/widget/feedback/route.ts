@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAllowedOrigin } from '@/lib/domain';
 import { defaultRateLimiter } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
 
   // 1. Honeypot Validation: If a bot fills this hidden field, silently drop the request
   if (ff_website) {
-    console.warn(`[widget/feedback] Honeypot triggered. Dropping request for key: ${public_key}`);
+    logger.warn('Honeypot triggered', { public_key });
     return NextResponse.json({ success: true }, { status: 201, headers: CORS_HEADERS });
   }
 
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
   
   const limitResult = await defaultRateLimiter.limit(rateLimitId);
   if (!limitResult.success) {
-    console.warn(`[widget/feedback] Rate limit exceeded for IP: ${ip} on project: ${public_key}`);
+    logger.warn('Rate limit exceeded', { ip, public_key });
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429, headers: CORS_HEADERS }
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (insertError) {
-    console.error('[widget/feedback] Insert error:', insertError.message);
+    logger.error('Failed to insert feedback', { public_key }, insertError);
     return NextResponse.json(
       { error: 'Failed to save feedback' },
       { status: 500, headers: CORS_HEADERS },

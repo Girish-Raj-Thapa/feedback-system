@@ -324,7 +324,7 @@
 
     var styleEl = document.createElement('style');
     styleEl.textContent = css;
-    document.head.appendChild(styleEl);
+    // We will append this to the shadow root instead of document.head
 
     // ── DOM ──────────────────────────────────────────────────────────────────
 
@@ -371,24 +371,33 @@
       '</div>',
     ].join('');
 
-    document.body.appendChild(btn);
-    document.body.appendChild(panel);
+    // Setup Shadow DOM Host
+    var host = document.createElement('div');
+    host.id = 'feedbackflow-host';
+    host.style.all = 'initial'; // Reset inherited styles from the host page
+    document.body.appendChild(host);
+
+    var shadow = host.attachShadow({ mode: 'open' });
+    shadow.appendChild(styleEl);
+    shadow.appendChild(btn);
+    shadow.appendChild(panel);
 
     // ── Refs ─────────────────────────────────────────────────────────────────
 
-    var msgEl      = document.getElementById('ff-msg');
-    var emailEl    = document.getElementById('ff-email');
-    var websiteEl  = document.getElementById('ff-website');
-    var subEl      = document.getElementById('ff-sub');
-    var errEl      = document.getElementById('ff-err');
-    var ccEl       = document.getElementById('ff-cc');
-    var formWrap   = document.getElementById('ff-form-wrap');
-    var successEl  = document.getElementById('ff-ok');
+    var msgEl      = shadow.querySelector('#ff-msg');
+    var emailEl    = shadow.querySelector('#ff-email');
+    var websiteEl  = shadow.querySelector('#ff-website');
+    var subEl      = shadow.querySelector('#ff-sub');
+    var errEl      = shadow.querySelector('#ff-err');
+    var ccEl       = shadow.querySelector('#ff-cc');
+    var formWrap   = shadow.querySelector('#ff-form-wrap');
+    var successEl  = shadow.querySelector('#ff-ok');
+    var closeBtn   = shadow.querySelector('#ff-close');
 
     // ── Events ───────────────────────────────────────────────────────────────
 
     btn.addEventListener('click', openPanel);
-    document.getElementById('ff-close').addEventListener('click', closePanel);
+    closeBtn.addEventListener('click', closePanel);
     subEl.addEventListener('click', submitFeedback);
 
     // Character counter + clear error highlight
@@ -402,7 +411,10 @@
 
     // Close on outside click
     document.addEventListener('click', function(e) {
-      if (!panel.contains(e.target) && e.target !== btn) closePanel();
+      var path = e.composedPath ? e.composedPath() : [];
+      var clickedPanel = path.indexOf(panel) !== -1;
+      var clickedBtn = path.indexOf(btn) !== -1;
+      if (!clickedPanel && !clickedBtn) closePanel();
     }, true);
 
     // Close on Escape

@@ -20,7 +20,7 @@ export default function WidgetPreviewPage() {
       open: true,
     };
 
-    // Set the global override for widget.js
+    // Set the global override for widget-v1.js
     (window as any).FeedbackFlowConfigOverride = config;
     setReady(true);
 
@@ -29,7 +29,7 @@ export default function WidgetPreviewPage() {
     if (!document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
-      script.src = '/widget.js';
+      script.src = '/widget-v1.js';
       script.setAttribute('data-project', 'preview_key');
       script.defer = true;
       document.body.appendChild(script);

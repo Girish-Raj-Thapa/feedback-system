@@ -8,7 +8,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
-  const status = searchParams.get('status') || 'all'; // all, open, archived
+  const status = searchParams.get('status') || 'all'; // all, open, resolved
   const sortBy = searchParams.get('sortBy') || 'created_at';
   const sortOrder = searchParams.get('sortOrder') || 'desc';
   
@@ -38,16 +38,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   // 1. Fetch Analytics Counts (Total, Open, Archived)
-  const [totalCountRes, openCountRes, archivedCountRes] = await Promise.all([
+  const [totalCountRes, openCountRes, resolvedCountRes] = await Promise.all([
     supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id),
     supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id).eq('status', 'open'),
-    supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id).eq('status', 'archived')
+    supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('project_id', id).eq('status', 'resolved')
   ]);
 
   const analytics = {
     total: totalCountRes.count || 0,
     open: openCountRes.count || 0,
-    archived: archivedCountRes.count || 0
+    resolved: resolvedCountRes.count || 0
   };
 
   // 2. Fetch Paginated & Filtered Data

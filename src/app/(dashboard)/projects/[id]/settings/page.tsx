@@ -218,9 +218,9 @@ export default function ProjectSettingsPage() {
                   </p>
                   <div className="bg-bg-secondary border border-border-subtle p-4 rounded-md flex justify-between items-start gap-4">
                     <pre className="text-sm text-ink font-mono whitespace-pre-wrap break-all mt-1">
-                      {`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget.js" data-project="${project.public_key}"></script>`}
+                      {`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget-v1.js" data-project="${project.public_key}"></script>`}
                     </pre>
-                    <CopyButton text={`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget.js" data-project="${project.public_key}"></script>`} />
+                    <CopyButton text={`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget-v1.js" data-project="${project.public_key}"></script>`} />
                   </div>
                 </Card.Body>
               </Card>

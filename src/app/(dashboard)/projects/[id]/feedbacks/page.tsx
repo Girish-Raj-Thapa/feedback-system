@@ -35,7 +35,7 @@ export default function FeedbacksPage() {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [analytics, setAnalytics] = useState({ total: 0, open: 0, archived: 0 });
+  const [analytics, setAnalytics] = useState({ total: 0, open: 0, resolved: 0 });
 
   // Table State
   const [page, setPage] = useState(1);
@@ -44,7 +44,7 @@ export default function FeedbacksPage() {
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // all, open, archived
+  const [statusFilter, setStatusFilter] = useState('all'); // all, open, resolved
 
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -243,7 +243,7 @@ export default function FeedbacksPage() {
         </div>
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
           <h3 className="text-sm font-medium text-ink-muted mb-1">Archived</h3>
-          <p className="text-3xl font-bold text-ink">{analytics.archived}</p>
+          <p className="text-3xl font-bold text-ink">{analytics.resolved}</p>
         </div>
       </div>
 
@@ -270,7 +270,7 @@ export default function FeedbacksPage() {
             >
               <option value="all">All Feedback</option>
               <option value="open">Open</option>
-              <option value="archived">Archived</option>
+              <option value="resolved">Resolved</option>
             </select>
           </div>
         </div>
@@ -362,7 +362,7 @@ export default function FeedbacksPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm" onClick={(e) => e.stopPropagation()}>
                       {fb.status === 'open' ? (
                         <button
-                          onClick={() => updateFeedbackStatus(fb.id, 'archived')}
+                          onClick={() => updateFeedbackStatus(fb.id, 'resolved')}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:bg-border-subtle rounded-md transition-colors"
                         >
                           <Archive className="w-3.5 h-3.5" />
@@ -473,8 +473,8 @@ export default function FeedbacksPage() {
                   {selectedFeedback.status === 'open' ? (
                     <button
                       onClick={() => {
-                        updateFeedbackStatus(selectedFeedback.id, 'archived');
-                        setSelectedFeedback({ ...selectedFeedback, status: 'archived' });
+                        updateFeedbackStatus(selectedFeedback.id, 'resolved');
+                        setSelectedFeedback({ ...selectedFeedback, status: 'resolved' });
                       }}
                       className="w-full py-3 px-4 bg-accent hover:bg-accent/90 text-white font-medium rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
                     >
