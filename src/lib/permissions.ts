@@ -7,6 +7,11 @@ export type Feature =
   | 'multiple_projects'
   | 'advanced_analytics';
 
+export const FREE_TIER_LIMIT = parseInt(
+  process.env.FREE_TIER_LIMIT || '50',
+  10,
+);
+
 /**
  * Centralized feature flags matrix.
  * Define which plans have access to which features here.

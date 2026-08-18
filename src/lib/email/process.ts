@@ -49,8 +49,11 @@ export async function processEmailNotification(feedbackId: string) {
     throw new Error(`Feedback not found for ID: ${feedbackId}`);
   }
 
-  const projectId = feedback.projects?.name || 'Unknown Project';
-  const userId = feedback.projects?.user_id;
+  const projectData = Array.isArray(feedback.projects)
+    ? feedback.projects[0]
+    : feedback.projects;
+  const projectId = projectData?.name || 'Unknown Project';
+  const userId = projectData?.user_id;
 
   if (!userId) {
     throw new Error(`Project for feedback ${feedbackId} has no owner`);

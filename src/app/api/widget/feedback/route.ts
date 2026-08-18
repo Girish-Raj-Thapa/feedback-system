@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   // Verify the project exists and is active
   const { data: project, error: projectError } = await admin
     .from('projects')
-    .select('id, website_url')
+    .select('id, user_id, website_url')
     .eq('public_key', public_key)
     .eq('is_active', true)
     .single();
@@ -130,30 +130,53 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Insert feedback using admin client (bypasses RLS — intentional for widget submissions)
-  const { data: insertedFeedback, error: insertError } = await admin
-    .from('feedback')
-    .insert({
-      project_id: project.id,
-      message,
-      email: email || null,
-      page_url: cleanPageUrl,
-      page_title: page_title || null,
-      browser: browser || null,
-      os: os || null,
-      device_type: device_type || null,
-      screen_width: screen_width ?? null,
-      screen_height: screen_height ?? null,
-    })
-    .select('id')
-    .single();
+  // 3. Usage Limits Check & Insert (Atomic RPC)
+  const { FREE_TIER_LIMIT } = await import('@/lib/permissions');
 
-  if (insertError || !insertedFeedback) {
-    logger.error('Failed to insert feedback', { public_key }, insertError);
+  const payload = {
+    message,
+    email: email || null,
+    page_url: cleanPageUrl,
+    page_title: page_title || null,
+    browser: browser || null,
+    os: os || null,
+    device_type: device_type || null,
+    screen_width: screen_width ?? null,
+    screen_height: screen_height ?? null,
+  };
+
+  // Insert feedback using admin client (bypasses RLS — intentional for widget submissions)
+  const { data: rpcResult, error: rpcError } = await admin.rpc(
+    'insert_feedback_with_quota',
+    {
+      p_project_id: project.id,
+      p_payload: payload,
+      p_free_limit: FREE_TIER_LIMIT,
+    },
+  );
+
+  if (rpcError) {
+    if (rpcError.message.includes('quota_exceeded')) {
+      logger.warn('Feedback rejected due to free tier limit', { public_key });
+      return NextResponse.json(
+        { error: 'Monthly quota exceeded' },
+        { status: 402, headers: CORS_HEADERS },
+      );
+    }
+    logger.error('Failed to insert feedback via RPC', { public_key }, rpcError);
     return NextResponse.json(
       { error: 'Failed to save feedback' },
       { status: 500, headers: CORS_HEADERS },
     );
+  }
+
+  const insertedFeedbackId = rpcResult.id;
+  const newCount = rpcResult.new_count;
+  const userPlan = rpcResult.plan;
+
+  let limitReachedThisTime = false;
+  if (userPlan === 'free' && newCount >= FREE_TIER_LIMIT) {
+    limitReachedThisTime = true;
   }
 
   // Dispatch email notification
@@ -161,17 +184,15 @@ export async function POST(request: NextRequest) {
     const deliveryMethod = process.env.EMAIL_DELIVERY_METHOD || 'inline';
 
     if (deliveryMethod === 'queue') {
-      await enqueueEmailNotification(insertedFeedback.id);
+      await enqueueEmailNotification(insertedFeedbackId);
     } else {
-      // Use Next.js 15+ after() to run asynchronously without blocking the API response
-      // or needing a separate background worker process
       after(async () => {
         try {
-          await processEmailNotification(insertedFeedback.id);
+          await processEmailNotification(insertedFeedbackId);
         } catch (err) {
           logger.error(
             'Failed inline email delivery',
-            { feedbackId: insertedFeedback.id },
+            { feedbackId: insertedFeedbackId },
             err as Error,
           );
         }
@@ -180,26 +201,58 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error(
       'Failed to enqueue email job, deleting orphaned feedback row',
-      { feedbackId: insertedFeedback.id },
+      { feedbackId: insertedFeedbackId },
       error as Error,
     );
     // Compensating transaction: Delete the row we just inserted so it's not orphaned without an email
     const { error: deleteError } = await admin
       .from('feedback')
       .delete()
-      .eq('id', insertedFeedback.id);
+      .eq('id', insertedFeedbackId);
     if (deleteError) {
       logger.error(
         'CRITICAL: Failed to roll back orphaned feedback row',
-        { feedbackId: insertedFeedback.id },
+        { feedbackId: insertedFeedbackId },
         deleteError,
       );
-      // consider: alert/page here, this row now needs manual cleanup
     }
     return NextResponse.json(
       { error: 'Failed to process feedback. Please try again.' },
       { status: 500, headers: CORS_HEADERS },
     );
+  }
+
+  // Dispatch limit reached warning (Atomic claim)
+  if (limitReachedThisTime) {
+    after(async () => {
+      try {
+        const startOfMonthIso = new Date(
+          Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1),
+        ).toISOString();
+
+        // Atomically claim the quota warning email for this month
+        const { data: claimed } = await admin
+          .from('subscriptions')
+          .update({ last_quota_warning_sent_at: new Date().toISOString() })
+          .eq('user_id', project.user_id)
+          .or(
+            `last_quota_warning_sent_at.is.null,last_quota_warning_sent_at.lt.${startOfMonthIso}`,
+          )
+          .select('id')
+          .maybeSingle();
+
+        if (claimed) {
+          const { sendQuotaWarningEmail } = await import('@/lib/email/quota');
+          await sendQuotaWarningEmail(project.user_id);
+        }
+      } catch (err) {
+        logger.error(
+          'Failed to send quota warning',
+          { userId: project.user_id },
+          err as Error,
+        );
+      }
+    });
   }
 
   return NextResponse.json(

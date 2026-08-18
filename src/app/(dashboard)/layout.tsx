@@ -5,6 +5,7 @@ import { LogoutButton } from '@/components/layout/LogoutButton';
 import { Logo } from '@/components/ui/Logo';
 import { SidebarNav } from '@/components/layout/SidebarNav';
 import { ActivationChecklist } from '@/components/layout/ActivationChecklist';
+import { UsageBar } from '@/components/layout/UsageBar';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,9 +57,12 @@ export default async function DashboardLayout({
         {/* Activation checklist — visible until user is fully activated */}
         {project && <ActivationChecklist projectId={project.id} />}
 
-        {/* Footer actions */}
-        <div className="p-4 border-t border-border-subtle">
-          <LogoutButton />
+        <div className="mt-auto">
+          <UsageBar />
+          {/* Footer actions */}
+          <div className="p-4 border-t border-border-subtle">
+            <LogoutButton />
+          </div>
         </div>
       </aside>
 
