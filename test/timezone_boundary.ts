@@ -23,7 +23,7 @@ global.Date = new Proxy(Date, {
   construct(target, args) {
     if (args.length === 0) return new MockDate();
     // @ts-ignore
-    return new target(...args);
+    return new target(...(args as any[]));
   },
 }) as any;
 
