@@ -59,6 +59,7 @@ export default function FeedbacksPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [meta, setMeta] = useState<{
+    page: number;
     totalCount: number;
     totalPages: number;
     hasMore: boolean;

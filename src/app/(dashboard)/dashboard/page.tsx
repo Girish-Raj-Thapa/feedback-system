@@ -9,24 +9,37 @@ import { useRouter } from 'next/navigation';
 
 export default function DashboardOverviewPage() {
   const [projects, setProjects] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalFeedback: 0,
+    openFeedback: 0,
+    resolvedFeedback: 0,
+  });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    async function fetchProjects() {
+    async function fetchData() {
       try {
-        const res = await fetch('/api/projects');
-        if (res.ok) {
-          const data = await res.json();
+        const [projectsRes, statsRes] = await Promise.all([
+          fetch('/api/projects'),
+          fetch('/api/dashboard/stats'),
+        ]);
+
+        if (projectsRes.ok) {
+          const data = await projectsRes.json();
           setProjects(data);
         }
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
       } catch (err) {
-        console.error('Failed to fetch projects');
+        console.error('Failed to fetch dashboard data');
       } finally {
         setLoading(false);
       }
     }
-    fetchProjects();
+    fetchData();
   }, []);
 
   return (
@@ -64,13 +77,17 @@ export default function DashboardOverviewPage() {
           <h3 className="text-sm font-medium text-ink-muted mb-1">
             Total Feedback
           </h3>
-          <p className="text-3xl font-bold text-ink">—</p>
+          <p className="text-3xl font-bold text-ink">
+            {loading ? '-' : stats.totalFeedback}
+          </p>
         </div>
         <div className="bg-bg-primary border border-border-subtle rounded-xl p-6 shadow-sm">
           <h3 className="text-sm font-medium text-ink-muted mb-1">
-            Average Sentiment
+            Resolved Feedback
           </h3>
-          <p className="text-3xl font-bold text-ink">—</p>
+          <p className="text-3xl font-bold text-ink">
+            {loading ? '-' : stats.resolvedFeedback}
+          </p>
         </div>
       </div>
 

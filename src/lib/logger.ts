@@ -15,7 +15,7 @@ function emit(
   context?: LogContext,
   error?: any,
 ) {
-  const payload = {
+  const payload: Record<string, any> = {
     timestamp: new Date().toISOString(),
     level,
     message,

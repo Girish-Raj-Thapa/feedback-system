@@ -42,7 +42,7 @@ export default function ProjectDashboardPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
 
-  const [project, setProject] = useState<Record<string, unknown> | null>(null);
+  const [project, setProject] = useState<any | null>(null);
   const [overview, setOverview] = useState<Record<string, unknown> | null>(
     null,
   );

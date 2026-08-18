@@ -51,6 +51,7 @@ interface VerifyResult {
 interface FirstFeedback {
   id: string;
   message: string;
+  email?: string | null;
   browser: string | null;
   os: string | null;
   device_type: string | null;

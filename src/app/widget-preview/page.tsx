@@ -1,9 +1,9 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
-export default function WidgetPreviewPage() {
+function WidgetPreviewInner() {
   const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
 
@@ -104,5 +104,13 @@ export default function WidgetPreviewPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function WidgetPreviewPage() {
+  return (
+    <Suspense fallback={<div>Loading preview...</div>}>
+      <WidgetPreviewInner />
+    </Suspense>
   );
 }

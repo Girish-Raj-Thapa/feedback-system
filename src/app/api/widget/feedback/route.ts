@@ -1,9 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { isAllowedOrigin } from '@/lib/domain';
 import { defaultRateLimiter } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
+import { enqueueEmailNotification } from '@/jobs/producers/email.producer';
+import { processEmailNotification } from '@/lib/email/process';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -75,7 +77,9 @@ export async function POST(request: NextRequest) {
 
   // 2. Rate Limiting: Limit by IP and Project
   const ip =
-    request.headers.get('x-forwarded-for') || request.ip || 'unknown-ip';
+    request.headers.get('x-forwarded-for') ||
+    (request as any).ip ||
+    'unknown-ip';
   const rateLimitId = `feedback_${public_key}_${ip}`;
 
   const limitResult = await defaultRateLimiter.limit(rateLimitId);
@@ -127,20 +131,24 @@ export async function POST(request: NextRequest) {
   }
 
   // Insert feedback using admin client (bypasses RLS — intentional for widget submissions)
-  const { error: insertError } = await admin.from('feedback').insert({
-    project_id: project.id,
-    message,
-    email: email || null,
-    page_url: cleanPageUrl,
-    page_title: page_title || null,
-    browser: browser || null,
-    os: os || null,
-    device_type: device_type || null,
-    screen_width: screen_width ?? null,
-    screen_height: screen_height ?? null,
-  });
+  const { data: insertedFeedback, error: insertError } = await admin
+    .from('feedback')
+    .insert({
+      project_id: project.id,
+      message,
+      email: email || null,
+      page_url: cleanPageUrl,
+      page_title: page_title || null,
+      browser: browser || null,
+      os: os || null,
+      device_type: device_type || null,
+      screen_width: screen_width ?? null,
+      screen_height: screen_height ?? null,
+    })
+    .select('id')
+    .single();
 
-  if (insertError) {
+  if (insertError || !insertedFeedback) {
     logger.error('Failed to insert feedback', { public_key }, insertError);
     return NextResponse.json(
       { error: 'Failed to save feedback' },
@@ -148,7 +156,51 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Phase C: enqueue BullMQ email notification job here
+  // Dispatch email notification
+  try {
+    const deliveryMethod = process.env.EMAIL_DELIVERY_METHOD || 'inline';
+
+    if (deliveryMethod === 'queue') {
+      await enqueueEmailNotification(insertedFeedback.id);
+    } else {
+      // Use Next.js 15+ after() to run asynchronously without blocking the API response
+      // or needing a separate background worker process
+      after(async () => {
+        try {
+          await processEmailNotification(insertedFeedback.id);
+        } catch (err) {
+          logger.error(
+            'Failed inline email delivery',
+            { feedbackId: insertedFeedback.id },
+            err as Error,
+          );
+        }
+      });
+    }
+  } catch (error) {
+    logger.error(
+      'Failed to enqueue email job, deleting orphaned feedback row',
+      { feedbackId: insertedFeedback.id },
+      error as Error,
+    );
+    // Compensating transaction: Delete the row we just inserted so it's not orphaned without an email
+    const { error: deleteError } = await admin
+      .from('feedback')
+      .delete()
+      .eq('id', insertedFeedback.id);
+    if (deleteError) {
+      logger.error(
+        'CRITICAL: Failed to roll back orphaned feedback row',
+        { feedbackId: insertedFeedback.id },
+        deleteError,
+      );
+      // consider: alert/page here, this row now needs manual cleanup
+    }
+    return NextResponse.json(
+      { error: 'Failed to process feedback. Please try again.' },
+      { status: 500, headers: CORS_HEADERS },
+    );
+  }
 
   return NextResponse.json(
     { success: true },
