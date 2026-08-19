@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { defaultRateLimiter } from '@/lib/rate-limit';
+import { accountRateLimiter } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       'unknown-ip';
     const rateLimitId = `account_pwd_${user.id}_${ip}`;
 
-    const limitResult = await defaultRateLimiter.limit(rateLimitId);
+    const limitResult = await accountRateLimiter.limit(rateLimitId);
     if (!limitResult.success) {
       logger.warn('Rate limit exceeded for password update', { userId: user.id, ip });
       return NextResponse.json(

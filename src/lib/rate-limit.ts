@@ -1,87 +1,86 @@
+import { Redis } from 'ioredis';
+
+// Dedicated connection for the rate limiter (Option B split architecture)
+// This prevents BullMQ's constant polling from exhausting the Upstash free tier.
+const rateLimitRedisUrl = process.env.RATE_LIMIT_REDIS_URL || process.env.REDIS_URL;
+
+if (!rateLimitRedisUrl) {
+  console.warn(
+    'RATE_LIMIT_REDIS_URL and REDIS_URL missing, defaulting rate limiter to redis://localhost:6379'
+  );
+}
+
+const redis = new Redis(rateLimitRedisUrl || 'redis://localhost:6379', {
+  maxRetriesPerRequest: 3, // Rate limiter doesn't need infinite retries like BullMQ
+  connectTimeout: 5000,
+});
+
 /**
  * Rate Limiter Interface
  * This abstraction allows us to easily swap out the underlying storage mechanism
  * (e.g., switching from In-Memory to Redis for distributed environments)
  * without changing the application logic.
  */
+export interface RateLimitResult {
+  success: boolean;
+  limit: number;
+  remaining: number;
+  reset: number;
+}
+
 export interface RateLimiter {
   /**
    * Checks if a request is allowed based on the given identifier.
    * @param identifier - A unique string representing the client (e.g., IP address + project ID).
    * @returns An object containing whether the request is successful and the remaining limit.
    */
-  limit(identifier: string): Promise<{
-    success: boolean;
-    limit: number;
-    remaining: number;
-    reset: number;
-  }>;
+  limit(identifier: string): Promise<RateLimitResult>;
 }
 
 /**
- * In-Memory Rate Limiter Implementation
- * Simple token bucket style rate limiter stored in a Map.
- * WARNING: This is only suitable for single-instance deployments or environments
- * where memory is not cleared on every request. It will lose state if the serverless
- * function cold-starts, but it is sufficient for basic spam protection.
+ * Redis Rate Limiter Implementation
+ * Uses Upstash/Redis atomic INCR for precise throttling across serverless instances.
+ * Implements a fail-open design to ensure legitimate traffic passes if Redis drops.
  */
-export class InMemoryRateLimiter implements RateLimiter {
-  private windowMs: number;
+export class RedisRateLimiter implements RateLimiter {
   private maxRequests: number;
-  private store: Map<string, { count: number; resetAt: number }>;
+  private windowSeconds: number;
 
-  constructor(windowMs: number = 60000, maxRequests: number = 5) {
-    this.windowMs = windowMs;
+  constructor(maxRequests: number, windowSeconds: number) {
     this.maxRequests = maxRequests;
-    this.store = new Map();
+    this.windowSeconds = windowSeconds;
   }
 
-  async limit(identifier: string) {
-    const now = Date.now();
-    const record = this.store.get(identifier);
+  async limit(identifier: string): Promise<RateLimitResult> {
+    const key = `ratelimit:${identifier}`;
+    
+    try {
+      const currentCount = await redis.incr(key);
 
-    // Clean up expired records occasionally to prevent memory leaks
-    if (this.store.size > 1000) {
-      for (const [key, val] of this.store.entries()) {
-        if (now > val.resetAt) {
-          this.store.delete(key);
-        }
+      if (currentCount === 1) {
+        await redis.expire(key, this.windowSeconds);
       }
-    }
 
-    if (!record || now > record.resetAt) {
-      // Create new record
-      const resetAt = now + this.windowMs;
-      this.store.set(identifier, { count: 1, resetAt });
+      const remaining = Math.max(0, this.maxRequests - currentCount);
+      const success = currentCount <= this.maxRequests;
+      const reset = Date.now() + (this.windowSeconds * 1000);
+
+      return { success, limit: this.maxRequests, remaining, reset };
+    } catch (error) {
+      console.error('Redis Rate Limiting Error:', error);
       return {
+        // Fail-open: allow request if rate limiter is down
         success: true,
         limit: this.maxRequests,
-        remaining: this.maxRequests - 1,
-        reset: resetAt,
+        remaining: 1,
+        reset: Date.now() + (this.windowSeconds * 1000),
       };
     }
-
-    // Existing record
-    if (record.count >= this.maxRequests) {
-      return {
-        success: false,
-        limit: this.maxRequests,
-        remaining: 0,
-        reset: record.resetAt,
-      };
-    }
-
-    // Increment count
-    record.count += 1;
-    this.store.set(identifier, record);
-    return {
-      success: true,
-      limit: this.maxRequests,
-      remaining: this.maxRequests - record.count,
-      reset: record.resetAt,
-    };
   }
 }
 
-// Export a singleton instance by default, configured for 5 requests per minute
-export const defaultRateLimiter = new InMemoryRateLimiter(60 * 1000, 5);
+// Configured for 5 requests per 60 seconds
+export const widgetRateLimiter = new RedisRateLimiter(5, 60);
+
+// Configured for 3 requests per 3600 seconds (1 hour)
+export const accountRateLimiter = new RedisRateLimiter(3, 3600);

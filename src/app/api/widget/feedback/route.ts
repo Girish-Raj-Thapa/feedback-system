@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { isAllowedOrigin } from '@/lib/domain';
-import { defaultRateLimiter } from '@/lib/rate-limit';
+import { widgetRateLimiter } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { enqueueEmailNotification } from '@/jobs/producers/email.producer';
 import { processEmailNotification } from '@/lib/email/process';
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     'unknown-ip';
   const rateLimitId = `feedback_${public_key}_${ip}`;
 
-  const limitResult = await defaultRateLimiter.limit(rateLimitId);
+  const limitResult = await widgetRateLimiter.limit(rateLimitId);
   if (!limitResult.success) {
     logger.warn('Rate limit exceeded', { ip, public_key });
     return NextResponse.json(

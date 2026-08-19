@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { defaultRateLimiter } from '@/lib/rate-limit';
+import { accountRateLimiter } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 // Assuming enqueueEmailNotification can handle a 'account_deleted' job type.
@@ -35,7 +35,7 @@ export async function DELETE(request: NextRequest) {
       'unknown-ip';
     const rateLimitId = `account_del_${userId}_${ip}`;
 
-    const limitResult = await defaultRateLimiter.limit(rateLimitId);
+    const limitResult = await accountRateLimiter.limit(rateLimitId);
     if (!limitResult.success) {
       logger.warn('Rate limit exceeded for account deletion', { userId, ip });
       return NextResponse.json(
