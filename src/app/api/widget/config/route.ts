@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
       border_radius: project.widget_border_radius,
       icon: project.widget_icon,
       title: project.widget_title,
+      turnstile_site_key: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null,
     },
     { headers: { ...CORS_BASE, ...CACHE_HEADERS.success } },
   );

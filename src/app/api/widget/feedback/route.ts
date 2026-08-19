@@ -25,6 +25,7 @@ const feedbackSchema = z.object({
   screen_width: z.number().int().positive().max(20000).optional(),
   screen_height: z.number().int().positive().max(20000).optional(),
   ff_website: z.string().optional(), // Honeypot field
+  cf_turnstile_response: z.string().optional(),
 });
 
 export async function OPTIONS() {
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = feedbackSchema.safeParse(body);
   if (!parsed.success) {
+    console.error('Zod Parsing Error:', JSON.stringify(parsed.error.issues, null, 2));
     const firstError = parsed.error.issues[0]?.message ?? 'Invalid input';
     return NextResponse.json(
       { error: firstError },
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
     screen_width,
     screen_height,
     ff_website,
+    cf_turnstile_response,
   } = parsed.data;
 
   // 1. Honeypot Validation: If a bot fills this hidden field, silently drop the request
@@ -75,7 +78,42 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Rate Limiting: Limit by IP and Project
+  // 2. Turnstile Verification
+  if (process.env.TURNSTILE_SECRET_KEY && cf_turnstile_response) {
+    try {
+      const formData = new URLSearchParams();
+      formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
+      formData.append('response', cf_turnstile_response);
+
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      });
+      const verifyData = await verifyRes.json();
+      
+      if (!verifyData.success) {
+        logger.warn('Turnstile verification failed', { public_key, errorCodes: verifyData['error-codes'] });
+        return NextResponse.json(
+          { error: 'Security verification failed' },
+          { status: 403, headers: CORS_HEADERS },
+        );
+      }
+    } catch (err) {
+      logger.error('Turnstile verification request failed (network error)', { public_key }, err);
+      // Fail-open: allow request to proceed if Cloudflare is unreachable
+    }
+  } else if (process.env.TURNSTILE_SECRET_KEY && !cf_turnstile_response) {
+    logger.warn('Turnstile token missing but required', { public_key });
+    return NextResponse.json(
+      { error: 'Security token missing' },
+      { status: 403, headers: CORS_HEADERS },
+    );
+  }
+
+  // 3. Rate Limiting: Limit by IP and Project
   const ip =
     request.headers.get('x-forwarded-for') ||
     (request as any).ip ||
@@ -91,7 +129,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. URL Sanitization: Strip sensitive query parameters and fragments
+  // 4. URL Sanitization: Strip sensitive query parameters and fragments
   let cleanPageUrl = page_url || null;
   if (cleanPageUrl) {
     try {
@@ -130,7 +168,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. Usage Limits Check & Insert (Atomic RPC)
+  // 5. Usage Limits Check & Insert (Atomic RPC)
   const { FREE_TIER_LIMIT } = await import('@/lib/permissions');
 
   const payload = {

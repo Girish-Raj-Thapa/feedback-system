@@ -82,6 +82,9 @@
 
     var isLoadingConfig = false;
     var isSubmitting = false;
+    var turnstileWidgetId = null;
+    var currentTurnstileSiteKey = null;
+    var currentWidgetTheme = 'light';
 
     // Default config applied immediately so the button appears with zero delay.
     // Real config is fetched async and applied once it arrives.
@@ -125,6 +128,16 @@
 
       if (isLoadingConfig) return;
       isLoadingConfig = true;
+
+      // Inject Cloudflare Turnstile script
+      if (!document.getElementById('ff-turnstile-script')) {
+        var tsScript = document.createElement('script');
+        tsScript.id = 'ff-turnstile-script';
+        tsScript.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        tsScript.async = true;
+        tsScript.defer = true;
+        document.head.appendChild(tsScript);
+      }
 
       // ── Step 1: Render immediately with defaults so the button is visible now ──
       renderWidget(baseUrl, publicKey, DEFAULT_CONFIG);
@@ -171,14 +184,20 @@
     // Only updates the properties that config controls (color, text, position, theme).
     function applyConfig(config) {
       try {
-        var btn = document.getElementById('ff-btn');
-        var panel = document.getElementById('ff-panel');
+        var host = document.getElementById('feedbackflow-host');
+        if (!host || !host.shadowRoot) return;
+        var shadow = host.shadowRoot;
+        
+        var btn = shadow.querySelector('#ff-btn');
+        var panel = shadow.querySelector('#ff-panel');
         if (!btn) return; // widget not rendered yet, skip
 
         var accent = (config.color || DEFAULT_CONFIG.color).trim();
         var label = config.text || DEFAULT_CONFIG.text;
         var radius = config.border_radius || DEFAULT_CONFIG.border_radius;
         var theme = config.theme || DEFAULT_CONFIG.theme;
+        currentWidgetTheme = theme;
+        currentTurnstileSiteKey = config.turnstile_site_key || null;
         var isDark =
           theme === 'dark' ||
           (theme === 'auto' &&
@@ -228,6 +247,8 @@
       var radius = config.border_radius || '16px';
       var iconName = config.icon || 'chat';
       var title = config.title || 'Send Feedback';
+      currentWidgetTheme = theme;
+      currentTurnstileSiteKey = config.turnstile_site_key || null;
 
       var isDark =
         theme === 'dark' ||
@@ -444,6 +465,7 @@
       // Trigger button
       var btn = document.createElement('button');
       btn.id = 'ff-btn';
+      btn.setAttribute('type', 'button');
       btn.setAttribute('aria-label', label);
       btn.innerHTML = icon(iconName, 15, onAccent) + label;
 
@@ -462,7 +484,7 @@
         '<p>We read every message</p>',
         '</div>',
         '</div>',
-        '<button id="ff-close" aria-label="Close panel">' +
+        '<button id="ff-close" type="button" aria-label="Close panel">' +
           icon('x', 14, T.textSecondary) +
           '</button>',
         '</div>',
@@ -473,6 +495,7 @@
         '<div id="ff-cc">0 / 5000</div>',
         '<input id="ff-email" type="email" placeholder="Your email (optional)" autocomplete="email" aria-label="Email address" />',
         '<input id="ff-website" type="text" name="website" style="display:none" tabindex="-1" autocomplete="off" />',
+        '<div id="ff-turnstile" style="margin-top:12px; display:flex; justify-content:center; min-height:0px;"></div>',
         '<button id="ff-sub" type="button">Submit</button>',
         '<div id="ff-err" role="alert"></div>',
         '</div>',
@@ -548,6 +571,39 @@
         panel.offsetHeight; // reflow
         panel.style.animation = '';
         msgEl.focus();
+
+        // Initialize Turnstile if available and configured
+        if (currentTurnstileSiteKey && turnstileWidgetId === null) {
+          var renderTs = function() {
+            if (window.turnstile && turnstileWidgetId === null) {
+              try {
+                turnstileWidgetId = window.turnstile.render(shadow.querySelector('#ff-turnstile'), {
+                  sitekey: currentTurnstileSiteKey,
+                  appearance: 'interaction-only',
+                  theme: currentWidgetTheme === 'dark' || (currentWidgetTheme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'
+                });
+                // Ensure container takes space if Turnstile decides to show itself
+                shadow.querySelector('#ff-turnstile').style.minHeight = '65px';
+              } catch (e) {
+                console.error('[FeedbackFlow] Failed to render Turnstile:', e);
+              }
+            }
+          };
+
+          if (window.turnstile) {
+            renderTs();
+          } else {
+            // Wait for script to load (max 5 seconds)
+            var attempts = 0;
+            var tsInterval = setInterval(function() {
+              attempts++;
+              if (window.turnstile || attempts > 50) {
+                clearInterval(tsInterval);
+                renderTs();
+              }
+            }, 100);
+          }
+        }
       }
 
       function closePanel() {
@@ -557,6 +613,14 @@
       function showError(msg) {
         errEl.textContent = msg;
         errEl.style.display = msg ? 'block' : 'none';
+      }
+
+      function resetTurnstile() {
+        if (window.turnstile && turnstileWidgetId !== null) {
+          try {
+            window.turnstile.reset(turnstileWidgetId);
+          } catch (e) {}
+        }
       }
 
       function showSuccess() {
@@ -569,6 +633,7 @@
             successEl.classList.remove('ff-show');
             msgEl.value = '';
             emailEl.value = '';
+            resetTurnstile();
             ccEl.textContent = '0 / 5000';
             subEl.disabled = false;
             subEl.innerHTML = 'Submit';
@@ -592,6 +657,17 @@
           return;
         }
 
+        var turnstileResponse = undefined;
+        if (currentTurnstileSiteKey) {
+          if (window.turnstile && turnstileWidgetId !== null) {
+            turnstileResponse = window.turnstile.getResponse(turnstileWidgetId);
+          }
+          if (!turnstileResponse) {
+            showError('Security check loading. If this persists, disable your adblocker.');
+            return;
+          }
+        }
+
         isSubmitting = true;
         errEl.style.display = 'none';
         subEl.innerHTML = '<span class="ff-spin"></span> Sending...';
@@ -612,6 +688,7 @@
           device_type: getDeviceType(),
           screen_width: screen.width,
           screen_height: screen.height,
+          cf_turnstile_response: turnstileResponse,
           ff_website:
             websiteEl && websiteEl.value ? websiteEl.value : undefined,
         };
@@ -665,6 +742,7 @@
                 ? 'Request timed out'
                 : err.message || 'Something went wrong. Please try again.';
             showError(errorMsg);
+            resetTurnstile();
             subEl.innerHTML = 'Submit';
             subEl.style.opacity = '1';
             subEl.style.cursor = 'pointer';
