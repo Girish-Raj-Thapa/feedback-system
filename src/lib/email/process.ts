@@ -68,6 +68,12 @@ export async function processEmailNotification(feedbackId: string) {
 
   const ownerEmail = userData.user.email;
 
+  // 2.5 Prevent actual emails from being sent to our E2E test user
+  if (ownerEmail === 'playwright-e2e@feedbackflow.app') {
+    logger.info('[Test Mode] Bypassing actual email delivery for E2E test user', { feedbackId, ownerEmail });
+    return;
+  }
+
   // 3. Format the email
   const emailHtml = `
     <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
