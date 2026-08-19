@@ -34,7 +34,7 @@ export default function ProjectSettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'widget'>('general');
 
   useEffect(() => {
-    const url = `/widget-preview?position=${widgetPosition}&color=${encodeURIComponent(widgetColor)}&theme=${widgetTheme}&text=${encodeURIComponent(widgetText)}&border_radius=${widgetBorderRadius}&icon=${widgetIcon}&title=${encodeURIComponent(widgetTitle)}`;
+    const url = `/widget-preview?position=${widgetPosition}&color=${encodeURIComponent(widgetColor)}&theme=${widgetTheme}&text=${encodeURIComponent(widgetText)}&border_radius=${widgetBorderRadius}&icon=${widgetIcon}&title=${encodeURIComponent(widgetTitle)}&_t=${Date.now()}`;
     const timer = setTimeout(() => {
       setDebouncedPreviewUrl(url);
     }, 150); // 150ms debounce

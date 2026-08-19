@@ -643,10 +643,14 @@
             fetchOpts,
           ).then(function (res) {
             if (timeoutId) clearTimeout(timeoutId);
-            if (!res.ok)
+            if (!res.ok) {
+              if (res.status === 429 || res.status === 403 || res.status === 402) {
+                throw new Error('Submissions are currently paused for this website.');
+              }
               return res.json().then(function (d) {
                 throw new Error(d.error || 'Submission failed');
               });
+            }
             return res.json();
           });
         }

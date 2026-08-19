@@ -4,17 +4,29 @@ import { isAllowedOrigin } from '@/lib/domain';
 
 export const dynamic = 'force-dynamic';
 
-const CORS_HEADERS = {
+const CORS_BASE = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-  Pragma: 'no-cache',
-  Expires: '0',
+};
+
+const CACHE_HEADERS = {
+  success: {
+    'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+  },
+  notFound: {
+    'Cache-Control': 'public, max-age=60, s-maxage=60',
+  },
+  inactive: {
+    'Cache-Control': 'public, max-age=300, s-maxage=300',
+  },
 };
 
 export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
+  return new Response(null, {
+    status: 204,
+    headers: { ...CORS_BASE, 'Access-Control-Max-Age': '86400' },
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -23,7 +35,7 @@ export async function GET(request: NextRequest) {
   if (!key) {
     return NextResponse.json(
       { error: 'Missing key parameter' },
-      { status: 400, headers: CORS_HEADERS },
+      { status: 400, headers: { ...CORS_BASE, ...CACHE_HEADERS.notFound } },
     );
   }
 
@@ -33,16 +45,22 @@ export async function GET(request: NextRequest) {
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .select(
-      'id, user_id, website_url, widget_position, widget_color, widget_text, widget_theme, widget_border_radius, widget_icon, widget_title',
+      'id, user_id, website_url, widget_position, widget_color, widget_text, widget_theme, widget_border_radius, widget_icon, widget_title, is_active',
     )
     .eq('public_key', key)
-    .eq('is_active', true)
     .single();
 
   if (projectError || !project) {
     return NextResponse.json(
       { error: 'Project not found' },
-      { status: 404, headers: CORS_HEADERS },
+      { status: 404, headers: { ...CORS_BASE, ...CACHE_HEADERS.notFound } },
+    );
+  }
+
+  if (!project.is_active) {
+    return NextResponse.json(
+      { error: 'Project is inactive' },
+      { status: 403, headers: { ...CORS_BASE, ...CACHE_HEADERS.inactive } },
     );
   }
 
@@ -52,32 +70,7 @@ export async function GET(request: NextRequest) {
   if (!isAllowedOrigin(origin, project.website_url)) {
     return NextResponse.json(
       { error: 'Unauthorized origin' },
-      { status: 403, headers: CORS_HEADERS },
-    );
-  }
-
-  // 3. Usage Limits Check
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('plan')
-    .eq('user_id', project.user_id)
-    .single();
-
-  let usageExceeded = false;
-  if (sub?.plan === 'free') {
-    const { getMonthlyFeedbackCount } = await import('@/lib/usage');
-    const { FREE_TIER_LIMIT } = await import('@/lib/permissions');
-
-    const count = await getMonthlyFeedbackCount(project.user_id);
-    if (count >= FREE_TIER_LIMIT) {
-      usageExceeded = true;
-    }
-  }
-
-  if (usageExceeded) {
-    return NextResponse.json(
-      { isActive: false, reason: 'quota_exceeded' },
-      { headers: CORS_HEADERS },
+      { status: 403, headers: { ...CORS_BASE, ...CACHE_HEADERS.inactive } }, // Using inactive cache for unauthorized origin to prevent spamming
     );
   }
 
@@ -92,6 +85,6 @@ export async function GET(request: NextRequest) {
       icon: project.widget_icon,
       title: project.widget_title,
     },
-    { headers: CORS_HEADERS },
+    { headers: { ...CORS_BASE, ...CACHE_HEADERS.success } },
   );
 }

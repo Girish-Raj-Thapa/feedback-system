@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 
 export async function GET(
   request: Request,
@@ -76,6 +77,8 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    revalidatePath('/api/widget/config');
 
     return NextResponse.json(data);
   } catch (err: any) {
