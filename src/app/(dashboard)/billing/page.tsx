@@ -38,7 +38,7 @@ export default async function BillingPage() {
 
       <div className="space-y-6">
         {/* Subscription Info */}
-        <SubscriptionOverview userId={user.id} plan={plan} status={status} />
+        <SubscriptionOverview userId={user.id} email={user.email || ''} plan={plan} status={status} />
 
         {/* Future: Usage Meter can go here */}
       </div>

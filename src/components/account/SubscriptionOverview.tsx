@@ -1,46 +1,43 @@
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { UpgradeButton } from '@/components/billing/UpgradeButton';
+import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton';
 
 interface SubscriptionOverviewProps {
   userId: string;
+  email: string;
   plan: 'free' | 'pro';
   status: string;
 }
 
-export function SubscriptionOverview({ userId, plan, status }: SubscriptionOverviewProps) {
+export function SubscriptionOverview({ userId, email, plan, status }: SubscriptionOverviewProps) {
   const isPro = plan === 'pro';
 
   return (
     <Card className="p-6">
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h3 className="text-lg font-medium text-ink mb-1 flex items-center gap-2">
-            Current Plan
-            <Badge variant={isPro ? 'success' : 'default'} className="uppercase text-xs">
-              {plan}
-            </Badge>
+            Current Plan: <span className="capitalize">{plan}</span>
+            {isPro && (
+              <Badge variant={status === 'active' ? 'success' : 'warning'}>
+                {status}
+              </Badge>
+            )}
           </h3>
-          <p className="text-sm text-ink-subtle mb-4">
+          <p className="text-sm text-ink-muted">
             {isPro
-              ? 'You are currently on the Pro plan with extended limits.'
-              : 'You are currently on the Free plan. Upgrade to increase your feedback limits.'}
+              ? 'You have access to all Pro features and unlimited feedback.'
+              : 'You are currently on the Free plan with 50 submissions per month.'}
           </p>
-          
-          <div className="text-sm font-medium text-ink-subtle">
-            Status: <span className="text-ink capitalize">{status}</span>
-          </div>
         </div>
 
         <div className="flex gap-3">
           {/* Actions for Billing */}
           {isPro ? (
-            <Button variant="secondary" disabled>
-              Manage Subscription
-            </Button>
+            <ManageSubscriptionButton />
           ) : (
-            <UpgradeButton userId={userId} />
+            <UpgradeButton userId={userId} email={email} />
           )}
         </div>
       </div>

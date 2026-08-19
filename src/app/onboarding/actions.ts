@@ -196,6 +196,8 @@ export async function getOnboardingState() {
       success: true,
       hasProject: true,
       project,
+      userId: user.id,
+      email: user.email,
     };
   }
 
@@ -213,6 +215,8 @@ export async function getOnboardingState() {
       hasProject: false,
       hasSubscription: true,
       plan: sub.plan,
+      userId: user.id,
+      email: user.email,
     };
   }
 
@@ -220,5 +224,7 @@ export async function getOnboardingState() {
     success: true,
     hasProject: false,
     hasSubscription: false,
+    userId: user.id,
+    email: user.email,
   };
 }

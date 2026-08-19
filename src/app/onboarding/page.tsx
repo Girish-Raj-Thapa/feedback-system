@@ -91,24 +91,81 @@ function ProgressBar({ step }: { step: Step }) {
 
 // ─── Step 1: Plan Selection ───────────────────────────────────────────────────
 
-function StepPlan({ onNext }: { onNext: (plan: Plan) => void }) {
+function StepPlan({
+  onNext,
+  userId,
+  email,
+}: {
+  onNext: (plan: Plan) => void;
+  userId: string;
+  email?: string;
+}) {
   const [loading, setLoading] = useState<Plan | null>(null);
   const [error, setError] = useState('');
+  const [paddle, setPaddle] = useState<any>(null);
+
+  useEffect(() => {
+    import('@paddle/paddle-js').then(({ initializePaddle }) => {
+      initializePaddle({
+        environment:
+          (process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT as
+            | 'sandbox'
+            | 'production') || 'sandbox',
+        token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
+        eventCallback: (event) => {
+          if (event.name === 'checkout.completed') {
+            onNext('pro');
+          }
+        },
+      })
+        .then((paddleInstance) => {
+          if (paddleInstance) {
+            setPaddle(paddleInstance);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to initialize Paddle:', err);
+        });
+    });
+  }, [onNext]);
 
   async function handleSelect(plan: Plan) {
     setLoading(plan);
     setError('');
-    try {
-      const res = await setupAccount(plan);
-      if (res.success) {
-        onNext(plan);
-      } else {
-        setError(res.error || 'Failed to set up account');
+
+    if (plan === 'pro') {
+      if (!paddle) {
+        setError('Billing system is initializing. Please try again in a moment.');
+        setLoading(null);
+        return;
+      }
+      
+      paddle.Checkout.open({
+        items: [
+          {
+            priceId: process.env.NEXT_PUBLIC_PADDLE_PRO_PRICE_ID!,
+            quantity: 1,
+          },
+        ],
+        customData: {
+          user_id: userId,
+        },
+        customer: email ? { email } : undefined,
+      });
+      // Do not unset loading, we wait for checkout.completed event
+    } else {
+      try {
+        const res = await setupAccount(plan);
+        if (res.success) {
+          onNext(plan);
+        } else {
+          setError(res.error || 'Failed to set up account');
+          setLoading(null);
+        }
+      } catch (err: any) {
+        setError(err.message || 'An unexpected error occurred');
         setLoading(null);
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
-      setLoading(null);
     }
   }
 
@@ -202,10 +259,10 @@ function StepPlan({ onNext }: { onNext: (plan: Plan) => void }) {
             variant="primary"
             className="w-full h-10 bg-bg-primary text-ink hover:bg-bg-primary/90 border-none text-sm font-medium"
             loading={loading === 'pro'}
-            disabled={loading !== null}
+            disabled={loading !== null || !paddle}
             onClick={() => handleSelect('pro')}
           >
-            {loading === 'pro' ? 'Setting up…' : 'Upgrade to Pro'}
+            {loading === 'pro' ? 'Opening Checkout…' : 'Upgrade to Pro'}
           </Button>
         </div>
       </div>
@@ -1081,6 +1138,8 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [project, setProject] = useState<Project | null>(null);
+  const [userId, setUserId] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
   const [initializing, setInitializing] = useState(true);
 
   function updateStep(newStep: Step) {
@@ -1094,6 +1153,9 @@ export default function OnboardingPage() {
       let nextStep: Step = 1;
 
       if (state.success) {
+        if (state.userId) setUserId(state.userId);
+        if (state.email) setEmail(state.email);
+
         if (state.hasProject && state.project) {
           setProject(state.project as Project);
           nextStep = 3; // Minimum step if project exists
@@ -1169,7 +1231,7 @@ export default function OnboardingPage() {
 
       {/* Step content */}
       <div className="w-full max-w-2xl">
-        {step === 1 && <StepPlan onNext={handlePlanNext} />}
+        {step === 1 && <StepPlan onNext={handlePlanNext} userId={userId} email={email} />}
         {step === 2 && (
           <StepCreateProject
             initialProject={project}

@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/Button';
 
 interface UpgradeButtonProps {
   userId: string;
+  email?: string;
 }
 
-export function UpgradeButton({ userId }: UpgradeButtonProps) {
+export function UpgradeButton({ userId, email }: UpgradeButtonProps) {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,6 +44,7 @@ export function UpgradeButton({ userId }: UpgradeButtonProps) {
       customData: {
         user_id: userId,
       },
+      customer: email ? { email } : undefined,
     });
   };
 
