@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { UpdatePasswordForm } from '@/components/account/UpdatePasswordForm';
 import { DeleteAccount } from '@/components/account/DeleteAccount';
-import { SubscriptionOverview } from '@/components/account/SubscriptionOverview';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,16 +16,6 @@ export default async function AccountPage() {
     redirect('/login');
   }
 
-  // Fetch subscription info
-  const { data: subscription } = await supabase
-    .from('subscriptions')
-    .select('plan, status')
-    .eq('user_id', user.id)
-    .single();
-
-  const plan = subscription?.plan || 'free';
-  const status = subscription?.status || 'active';
-
   return (
     <div className="p-6 lg:p-9 max-w-4xl space-y-9">
       <div>
@@ -34,7 +23,7 @@ export default async function AccountPage() {
           Account Settings
         </h1>
         <p className="text-ink-muted">
-          Manage your account details and subscription.
+          Manage your account details and security settings.
         </p>
       </div>
 
@@ -51,9 +40,6 @@ export default async function AccountPage() {
             Logged in via Supabase Auth
           </div>
         </div>
-
-        {/* Subscription Info */}
-        <SubscriptionOverview plan={plan} status={status} />
 
         {/* Security Settings */}
         <UpdatePasswordForm />

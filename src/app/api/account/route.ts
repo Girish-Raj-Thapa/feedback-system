@@ -77,11 +77,35 @@ export async function DELETE(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // 5. TODO: [Phase E Billing]
-    // Before deleting the user row, check their subscriptions table and call
-    // stripe.subscriptions.cancel(provider_subscription_id). If you delete
-    // the user first, the CASCADE will destroy the local subscription record
-    // and you will orphan the active billing cycle on Stripe's end.
+    // 5. Phase E: Billing - Cancel Paddle Subscription
+    const { data: subscription } = await admin
+      .from('subscriptions')
+      .select('provider_subscription_id')
+      .eq('user_id', userId)
+      .single();
+
+    if (subscription?.provider_subscription_id) {
+      try {
+        const { Paddle, Environment } = await import('@paddle/paddle-node-sdk');
+        const paddle = new Paddle(process.env.PADDLE_SECRET_KEY || '', {
+          environment:
+            process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'sandbox'
+              ? Environment.sandbox
+              : Environment.production,
+        });
+
+        // Cancel the subscription immediately so they aren't billed again
+        await paddle.subscriptions.cancel(
+          subscription.provider_subscription_id,
+          { effectiveFrom: 'immediately' }
+        );
+        logger.info('Canceled Paddle subscription before account deletion', { userId });
+      } catch (err) {
+        logger.error('Failed to cancel Paddle subscription', { userId }, err as Error);
+        // We do NOT block deletion here; if Paddle fails, the account should still be deleted,
+        // but it leaves an orphan subscription requiring manual cleanup.
+      }
+    }
 
     // 6. Audit Trail: Log the deletion to account_deletion_logs
     const { error: logError } = await admin

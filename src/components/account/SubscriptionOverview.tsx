@@ -1,13 +1,15 @@
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { UpgradeButton } from '@/components/billing/UpgradeButton';
 
 interface SubscriptionOverviewProps {
+  userId: string;
   plan: 'free' | 'pro';
   status: string;
 }
 
-export function SubscriptionOverview({ plan, status }: SubscriptionOverviewProps) {
+export function SubscriptionOverview({ userId, plan, status }: SubscriptionOverviewProps) {
   const isPro = plan === 'pro';
 
   return (
@@ -32,15 +34,13 @@ export function SubscriptionOverview({ plan, status }: SubscriptionOverviewProps
         </div>
 
         <div className="flex gap-3">
-          {/* Placeholder actions for Phase E (Billing) */}
+          {/* Actions for Billing */}
           {isPro ? (
             <Button variant="secondary" disabled>
               Manage Subscription
             </Button>
           ) : (
-            <Button disabled>
-              Upgrade to Pro
-            </Button>
+            <UpgradeButton userId={userId} />
           )}
         </div>
       </div>
