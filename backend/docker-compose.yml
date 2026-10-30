@@ -1,0 +1,81 @@
+services:
+  # FastAPI application server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: feedback_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
+      - ./.env:/app/.env:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Taskiq background worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: feedback_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app:ro
+      - ./.env:/app/.env:ro
+    command: taskiq worker app.core.tasks:broker --fs-discover
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    container_name: feedback_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=feedback_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - feedback_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d feedback_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis message broker and cache
+  redis:
+    image: redis:7-alpine
+    container_name: feedback_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - feedback_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  feedback_pgdata:
+  feedback_redisdata:

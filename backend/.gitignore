@@ -1,0 +1,20 @@
+# Environment files
+.env
+*.env
+!.env.example
+
+# Python virtual environment
+.venv/
+venv/
+ENV/
+
+# Python byte-code and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
