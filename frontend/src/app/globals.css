@@ -1,0 +1,368 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Surfaces and Neutrals (Apple-style) */
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-subtle: var(--bg-subtle);
+  --color-hover: var(--bg-hover);
+  --color-overlay: var(--bg-overlay);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  /* Typography Colors */
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+
+  /* Apple Action Blue */
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-active: var(--action-active);
+  --color-action-subtle: var(--action-subtle);
+  --color-action-subtle-fg: var(--action-subtle-fg);
+  --color-text-on-action: var(--text-on-action);
+  --color-link: var(--link);
+  --color-focus-ring: var(--focus-ring);
+
+  /* System Status Colors (Immutable) */
+  --color-status-success: var(--status-success);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-error: var(--status-error);
+  --color-status-error-bg: var(--status-error-bg);
+  --color-status-info: var(--status-info);
+  --color-status-info-bg: var(--status-info-bg);
+
+  /* Data Direction (Score Drivers & Sentiment) */
+  --color-data-lift: var(--data-lift);
+  --color-data-lift-bar: var(--data-lift-bar);
+  --color-data-drag: var(--data-drag);
+  --color-data-drag-bar: var(--data-drag-bar);
+  --color-data-neutral: var(--data-neutral);
+
+  /* Shadcn UI Token Aliases */
+  --color-background: var(--bg-canvas);
+  --color-foreground: var(--text);
+  --color-card: var(--bg-surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--bg-surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--action);
+  --color-primary-foreground: var(--text-on-action);
+  --color-secondary: var(--bg-subtle);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--bg-subtle);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--bg-hover);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--status-error);
+  --color-destructive-foreground: #ffffff;
+  --color-input: var(--border-strong);
+  --color-ring: var(--focus-ring);
+
+  /* Role-Based Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --radius: 10px;
+}
+
+:root {
+  /* Apple Website Light Theme (#F5F5F7 Canvas, #FFFFFF Card, #0071E3 Action Blue) */
+  --bg-canvas: #F5F5F7;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #E8E8ED;
+  --bg-hover: #EFEFF4;
+  --bg-overlay: rgba(0, 0, 0, 0.4);
+  --border: #D2D2D7;
+  --border-strong: #B0B0B8;
+  --text: #1D1D1F;
+  --text-muted: #86868B;
+  --text-subtle: #A1A1A6;
+
+  /* Apple Action Blue (Light: #0071E3) */
+  --brand-50: oklch(0.97 0.04 252);
+  --brand-100: oklch(0.94 0.07 252);
+  --brand-200: oklch(0.88 0.11 252);
+  --brand-300: oklch(0.80 0.14 252);
+  --brand-400: oklch(0.70 0.17 252);
+  --brand-500: #0077ED;
+  --brand-600: #0071E3;
+  --brand-700: #0062C4;
+  --brand-800: #0051A8;
+  --brand-900: #003D82;
+  --brand-950: #00224D;
+
+  /* Brand Roles (Light) */
+  --action: #0071E3;
+  --action-hover: #0077ED;
+  --action-active: #0062C4;
+  --text-on-action: #FFFFFF;
+  --action-subtle: #F0F6FF;
+  --action-subtle-fg: #0071E3;
+  --link: #0071E3;
+  --focus-ring: #0071E3;
+
+  /* System Status Colors */
+  --status-success: #17794A;
+  --status-success-bg: #E8F6EE;
+  --status-warning: #9A5B05;
+  --status-warning-bg: #FDF2DC;
+  --status-error: #C0281B;
+  --status-error-bg: #FDEBE9;
+  --status-info: #0071E3;
+  --status-info-bg: #F0F6FF;
+
+  /* Data Direction Colors (Score Drivers & Sentiment) */
+  --data-lift: #0B7A7C;
+  --data-lift-bar: #0F8B8D;
+  --data-drag: #A82B6F;
+  --data-drag-bar: #B83280;
+  --data-neutral: var(--text-subtle);
+
+  /* Elevation Shadows */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-menu: 0 8px 24px -4px rgba(0, 0, 0, 0.12);
+  --shadow-dialog: 0 24px 48px -12px rgba(0, 0, 0, 0.25);
+}
+
+.dark {
+  /* Apple Dark Theme (#000000 True Black Canvas, #1C1C1E macOS System Surface, #2997FF Blue) */
+  --bg-canvas: #000000;
+  --bg-surface: #1C1C1E;
+  --bg-subtle: #2C2C2E;
+  --bg-hover: #262629;
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  --border: #38383A;
+  --border-strong: #48484A;
+  --text: #F5F5F7;
+  --text-muted: #A1A1A6;
+  --text-subtle: #6E6E73;
+
+  /* Brand Roles (Dark: #2997FF for high contrast against dark surface) */
+  --action: #2997FF;
+  --action-hover: #47A5FF;
+  --action-active: #198BFF;
+  --text-on-action: #000000;
+  --action-subtle: rgba(41, 151, 255, 0.15);
+  --action-subtle-fg: #64B5FF;
+  --link: #2997FF;
+  --focus-ring: #2997FF;
+
+  /* Status (Dark) */
+  --status-success: #30D158;
+  --status-success-bg: rgba(48, 209, 88, 0.16);
+  --status-warning: #FFD60A;
+  --status-warning-bg: rgba(255, 214, 10, 0.16);
+  --status-error: #FF453A;
+  --status-error-bg: rgba(255, 69, 58, 0.16);
+  --status-info: #64D2FF;
+  --status-info-bg: rgba(100, 210, 255, 0.16);
+
+  /* Data Direction (Dark) */
+  --data-lift: #64D2FF;
+  --data-lift-bar: #64D2FF;
+  --data-drag: #FF375F;
+  --data-drag-bar: #FF375F;
+  --data-neutral: var(--text-subtle);
+
+  /* Elevation Shadows (Dark) */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-menu: 0 8px 24px -4px rgba(0, 0, 0, 0.6);
+  --shadow-dialog: 0 24px 48px -12px rgba(0, 0, 0, 0.8);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: var(--focus-ring);
+  }
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    font-family: var(--font-sans);
+  }
+
+  /* Smooth 180ms theme transition when toggling modes (design.md Section 4.6) */
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *:before,
+  html.theme-transitioning *:after {
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease !important;
+    transition-delay: 0s !important;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  .glass-header {
+    backdrop-filter: saturate(180%) blur(20px);
+    background-color: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  }
+
+  /* Soft ambient background glows */
+  .glow-sky {
+    position: absolute;
+    width: 720px;
+    height: 640px;
+    top: -120px;
+    right: -80px;
+    background: radial-gradient(circle, rgba(191, 214, 255, 0.6) 0%, rgba(191, 214, 255, 0.15) 55%, transparent 75%);
+    filter: blur(85px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .dark .glow-sky {
+    background: radial-gradient(circle, rgba(41, 151, 255, 0.15) 0%, rgba(41, 151, 255, 0.04) 55%, transparent 75%);
+  }
+
+  .glow-lavender {
+    position: absolute;
+    width: 680px;
+    height: 600px;
+    bottom: -60px;
+    left: -120px;
+    background: radial-gradient(circle, rgba(211, 207, 250, 0.55) 0%, rgba(211, 207, 250, 0.15) 55%, transparent 75%);
+    filter: blur(85px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .dark .glow-lavender {
+    background: radial-gradient(circle, rgba(140, 120, 240, 0.12) 0%, rgba(140, 120, 240, 0.03) 55%, transparent 75%);
+  }
+
+  .glow-aqua {
+    position: absolute;
+    width: 650px;
+    height: 450px;
+    bottom: 40px;
+    left: 36%;
+    background: radial-gradient(ellipse, rgba(207, 238, 234, 0.5) 0%, rgba(207, 238, 234, 0.1) 60%, transparent 80%);
+    filter: blur(75px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .dark .glow-aqua {
+    background: radial-gradient(ellipse, rgba(79, 209, 197, 0.1) 0%, rgba(79, 209, 197, 0.02) 60%, transparent 80%);
+  }
+
+  /* Paper grain texture */
+  .paper-grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.028;
+    z-index: 99;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  /* Soft layered drop-shadows */
+  .card-shadow-main {
+    box-shadow: 
+      0 1px 3px rgba(30, 41, 59, 0.02),
+      0 10px 28px -4px rgba(0, 113, 227, 0.07),
+      0 24px 48px -8px rgba(30, 41, 59, 0.06);
+  }
+  .dark .card-shadow-main {
+    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.5);
+  }
+
+  .card-shadow-sub {
+    box-shadow: 
+      0 2px 8px -2px rgba(30, 41, 59, 0.04),
+      0 14px 30px -6px rgba(45, 55, 72, 0.05);
+  }
+  .dark .card-shadow-sub {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+  }
+
+  .form-card-shadow {
+    box-shadow: 
+      0 1px 2px rgba(30, 41, 59, 0.02),
+      0 12px 36px -6px rgba(45, 55, 72, 0.06),
+      0 28px 60px -12px rgba(0, 113, 227, 0.04);
+  }
+  .dark .form-card-shadow {
+    box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.6);
+  }
+
+  .chip-shadow {
+    box-shadow: 0 4px 16px -2px rgba(45, 55, 72, 0.08), 0 2px 6px rgba(45, 55, 72, 0.03);
+  }
+  .dark .chip-shadow {
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Custom input focus glow */
+  .input-glow:focus {
+    outline: none;
+    border-color: rgba(0, 113, 227, 0.45);
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+  }
+
+  /* Highlighters */
+  .highlight-teal {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+    z-index: 1;
+  }
+  .highlight-teal::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    right: -4px;
+    bottom: 2px;
+    height: 68%;
+    background: rgba(13, 148, 136, 0.22);
+    border-radius: 4px 6px 3px 5px;
+    z-index: -1;
+    transform: rotate(-0.6deg) skewX(-1.5deg);
+    mix-blend-mode: multiply;
+  }
+  .dark .highlight-teal::before {
+    background: rgba(79, 209, 197, 0.3);
+    mix-blend-mode: screen;
+  }
+
+  .highlight-magenta {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+    z-index: 1;
+  }
+  .highlight-magenta::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    right: -4px;
+    bottom: 2px;
+    height: 68%;
+    background: rgba(217, 45, 115, 0.22);
+    border-radius: 5px 3px 6px 4px;
+    z-index: -1;
+    transform: rotate(0.8deg) skewX(1deg);
+    mix-blend-mode: multiply;
+  }
+  .dark .highlight-magenta::before {
+    background: rgba(245, 139, 190, 0.3);
+    mix-blend-mode: screen;
+  }
+}
