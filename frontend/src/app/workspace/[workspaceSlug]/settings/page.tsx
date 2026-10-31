@@ -792,7 +792,7 @@ export default function WorkspaceSettingsPage() {
 
                 return (
                   <div
-                    key={member.id}
+                    key={member.id || member.user_id}
                     className="flex h-14 items-center px-6 transition-colors hover:bg-[#F5F7FA] dark:hover:bg-white/5"
                   >
                     {/* Member Column */}
