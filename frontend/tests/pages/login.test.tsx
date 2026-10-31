@@ -4,19 +4,19 @@ import { authRepository } from "@/repositories/auth.repository";
 import { useAuthStore } from "@/store/auth.store";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    login: jest.fn(),
+    login: vi.fn(),
   },
 }));
 
-jest.mock("@/components/auth/login-showcase", () => ({
+vi.mock("@/components/auth/login-showcase", () => ({
   LoginShowcase: () => <div data-testid="login-showcase">Showcase</div>,
 }));
 
 describe("LoginPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders login form and showcase", () => {
@@ -42,12 +42,12 @@ describe("LoginPage", () => {
   });
 
   it("submits valid credentials and calls login repository", async () => {
-    (authRepository.login as jest.Mock).mockResolvedValue({
+    (authRepository.login as any).mockResolvedValue({
       access_token: "token-123",
       token_type: "bearer",
     });
 
-    const fetchMeSpy = jest.spyOn(useAuthStore.getState(), "fetchMe").mockResolvedValue(undefined as never);
+    const fetchMeSpy = vi.spyOn(useAuthStore.getState(), "fetchMe").mockResolvedValue(undefined as never);
 
     render(<LoginPage />);
 
@@ -72,7 +72,7 @@ describe("LoginPage", () => {
   });
 
   it("shows error alert when login fails", async () => {
-    (authRepository.login as jest.Mock).mockRejectedValue(
+    (authRepository.login as any).mockRejectedValue(
       new Error("Invalid email or password")
     );
 

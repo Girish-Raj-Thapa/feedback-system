@@ -19,6 +19,7 @@ from app.features.auth.models import (  # noqa: F401
     WorkspaceInvite,
     WorkspaceMember,
 )
+from app.features.feedback.models import FeedbackCategory  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

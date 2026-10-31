@@ -3,19 +3,19 @@ import VerifyEmailPage from "@/app/(auth)/verify-email/page";
 import { authRepository } from "@/repositories/auth.repository";
 import { useSearchParams } from "next/navigation";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    verifyEmail: jest.fn(),
+    verifyEmail: vi.fn(),
   },
 }));
 
 describe("VerifyEmailPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("shows expired state immediately when no token is present", () => {
-    (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
+    (useSearchParams as any).mockReturnValue(new URLSearchParams());
 
     render(<VerifyEmailPage />);
 
@@ -27,10 +27,10 @@ describe("VerifyEmailPage", () => {
   });
 
   it("verifies token successfully and shows success view", async () => {
-    (useSearchParams as jest.Mock).mockReturnValue(
+    (useSearchParams as any).mockReturnValue(
       new URLSearchParams({ token: "valid-verify-token" })
     );
-    (authRepository.verifyEmail as jest.Mock).mockResolvedValue({
+    (authRepository.verifyEmail as any).mockResolvedValue({
       message: "Email successfully verified",
     });
 
@@ -46,10 +46,10 @@ describe("VerifyEmailPage", () => {
   });
 
   it("shows expired state when verification API fails", async () => {
-    (useSearchParams as jest.Mock).mockReturnValue(
+    (useSearchParams as any).mockReturnValue(
       new URLSearchParams({ token: "expired-token" })
     );
-    (authRepository.verifyEmail as jest.Mock).mockRejectedValue(
+    (authRepository.verifyEmail as any).mockRejectedValue(
       new Error("Invalid or expired token")
     );
 

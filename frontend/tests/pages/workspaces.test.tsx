@@ -2,11 +2,11 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import DashboardWorkspacesPage from "@/app/dashboard/workspaces/page";
 import { authRepository } from "@/repositories/auth.repository";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    getWorkspaces: jest.fn(),
-    getWorkspace: jest.fn(),
-    listWorkspaceMembers: jest.fn(),
+    getWorkspaces: vi.fn(),
+    getWorkspace: vi.fn(),
+    listWorkspaceMembers: vi.fn(),
   },
 }));
 
@@ -31,15 +31,15 @@ describe("DashboardWorkspacesPage", () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (authRepository.getWorkspaces as jest.Mock).mockResolvedValue(mockWorkspaces);
-    (authRepository.getWorkspace as jest.Mock).mockImplementation((id: string) => {
+    vi.clearAllMocks();
+    (authRepository.getWorkspaces as any).mockResolvedValue(mockWorkspaces);
+    (authRepository.getWorkspace as any).mockImplementation((id: string) => {
       if (id === "ws-1") {
         return Promise.resolve({ id: "ws-1", name: "Acme SaaS", industry: "SaaS and software" });
       }
       return Promise.resolve({ id: "ws-2", name: "Beta Commerce", industry: "E-Commerce" });
     });
-    (authRepository.listWorkspaceMembers as jest.Mock).mockImplementation((id: string) => {
+    (authRepository.listWorkspaceMembers as any).mockImplementation((id: string) => {
       if (id === "ws-1") {
         return Promise.resolve([{ user_id: "u-1" }, { user_id: "u-2" }]);
       }

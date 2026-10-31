@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 
 import { authRepository } from "@/repositories/auth.repository";
+import { WorkspaceCategoriesTab } from "@/components/workspace/workspace-categories-tab";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspaceStore } from "@/store/workspace.store";
 import type {
@@ -191,7 +192,7 @@ export default function WorkspaceSettingsPage() {
     };
   }, [workspaceSlug, workspaces, router, setWorkspaces, inviteRoleId]);
 
-  const setTab = (tab: "general" | "members" | "invitations") => {
+  const setTab = (tab: "general" | "members" | "invitations" | "categories") => {
     router.replace(`/workspace/${workspaceSlug}/settings?tab=${tab}`, {
       scroll: false,
     });
@@ -522,6 +523,22 @@ export default function WorkspaceSettingsPage() {
               {invites.length}
             </span>
             {currentTab === "invitations" && (
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
+            )}
+          </button>
+
+          {/* Categories Tab */}
+          <button
+            type="button"
+            onClick={() => setTab("categories")}
+            className={`relative flex items-center gap-2 pb-3 text-[14px] transition-colors cursor-pointer ${
+              currentTab === "categories"
+                ? "font-semibold text-[#161C26] dark:text-white"
+                : "font-medium text-[#556070] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:text-white"
+            }`}
+          >
+            <span>Categories</span>
+            {currentTab === "categories" && (
               <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
             )}
           </button>
@@ -1007,6 +1024,14 @@ export default function WorkspaceSettingsPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ================= TAB 4: CATEGORIES ================= */}
+      {currentTab === "categories" && workspace && (
+        <WorkspaceCategoriesTab
+          workspaceId={workspace.id}
+          isOwner={isOwner}
+        />
       )}
 
       {/* ================= MODAL 1: INVITE TEAMMATE ================= */}

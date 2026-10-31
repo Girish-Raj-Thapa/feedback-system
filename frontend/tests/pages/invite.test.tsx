@@ -5,27 +5,27 @@ import { useAuthStore } from "@/store/auth.store";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    getInviteByToken: jest.fn(),
-    acceptInvite: jest.fn(),
-    joinInvite: jest.fn(),
+    getInviteByToken: vi.fn(),
+    acceptInvite: vi.fn(),
+    joinInvite: vi.fn(),
   },
 }));
 
 // Mock next/image
-jest.mock("next/image", () => ({
+vi.mock("next/image", () => ({
   __esModule: true,
   default: (props: any) => <img {...props} />,
 }));
 
 describe("InvitePage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("shows expired state when no token is present", () => {
-    (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
+    (useSearchParams as any).mockReturnValue(new URLSearchParams());
 
     render(<InvitePage />);
 
@@ -33,7 +33,7 @@ describe("InvitePage", () => {
   });
 
   it("handles 1-click acceptance for existing user", async () => {
-    (useSearchParams as jest.Mock).mockReturnValue(
+    (useSearchParams as any).mockReturnValue(
       new URLSearchParams({ token: "existing-user-token" })
     );
 
@@ -45,12 +45,12 @@ describe("InvitePage", () => {
       is_existing_user: true,
     };
 
-    (authRepository.getInviteByToken as jest.Mock).mockResolvedValue(mockInvite);
-    (authRepository.acceptInvite as jest.Mock).mockResolvedValue({
+    (authRepository.getInviteByToken as any).mockResolvedValue(mockInvite);
+    (authRepository.acceptInvite as any).mockResolvedValue({
       message: "Joined workspace successfully.",
     });
 
-    const fetchMeSpy = jest
+    const fetchMeSpy = vi
       .spyOn(useAuthStore.getState(), "fetchMe")
       .mockResolvedValue(undefined as never);
 
@@ -74,7 +74,7 @@ describe("InvitePage", () => {
   });
 
   it("renders registration form for new user and handles join", async () => {
-    (useSearchParams as jest.Mock).mockReturnValue(
+    (useSearchParams as any).mockReturnValue(
       new URLSearchParams({ token: "new-user-token" })
     );
 
@@ -86,12 +86,12 @@ describe("InvitePage", () => {
       is_existing_user: false,
     };
 
-    (authRepository.getInviteByToken as jest.Mock).mockResolvedValue(mockInvite);
-    (authRepository.joinInvite as jest.Mock).mockResolvedValue({
+    (authRepository.getInviteByToken as any).mockResolvedValue(mockInvite);
+    (authRepository.joinInvite as any).mockResolvedValue({
       message: "Invitation accepted.",
     });
 
-    const fetchMeSpy = jest
+    const fetchMeSpy = vi
       .spyOn(useAuthStore.getState(), "fetchMe")
       .mockResolvedValue(undefined as never);
 

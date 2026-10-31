@@ -5,15 +5,15 @@ import { useWorkspaceStore } from "@/store/workspace.store";
 import { useAuthStore } from "@/store/auth.store";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    createWorkspace: jest.fn(),
+    createWorkspace: vi.fn(),
   },
 }));
 
 describe("CreateWorkspaceForm", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders workspace name field and industry presets", () => {
@@ -36,15 +36,15 @@ describe("CreateWorkspaceForm", () => {
       updated_at: "2024-01-01T00:00:00Z",
     };
 
-    (authRepository.createWorkspace as jest.Mock).mockResolvedValue(mockCreatedWorkspace);
-    const fetchWorkspacesSpy = jest
+    (authRepository.createWorkspace as any).mockResolvedValue(mockCreatedWorkspace);
+    const fetchWorkspacesSpy = vi
       .spyOn(useWorkspaceStore.getState(), "fetchWorkspaces")
       .mockResolvedValue([] as never);
-    const fetchMeSpy = jest
+    const fetchMeSpy = vi
       .spyOn(useAuthStore.getState(), "fetchMe")
       .mockResolvedValue(undefined as never);
 
-    const onSuccess = jest.fn();
+    const onSuccess = vi.fn();
     render(<CreateWorkspaceForm onSuccess={onSuccess} />);
 
     // Type workspace name
@@ -72,7 +72,7 @@ describe("CreateWorkspaceForm", () => {
   });
 
   it("displays server error message when creation fails", async () => {
-    (authRepository.createWorkspace as jest.Mock).mockRejectedValue(
+    (authRepository.createWorkspace as any).mockRejectedValue(
       new Error("Workspace slug already taken")
     );
 

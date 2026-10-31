@@ -4,19 +4,19 @@ import { authRepository } from "@/repositories/auth.repository";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    resetPassword: jest.fn(),
+    resetPassword: vi.fn(),
   },
 }));
 
 describe("ResetPasswordPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("shows invalid/expired message when no token is present", () => {
-    (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
+    (useSearchParams as any).mockReturnValue(new URLSearchParams());
 
     render(<ResetPasswordPage />);
 
@@ -28,7 +28,7 @@ describe("ResetPasswordPage", () => {
   });
 
   it("renders reset password form when token is present", () => {
-    (useSearchParams as jest.Mock).mockReturnValue(
+    (useSearchParams as any).mockReturnValue(
       new URLSearchParams({ token: "test-token-123" })
     );
 
@@ -40,10 +40,10 @@ describe("ResetPasswordPage", () => {
   });
 
   it("submits valid new password and shows success screen", async () => {
-    (useSearchParams as jest.Mock).mockReturnValue(
+    (useSearchParams as any).mockReturnValue(
       new URLSearchParams({ token: "test-token-123" })
     );
-    (authRepository.resetPassword as jest.Mock).mockResolvedValue({
+    (authRepository.resetPassword as any).mockResolvedValue({
       message: "Password reset successfully!",
     });
 

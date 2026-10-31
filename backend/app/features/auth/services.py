@@ -74,6 +74,7 @@ from app.features.auth.tasks import (
     send_verification_email_task,
     send_workspace_invite_email_task,
 )
+from app.features.feedback.services import FeedbackService
 
 logger = get_logger("app.features.auth.services")
 
@@ -529,6 +530,13 @@ class AuthService:
             role_id=owner_role.id,
         )
         await self.repo.create_member(owner_member)
+
+        # Automatically seed industry feedback categories
+        feedback_service = FeedbackService(self.session)
+        await feedback_service.seed_categories(
+            workspace_id=created_ws.id,
+            industry=created_ws.industry,
+        )
 
         # Create audit log
         await self.repo.create_audit_log(

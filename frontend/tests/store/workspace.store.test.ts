@@ -1,16 +1,16 @@
 import { useWorkspaceStore } from "@/store/workspace.store";
 import { authRepository } from "@/repositories/auth.repository";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    getWorkspaces: jest.fn(),
+    getWorkspaces: vi.fn(),
   },
 }));
 
 describe("useWorkspaceStore", () => {
   beforeEach(() => {
     useWorkspaceStore.getState().clear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should initialize with empty workspaces and null active workspace", () => {
@@ -26,6 +26,7 @@ describe("useWorkspaceStore", () => {
         workspace_id: "ws-1",
         workspace_name: "Acme",
         workspace_slug: "acme",
+        role_id: "role-owner",
         role_slug: "owner",
         role_name: "Owner",
         effective_permissions: ["workspace:read", "taxonomy:manage"],
@@ -41,6 +42,7 @@ describe("useWorkspaceStore", () => {
       workspace_id: "ws-1",
       workspace_name: "Acme",
       workspace_slug: "acme",
+      role_id: "role-admin",
       role_slug: "admin",
       role_name: "Admin",
       effective_permissions: ["taxonomy:read", "taxonomy:manage"],
@@ -58,6 +60,7 @@ describe("useWorkspaceStore", () => {
         workspace_id: "ws-2",
         workspace_name: "Beta",
         workspace_slug: "beta",
+        role_id: "role-owner",
         role_slug: "owner",
         role_name: "Owner",
         effective_permissions: [],

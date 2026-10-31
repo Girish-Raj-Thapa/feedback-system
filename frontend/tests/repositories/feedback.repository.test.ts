@@ -1,15 +1,15 @@
 import { feedbackRepository } from "@/repositories/feedback.repository";
 import { apiClient } from "@/repositories/client";
 
-jest.mock("@/repositories/client", () => ({
-  apiClient: jest.fn(),
+vi.mock("@/repositories/client", () => ({
+  apiClient: vi.fn(),
 }));
 
 describe("feedbackRepository", () => {
   const workspaceId = "ws-test-uuid";
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("listCategories calls GET with workspaceId", async () => {
@@ -17,7 +17,7 @@ describe("feedbackRepository", () => {
       { id: "cat-1", name: "Bugs", color: "#E05252", is_uncategorized: false },
       { id: "cat-2", name: "Other / Uncategorized", color: "#6B7280", is_uncategorized: true },
     ];
-    (apiClient as jest.Mock).mockResolvedValue(mockCategories);
+    (apiClient as any).mockResolvedValue(mockCategories);
 
     const result = await feedbackRepository.listCategories(workspaceId);
     expect(result).toEqual(mockCategories);
@@ -38,7 +38,7 @@ describe("feedbackRepository", () => {
       keywords: ["iot", "firmware"],
     };
     const mockCreated = { id: "cat-new", ...payload, is_uncategorized: false };
-    (apiClient as jest.Mock).mockResolvedValue(mockCreated);
+    (apiClient as any).mockResolvedValue(mockCreated);
 
     const result = await feedbackRepository.createCategory(workspaceId, payload);
     expect(result).toEqual(mockCreated);
@@ -56,7 +56,7 @@ describe("feedbackRepository", () => {
     const categoryId = "cat-update-id";
     const payload = { color: "#3B82F6", description: "Updated description" };
     const mockUpdated = { id: categoryId, name: "Bugs", ...payload };
-    (apiClient as jest.Mock).mockResolvedValue(mockUpdated);
+    (apiClient as any).mockResolvedValue(mockUpdated);
 
     const result = await feedbackRepository.updateCategory(workspaceId, categoryId, payload);
     expect(result).toEqual(mockUpdated);
@@ -72,7 +72,7 @@ describe("feedbackRepository", () => {
 
   it("deleteCategory calls DELETE", async () => {
     const categoryId = "cat-delete-id";
-    (apiClient as jest.Mock).mockResolvedValue({});
+    (apiClient as any).mockResolvedValue({});
 
     await feedbackRepository.deleteCategory(workspaceId, categoryId);
     expect(apiClient).toHaveBeenCalledWith(
@@ -87,7 +87,7 @@ describe("feedbackRepository", () => {
   it("seedCategories calls POST to seed endpoint", async () => {
     const payload = { industry: "SaaS and software", force_reset: true };
     const mockSeeded = [{ id: "cat-s1", name: "Bugs" }];
-    (apiClient as jest.Mock).mockResolvedValue(mockSeeded);
+    (apiClient as any).mockResolvedValue(mockSeeded);
 
     const result = await feedbackRepository.seedCategories(workspaceId, payload);
     expect(result).toEqual(mockSeeded);
@@ -106,7 +106,7 @@ describe("feedbackRepository", () => {
       { id: "cat-1", display_order: 1 },
       { id: "cat-2", display_order: 2 },
     ];
-    (apiClient as jest.Mock).mockResolvedValue([]);
+    (apiClient as any).mockResolvedValue([]);
 
     await feedbackRepository.reorderCategories(workspaceId, items);
     expect(apiClient).toHaveBeenCalledWith(

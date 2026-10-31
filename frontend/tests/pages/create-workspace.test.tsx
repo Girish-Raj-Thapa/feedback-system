@@ -3,30 +3,30 @@ import CreateWorkspacePage from "@/app/(auth)/create-workspace/page";
 import { authRepository } from "@/repositories/auth.repository";
 import { useRouter } from "next/navigation";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    getMe: jest.fn(),
+    getMe: vi.fn(),
   },
 }));
 
-jest.mock("@/components/workspace/create-workspace-form", () => ({
+vi.mock("@/components/workspace/create-workspace-form", () => ({
   CreateWorkspaceForm: () => <div data-testid="create-workspace-form">Workspace Form</div>,
 }));
 
 describe("CreateWorkspacePage", () => {
-  const mockPush = jest.fn();
-  const mockReplace = jest.fn();
+  const mockPush = vi.fn();
+  const mockReplace = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue({
+    vi.clearAllMocks();
+    (useRouter as any).mockReturnValue({
       push: mockPush,
       replace: mockReplace,
     });
   });
 
   it("redirects to login if user is unauthenticated", async () => {
-    (authRepository.getMe as jest.Mock).mockRejectedValue(new Error("Unauthorized"));
+    (authRepository.getMe as any).mockRejectedValue(new Error("Unauthorized"));
 
     render(<CreateWorkspacePage />);
 
@@ -36,7 +36,7 @@ describe("CreateWorkspacePage", () => {
   });
 
   it("renders workspace creation form when user is authenticated", async () => {
-    (authRepository.getMe as jest.Mock).mockResolvedValue({
+    (authRepository.getMe as any).mockResolvedValue({
       id: "u-1",
       email: "test@example.com",
     });

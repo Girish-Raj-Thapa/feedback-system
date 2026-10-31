@@ -4,11 +4,11 @@ import { useAuthStore } from "@/store/auth.store";
 import { authRepository } from "@/repositories/auth.repository";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    updateMe: jest.fn(),
-    changePassword: jest.fn(),
-    deleteMe: jest.fn(),
+    updateMe: vi.fn(),
+    changePassword: vi.fn(),
+    deleteMe: vi.fn(),
   },
 }));
 
@@ -19,11 +19,13 @@ describe("AccountSettingsPage", () => {
     full_name: "Jane Doe",
     is_active: true,
     is_verified: true,
+    is_superuser: false,
+    workspaces: [],
     created_at: "2024-01-15T12:00:00Z",
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     useAuthStore.getState().setUser(mockUser);
   });
 
@@ -44,7 +46,7 @@ describe("AccountSettingsPage", () => {
   });
 
   it("enables save button when full name is modified and updates profile", async () => {
-    (authRepository.updateMe as jest.Mock).mockResolvedValue({
+    (authRepository.updateMe as any).mockResolvedValue({
       id: "user-123",
       email: "user@example.com",
       full_name: "Jane Smith",
@@ -66,7 +68,7 @@ describe("AccountSettingsPage", () => {
   });
 
   it("updates password when requirements and confirmation match", async () => {
-    (authRepository.changePassword as jest.Mock).mockResolvedValue({
+    (authRepository.changePassword as any).mockResolvedValue({
       message: "Password changed successfully",
     });
 
@@ -95,7 +97,7 @@ describe("AccountSettingsPage", () => {
   });
 
   it("opens delete modal and executes delete on confirm", async () => {
-    (authRepository.deleteMe as jest.Mock).mockResolvedValue({
+    (authRepository.deleteMe as any).mockResolvedValue({
       message: "Account deleted",
     });
 

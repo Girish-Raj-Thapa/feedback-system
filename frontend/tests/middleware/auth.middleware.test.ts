@@ -1,5 +1,5 @@
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 import { handleAuthRouting } from "@/middleware/auth.middleware";
 import { NextRequest } from "next/server";

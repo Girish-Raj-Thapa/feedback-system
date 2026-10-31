@@ -1,17 +1,17 @@
 import { useAuthStore } from "@/store/auth.store";
 import { authRepository } from "@/repositories/auth.repository";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    getMe: jest.fn(),
-    logout: jest.fn(),
+    getMe: vi.fn(),
+    logout: vi.fn(),
   },
 }));
 
 describe("useAuthStore", () => {
   beforeEach(() => {
     useAuthStore.getState().clear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should initialize with null user and unauthenticated", () => {
@@ -27,8 +27,8 @@ describe("useAuthStore", () => {
       full_name: "Test User",
       is_active: true,
       is_verified: true,
+      is_superuser: false,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       workspaces: [],
     };
 
@@ -46,11 +46,11 @@ describe("useAuthStore", () => {
       full_name: "Fetched User",
       is_active: true,
       is_verified: true,
+      is_superuser: false,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       workspaces: [],
     };
-    (authRepository.getMe as jest.Mock).mockResolvedValue(mockUser);
+    (authRepository.getMe as any).mockResolvedValue(mockUser);
 
     const result = await useAuthStore.getState().fetchMe();
     expect(result).toEqual(mockUser);
@@ -65,8 +65,8 @@ describe("useAuthStore", () => {
       full_name: "Temp",
       is_active: true,
       is_verified: true,
+      is_superuser: false,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       workspaces: [],
     });
 

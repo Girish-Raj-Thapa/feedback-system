@@ -4,12 +4,12 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 describe("DashboardSidebar", () => {
   const defaultProps = {
     isSidebarOpen: false,
-    setIsSidebarOpen: jest.fn(),
+    setIsSidebarOpen: vi.fn(),
     pathname: "/dashboard/workspaces",
   };
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders Feedback System brand header", () => {
@@ -40,7 +40,7 @@ describe("DashboardSidebar", () => {
   });
 
   it("calls setIsSidebarOpen(false) when a navigation link is clicked", () => {
-    const setIsSidebarOpen = jest.fn();
+    const setIsSidebarOpen = vi.fn();
     render(<DashboardSidebar {...defaultProps} setIsSidebarOpen={setIsSidebarOpen} />);
     
     fireEvent.click(screen.getByText("Workspaces"));

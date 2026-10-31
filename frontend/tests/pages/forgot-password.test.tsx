@@ -3,15 +3,15 @@ import ForgotPasswordPage from "@/app/(auth)/forgot-password/page";
 import { authRepository } from "@/repositories/auth.repository";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    forgotPassword: jest.fn(),
+    forgotPassword: vi.fn(),
   },
 }));
 
 describe("ForgotPasswordPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders forgot password form", () => {
@@ -23,7 +23,7 @@ describe("ForgotPasswordPage", () => {
   });
 
   it("submits email and transitions to confirmation screen", async () => {
-    (authRepository.forgotPassword as jest.Mock).mockResolvedValue({
+    (authRepository.forgotPassword as any).mockResolvedValue({
       message: "Reset link sent",
     });
 
@@ -57,7 +57,7 @@ describe("ForgotPasswordPage", () => {
   });
 
   it("shows error alert if api call fails", async () => {
-    (authRepository.forgotPassword as jest.Mock).mockRejectedValue(
+    (authRepository.forgotPassword as any).mockRejectedValue(
       new Error("Rate limit exceeded")
     );
 

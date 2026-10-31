@@ -6,16 +6,16 @@ import { useAuthStore } from "@/store/auth.store";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    getMe: jest.fn(),
-    getWorkspaces: jest.fn(),
-    logout: jest.fn(),
+    getMe: vi.fn(),
+    getWorkspaces: vi.fn(),
+    logout: vi.fn(),
   },
 }));
 
 describe("DashboardLayout", () => {
-  const mockReplace = jest.fn();
+  const mockReplace = vi.fn();
 
   const mockUser = {
     id: "u-1",
@@ -23,16 +23,19 @@ describe("DashboardLayout", () => {
     full_name: "John Doe",
     is_active: true,
     is_verified: true,
+    is_superuser: false,
+    workspaces: [],
+    created_at: "2024-01-01T00:00:00Z",
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue({
+    vi.clearAllMocks();
+    (useRouter as any).mockReturnValue({
       replace: mockReplace,
     });
     useAuthStore.getState().setUser(mockUser);
-    (authRepository.getMe as jest.Mock).mockResolvedValue(mockUser);
-    (authRepository.getWorkspaces as jest.Mock).mockResolvedValue([]);
+    (authRepository.getMe as any).mockResolvedValue(mockUser);
+    (authRepository.getWorkspaces as any).mockResolvedValue([]);
   });
 
   it("renders layout with navigation and children", async () => {
@@ -52,7 +55,7 @@ describe("DashboardLayout", () => {
   });
 
   it("handles logout from account menu", async () => {
-    (authRepository.logout as jest.Mock).mockResolvedValue({ message: "Logged out" });
+    (authRepository.logout as any).mockResolvedValue({ message: "Logged out" });
 
     render(
       <ThemeProvider>
@@ -82,7 +85,7 @@ describe("DashboardLayout", () => {
 
   it("redirects to /login if user fetch fails", async () => {
     useAuthStore.getState().clear();
-    (authRepository.getMe as jest.Mock).mockRejectedValue(new Error("Unauthorized"));
+    (authRepository.getMe as any).mockRejectedValue(new Error("Unauthorized"));
 
     render(
       <ThemeProvider>

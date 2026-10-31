@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 describe("Button UI component", () => {
   it("renders with children and handles click", () => {
-    const handleClick = jest.fn();
+    const handleClick = vi.fn();
     render(<Button onClick={handleClick}>Click Me</Button>);
 
     const btn = screen.getByRole("button", { name: "Click Me" });

@@ -1,4 +1,5 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
+import { vi } from "vitest";
 
 // Polyfill Web Fetch APIs for next/server NextRequest/NextResponse in jsdom
 if (typeof global.Request === "undefined" && typeof globalThis.Request !== "undefined") {
@@ -29,31 +30,50 @@ if (typeof window !== "undefined") {
 }
 
 // Mock Next.js navigation hooks
-jest.mock("next/navigation", () => {
-  const actual = jest.requireActual("next/navigation");
+vi.mock("next/navigation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/navigation")>();
   return {
     ...actual,
-    useRouter: jest.fn(() => ({
-      push: jest.fn(),
-      replace: jest.fn(),
-      refresh: jest.fn(),
-      back: jest.fn(),
-      forward: jest.fn(),
-      prefetch: jest.fn(),
+    useRouter: vi.fn(() => ({
+      push: vi.fn(),
+      replace: vi.fn(),
+      refresh: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      prefetch: vi.fn(),
     })),
-    usePathname: jest.fn(() => "/dashboard/workspaces"),
-    useSearchParams: jest.fn(() => new URLSearchParams()),
-    useParams: jest.fn(() => ({})),
+    usePathname: vi.fn(() => "/dashboard/workspaces"),
+    useSearchParams: vi.fn(() => new URLSearchParams()),
+    useParams: vi.fn(() => ({})),
   };
 });
 
-// Mock sonner toast notifications
-jest.mock("sonner", () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    warning: jest.fn(),
-  },
+import React from "react";
+
+// Mock next/link to prevent JSDOM navigation error on click
+vi.mock("next/link", () => ({
+  __esModule: true,
+  default: ({ children, href, onClick, ...rest }: any) =>
+    React.createElement(
+      "a",
+      {
+        href,
+        onClick: (e: any) => {
+          e.preventDefault();
+          onClick?.(e);
+        },
+        ...rest,
+      },
+      children
+    ),
 }));
 
+// Mock sonner toast notifications
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  },
+}));

@@ -7,19 +7,19 @@ import { useWorkspaceStore } from "@/store/workspace.store";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    getMe: jest.fn(),
-    getWorkspaces: jest.fn(),
-    getWorkspace: jest.fn(),
-    logout: jest.fn(),
+    getMe: vi.fn(),
+    getWorkspaces: vi.fn(),
+    getWorkspace: vi.fn(),
+    logout: vi.fn(),
   },
 }));
 
 describe("WorkspaceLayout", () => {
   const wsSlug = "test-ws";
-  const mockPush = jest.fn();
-  const mockReplace = jest.fn();
+  const mockPush = vi.fn();
+  const mockReplace = vi.fn();
 
   const mockUser = {
     id: "u-1",
@@ -27,6 +27,9 @@ describe("WorkspaceLayout", () => {
     full_name: "Alice Smith",
     is_active: true,
     is_verified: true,
+    is_superuser: false,
+    workspaces: [],
+    created_at: "2024-01-01T00:00:00Z",
   };
 
   const mockWorkspaces = [
@@ -34,6 +37,7 @@ describe("WorkspaceLayout", () => {
       workspace_id: "ws-1",
       workspace_name: "Test Workspace",
       workspace_slug: wsSlug,
+      role_id: "role-owner",
       role_slug: "owner",
       role_name: "Owner",
       effective_permissions: [],
@@ -41,9 +45,9 @@ describe("WorkspaceLayout", () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useParams as jest.Mock).mockReturnValue({ workspaceSlug: wsSlug });
-    (useRouter as jest.Mock).mockReturnValue({
+    vi.clearAllMocks();
+    (useParams as any).mockReturnValue({ workspaceSlug: wsSlug });
+    (useRouter as any).mockReturnValue({
       push: mockPush,
       replace: mockReplace,
     });
@@ -51,9 +55,9 @@ describe("WorkspaceLayout", () => {
     useAuthStore.getState().setUser(mockUser);
     useWorkspaceStore.getState().setWorkspaces(mockWorkspaces);
 
-    (authRepository.getMe as jest.Mock).mockResolvedValue(mockUser);
-    (authRepository.getWorkspaces as jest.Mock).mockResolvedValue(mockWorkspaces);
-    (authRepository.getWorkspace as jest.Mock).mockResolvedValue({
+    (authRepository.getMe as any).mockResolvedValue(mockUser);
+    (authRepository.getWorkspaces as any).mockResolvedValue(mockWorkspaces);
+    (authRepository.getWorkspace as any).mockResolvedValue({
       id: "ws-1",
       name: "Test Workspace",
       slug: wsSlug,
@@ -77,7 +81,7 @@ describe("WorkspaceLayout", () => {
   });
 
   it("opens account dropdown and logs out when clicked", async () => {
-    (authRepository.logout as jest.Mock).mockResolvedValue({ message: "Logged out" });
+    (authRepository.logout as any).mockResolvedValue({ message: "Logged out" });
 
     render(
       <ThemeProvider>

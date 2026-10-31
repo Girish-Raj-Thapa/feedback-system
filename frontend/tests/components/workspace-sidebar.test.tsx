@@ -4,13 +4,14 @@ import { WorkspaceSidebar } from "@/components/layout/workspace-sidebar";
 describe("WorkspaceSidebar", () => {
   const defaultProps = {
     isSidebarOpen: false,
-    setIsSidebarOpen: jest.fn(),
+    setIsSidebarOpen: vi.fn(),
     pathname: "/workspace/acme",
     workspaceSlug: "acme",
     activeWs: {
       workspace_id: "ws-1",
       workspace_name: "Acme Corp",
       workspace_slug: "acme",
+      role_id: "role-owner",
       role_slug: "owner",
       role_name: "Owner",
       effective_permissions: [],
@@ -19,7 +20,7 @@ describe("WorkspaceSidebar", () => {
   };
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders workspace name and role badge", () => {
@@ -60,7 +61,7 @@ describe("WorkspaceSidebar", () => {
   });
 
   it("calls setIsSidebarOpen(false) when a link is clicked", () => {
-    const setIsSidebarOpen = jest.fn();
+    const setIsSidebarOpen = vi.fn();
     render(<WorkspaceSidebar {...defaultProps} setIsSidebarOpen={setIsSidebarOpen} />);
     
     fireEvent.click(screen.getByText("Dashboard"));

@@ -3,20 +3,20 @@ import RegisterPage from "@/app/(auth)/register/page";
 import { authRepository } from "@/repositories/auth.repository";
 import { toast } from "sonner";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    register: jest.fn(),
-    resendVerification: jest.fn(),
+    register: vi.fn(),
+    resendVerification: vi.fn(),
   },
 }));
 
-jest.mock("@/components/auth/score-driver-showcase", () => ({
+vi.mock("@/components/auth/score-driver-showcase", () => ({
   ScoreDriverShowcase: () => <div data-testid="score-driver-showcase">Showcase</div>,
 }));
 
 describe("RegisterPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders register form fields and showcase", () => {
@@ -43,7 +43,7 @@ describe("RegisterPage", () => {
   });
 
   it("submits registration successfully and switches to verification screen", async () => {
-    (authRepository.register as jest.Mock).mockResolvedValue({
+    (authRepository.register as any).mockResolvedValue({
       id: "u-new",
       email: "newuser@example.com",
       full_name: "John Doe",
@@ -76,7 +76,7 @@ describe("RegisterPage", () => {
     });
 
     // Test Resend verification button on the verification screen
-    (authRepository.resendVerification as jest.Mock).mockResolvedValue({
+    (authRepository.resendVerification as any).mockResolvedValue({
       message: "Resent successfully",
     });
 
@@ -92,7 +92,7 @@ describe("RegisterPage", () => {
   });
 
   it("displays server error alert when registration fails", async () => {
-    (authRepository.register as jest.Mock).mockRejectedValue(
+    (authRepository.register as any).mockRejectedValue(
       new Error("Email already registered")
     );
 

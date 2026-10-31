@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 
 describe("Input UI component", () => {
   it("renders with placeholder and accepts value changes", () => {
-    const handleChange = jest.fn();
+    const handleChange = vi.fn();
     render(<Input placeholder="Enter email" onChange={handleChange} />);
 
     const input = screen.getByPlaceholderText("Enter email");

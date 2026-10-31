@@ -5,25 +5,25 @@ import WorkspaceDashboardPage from "@/app/workspace/[workspaceSlug]/page";
 import { authRepository } from "@/repositories/auth.repository";
 import { useRouter } from "next/navigation";
 
-jest.mock("@/repositories/auth.repository", () => ({
+vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
-    getMe: jest.fn(),
+    getMe: vi.fn(),
   },
 }));
 
 describe("RootHomePage and Dashboard Pages", () => {
-  const mockReplace = jest.fn();
+  const mockReplace = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue({
+    vi.clearAllMocks();
+    (useRouter as any).mockReturnValue({
       replace: mockReplace,
     });
   });
 
   describe("RootHomePage redirection logic", () => {
     it("redirects to /login if unauthenticated", async () => {
-      (authRepository.getMe as jest.Mock).mockRejectedValue(new Error("Unauthorized"));
+      (authRepository.getMe as any).mockRejectedValue(new Error("Unauthorized"));
 
       render(<RootHomePage />);
 
@@ -33,7 +33,7 @@ describe("RootHomePage and Dashboard Pages", () => {
     });
 
     it("redirects to /create-workspace if authenticated but has no workspaces", async () => {
-      (authRepository.getMe as jest.Mock).mockResolvedValue({
+      (authRepository.getMe as any).mockResolvedValue({
         id: "u-1",
         email: "user@example.com",
         workspaces: [],
@@ -47,7 +47,7 @@ describe("RootHomePage and Dashboard Pages", () => {
     });
 
     it("redirects to /dashboard if authenticated and has workspaces", async () => {
-      (authRepository.getMe as jest.Mock).mockResolvedValue({
+      (authRepository.getMe as any).mockResolvedValue({
         id: "u-1",
         email: "user@example.com",
         workspaces: [{ workspace_id: "ws-1", workspace_slug: "acme" }],
