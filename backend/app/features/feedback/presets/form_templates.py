@@ -190,4 +190,3 @@ def get_form_template(template_type: str | None) -> dict[str, Any]:
     """
     key = (template_type or "general").lower()
     return FORM_TEMPLATES.get(key, FORM_TEMPLATES["general"]).copy()
-

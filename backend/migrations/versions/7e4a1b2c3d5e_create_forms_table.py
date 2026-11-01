@@ -148,4 +148,3 @@ def downgrade() -> None:
         postgresql_where=sa.text("deleted_at IS NULL"),
     )
     op.drop_table("forms")
-

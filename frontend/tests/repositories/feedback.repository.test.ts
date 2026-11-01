@@ -238,5 +238,38 @@ describe("feedbackRepository", () => {
       }
     );
   });
+
+  it("submitFeedback calls POST on public submit route with payload", async () => {
+    const wsSlug = "acme";
+    const formSlug = "survey";
+    const payload = {
+      rating: 5,
+      comment: "Super smooth experience!",
+      customer_email: "test@example.com",
+    };
+    const mockResponse = {
+      id: "sub-123",
+      workspace_slug: wsSlug,
+      form_slug: formSlug,
+      rating: 5,
+      status: "new",
+      outcome: {
+        title: "Thank you!",
+        message: "We appreciate your feedback.",
+        is_high_score: true,
+      },
+    };
+    (apiClient as any).mockResolvedValue(mockResponse);
+
+    const result = await feedbackRepository.submitFeedback(wsSlug, formSlug, payload);
+    expect(result).toEqual(mockResponse);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/public/forms/${wsSlug}/${formSlug}/submit`,
+      {
+        method: "POST",
+        body: payload,
+      }
+    );
+  });
 });
 

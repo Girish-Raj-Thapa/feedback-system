@@ -11,7 +11,11 @@ import {
 } from "lucide-react";
 
 import { feedbackRepository } from "@/repositories/feedback.repository";
-import type { PublicFeedbackForm } from "@/types/feedback";
+import type {
+  FeedbackOutcomeResponse,
+  FeedbackSubmissionCreate,
+  PublicFeedbackForm,
+} from "@/types/feedback";
 
 const EMOJI_SCALE = [
   { value: 1, emoji: "😡", label: "Terrible" },
@@ -41,6 +45,9 @@ export default function PublicFormPage() {
   // Submission / Outcome State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submissionOutcome, setSubmissionOutcome] =
+    useState<FeedbackOutcomeResponse | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -100,7 +107,7 @@ export default function PublicFormPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
 
@@ -136,13 +143,48 @@ export default function PublicFormPage() {
     }
 
     setFormErrors({});
+    setSubmitError(null);
     setIsSubmitting(true);
 
-    // Simulate instant outcome transition for Module 1 (Submission API is Module 2)
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const pillLabel = selectedPills.length > 0 ? selectedPills[0] : null;
+
+      const submissionPayload: FeedbackSubmissionCreate = {
+        rating: rating,
+        category_pill_label: pillLabel,
+        comment: openComment.trim() || null,
+        custom_answers: customAnswers,
+        customer_email: contactEmail.trim() || null,
+        customer_name: contactName.trim() || null,
+        customer_metadata: {
+          page_url: typeof window !== "undefined" ? window.location.href : null,
+          referrer: typeof document !== "undefined" ? document.referrer : null,
+          user_agent:
+            typeof navigator !== "undefined" ? navigator.userAgent : null,
+        },
+      };
+
+      const res = await feedbackRepository.submitFeedback(
+        workspaceSlug,
+        formSlug,
+        submissionPayload
+      );
+
+      setSubmissionOutcome(res.outcome);
       setIsSubmitted(true);
-    }, 400);
+    } catch (err: unknown) {
+      const error = err as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
+      setSubmitError(
+        error.response?.data?.detail ||
+          error.message ||
+          "Failed to submit feedback. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
@@ -198,35 +240,49 @@ export default function PublicFormPage() {
             </div>
             <div>
               <h2 className="text-[20px] font-semibold text-[#161C26] dark:text-white">
-                {isLowScore
-                  ? form.outcome_screen?.low_score_title || "We're sorry we missed the mark"
-                  : form.outcome_screen?.high_score_title || "Thank you for your feedback!"}
+                {submissionOutcome?.title ||
+                  (isLowScore
+                    ? form.outcome_screen?.low_score_title ||
+                      "We're sorry we missed the mark"
+                    : form.outcome_screen?.high_score_title ||
+                      "Thank you for your feedback!")}
               </h2>
               <p className="mt-2 text-[14px] leading-relaxed text-[#556070] dark:text-[#8E8E93]">
-                {isLowScore
-                  ? form.outcome_screen?.low_score_message ||
-                    "Our team takes this seriously and will look into what went wrong."
-                  : form.outcome_screen?.high_score_message ||
-                    "We truly appreciate you taking the time to share your experience."}
+                {submissionOutcome?.message ||
+                  (isLowScore
+                    ? form.outcome_screen?.low_score_message ||
+                      "Our team takes this seriously and will look into what went wrong."
+                    : form.outcome_screen?.high_score_message ||
+                      "We truly appreciate you taking the time to share your experience.")}
               </p>
             </div>
 
-            {!isLowScore && form.outcome_screen?.high_score_cta_url && (
-              <div className="pt-3">
-                <a
-                  href={form.outcome_screen.high_score_cta_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[14px] font-medium text-white shadow-sm transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: primaryColor, borderRadius: `${borderRadius}px` }}
-                >
-                  <span>
-                    {form.outcome_screen.high_score_cta_text || "Share Your Review"}
-                  </span>
-                  <ExternalLink className="size-4" />
-                </a>
-              </div>
-            )}
+            {(submissionOutcome?.is_high_score ?? !isLowScore) &&
+              (submissionOutcome?.cta_url ||
+                form.outcome_screen?.high_score_cta_url) && (
+                <div className="pt-3">
+                  <a
+                    href={
+                      submissionOutcome?.cta_url ||
+                      form.outcome_screen?.high_score_cta_url
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[14px] font-medium text-white shadow-sm transition-opacity hover:opacity-90"
+                    style={{
+                      backgroundColor: primaryColor,
+                      borderRadius: `${borderRadius}px`,
+                    }}
+                  >
+                    <span>
+                      {submissionOutcome?.cta_text ||
+                        form.outcome_screen?.high_score_cta_text ||
+                        "Share Your Review"}
+                    </span>
+                    <ExternalLink className="size-4" />
+                  </a>
+                </div>
+              )}
 
             <div className="pt-6 border-t border-[#E1E5EB] dark:border-white/10">
               <button
@@ -238,6 +294,7 @@ export default function PublicFormPage() {
                   setOpenComment("");
                   setContactEmail("");
                   setContactName("");
+                  setSubmissionOutcome(null);
                   setIsSubmitted(false);
                 }}
                 className="text-[13px] text-[#556070] hover:underline dark:text-[#8E8E93]"
@@ -492,6 +549,13 @@ export default function PublicFormPage() {
                     </p>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Submit Error Banner */}
+            {submitError && (
+              <div className="rounded-[10px] bg-red-50 p-3 text-[13px] text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                {submitError}
               </div>
             )}
 

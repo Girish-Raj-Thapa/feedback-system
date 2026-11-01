@@ -17,6 +17,12 @@ from app.features.feedback.schemas.forms import (
     FormUpdate,
     PublicFormRead,
 )
+from app.features.feedback.schemas.submissions import (
+    FeedbackOutcomeResponse,
+    FeedbackSubmissionCreate,
+    FeedbackSubmissionRead,
+    FeedbackSubmissionResponse,
+)
 
 __all__ = [
     "FeedbackCategoryCreate",
@@ -30,4 +36,8 @@ __all__ = [
     "FormRead",
     "FormUpdate",
     "PublicFormRead",
+    "FeedbackSubmissionCreate",
+    "FeedbackSubmissionRead",
+    "FeedbackSubmissionResponse",
+    "FeedbackOutcomeResponse",
 ]

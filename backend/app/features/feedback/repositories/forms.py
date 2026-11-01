@@ -136,4 +136,3 @@ class FormRepository:
         form.deleted_at = datetime.now(UTC)
         form.is_active = False
         await self.session.flush()
-

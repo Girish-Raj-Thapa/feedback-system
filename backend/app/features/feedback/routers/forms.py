@@ -123,4 +123,3 @@ async def duplicate_form(
     """
     form = await service.duplicate_form(workspace_id, form_id, payload)
     return FormRead.model_validate(form)
-

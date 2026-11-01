@@ -186,4 +186,3 @@ class Form(Base):
             postgresql_where=text("deleted_at IS NULL"),
         ),
     )
-

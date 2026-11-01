@@ -161,3 +161,34 @@ export interface PublicFeedbackForm {
   widget_settings: WidgetSettingsConfig;
 }
 
+export interface FeedbackSubmissionCreate {
+  rating?: number | null;
+  category_pill_label?: string | null;
+  comment?: string | null;
+  custom_answers?: Record<string, any>;
+  customer_email?: string | null;
+  customer_name?: string | null;
+  customer_metadata?: Record<string, any>;
+}
+
+export interface FeedbackOutcomeResponse {
+  title: string;
+  message: string;
+  is_high_score: boolean;
+  cta_text?: string | null;
+  cta_url?: string | null;
+}
+
+export interface FeedbackSubmissionResponse {
+  id: string;
+  workspace_slug: string;
+  form_slug: string;
+  rating: number | null;
+  rating_scale_type: string;
+  category_pill_label: string | null;
+  category_id: string | null;
+  status: string;
+  created_at: string;
+  outcome: FeedbackOutcomeResponse;
+}
+

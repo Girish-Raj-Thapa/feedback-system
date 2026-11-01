@@ -2,11 +2,15 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import PublicFormPage from "@/app/f/[workspaceSlug]/[formSlug]/page";
 import { feedbackRepository } from "@/repositories/feedback.repository";
 import { useParams } from "next/navigation";
-import type { PublicFeedbackForm } from "@/types/feedback";
+import type {
+  FeedbackSubmissionResponse,
+  PublicFeedbackForm,
+} from "@/types/feedback";
 
 vi.mock("@/repositories/feedback.repository", () => ({
   feedbackRepository: {
     getPublicForm: vi.fn(),
+    submitFeedback: vi.fn(),
   },
 }));
 
@@ -65,6 +69,25 @@ describe("PublicFormPage", () => {
     },
   };
 
+  const mockSuccessSubmission: FeedbackSubmissionResponse = {
+    id: "sub-123",
+    workspace_slug: wsSlug,
+    form_slug: formSlug,
+    rating: 5,
+    rating_scale_type: "5_star",
+    category_pill_label: "Bug Report",
+    category_id: null,
+    status: "new",
+    created_at: "2024-01-01T00:00:00Z",
+    outcome: {
+      title: "Thank you for the review!",
+      message: "We appreciate your support.",
+      is_high_score: true,
+      cta_text: "Share on Twitter",
+      cta_url: "https://twitter.com/intent/tweet",
+    },
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     (useParams as any).mockReturnValue({
@@ -116,6 +139,7 @@ describe("PublicFormPage", () => {
 
   it("submits successfully and transitions to the high score outcome screen", async () => {
     (feedbackRepository.getPublicForm as any).mockResolvedValue(mockPublicForm);
+    (feedbackRepository.submitFeedback as any).mockResolvedValue(mockSuccessSubmission);
 
     render(<PublicFormPage />);
     await screen.findByText("How was your experience today?");
@@ -144,6 +168,19 @@ describe("PublicFormPage", () => {
     const submitBtn = screen.getByRole("button", { name: "Send Feedback" });
     fireEvent.click(submitBtn);
 
+    await waitFor(() => {
+      expect(feedbackRepository.submitFeedback).toHaveBeenCalledWith(
+        wsSlug,
+        formSlug,
+        expect.objectContaining({
+          rating: 5,
+          category_pill_label: "Bug Report",
+          comment: "Great experience overall!",
+          customer_email: "user@example.com",
+        })
+      );
+    });
+
     // Verify outcome screen transition
     expect(await screen.findByText("Thank you for the review!")).toBeInTheDocument();
     expect(screen.getByText("We appreciate your support.")).toBeInTheDocument();
@@ -158,6 +195,18 @@ describe("PublicFormPage", () => {
 
   it("shows low score outcome screen when rating <= 3", async () => {
     (feedbackRepository.getPublicForm as any).mockResolvedValue(mockPublicForm);
+    const lowScoreOutcome: FeedbackSubmissionResponse = {
+      ...mockSuccessSubmission,
+      rating: 2,
+      outcome: {
+        title: "We are sorry we missed the mark",
+        message: "Our engineering team has been alerted.",
+        is_high_score: false,
+        cta_text: null,
+        cta_url: null,
+      },
+    };
+    (feedbackRepository.submitFeedback as any).mockResolvedValue(lowScoreOutcome);
 
     render(<PublicFormPage />);
     await screen.findByText("How was your experience today?");
@@ -183,5 +232,28 @@ describe("PublicFormPage", () => {
     expect(screen.getByText("Our engineering team has been alerted.")).toBeInTheDocument();
     // High score review CTA should not appear on low score
     expect(screen.queryByText("Share on Twitter")).not.toBeInTheDocument();
+  });
+
+  it("displays submission error banner if submission fails", async () => {
+    (feedbackRepository.getPublicForm as any).mockResolvedValue(mockPublicForm);
+    (feedbackRepository.submitFeedback as any).mockRejectedValue({
+      response: { data: { detail: "This form has just been deactivated." } },
+    });
+
+    render(<PublicFormPage />);
+    await screen.findByText("How was your experience today?");
+
+    // Rate 5 stars
+    fireEvent.click(screen.getByLabelText("5 stars"));
+    fireEvent.click(screen.getByRole("radio", { name: "Chrome" }));
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "user@example.com" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Send Feedback" }));
+
+    expect(
+      await screen.findByText("This form has just been deactivated.")
+    ).toBeInTheDocument();
   });
 });

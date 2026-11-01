@@ -8,6 +8,8 @@ import type {
   FeedbackForm,
   FeedbackFormCreate,
   FeedbackFormUpdate,
+  FeedbackSubmissionCreate,
+  FeedbackSubmissionResponse,
   PublicFeedbackForm,
 } from "@/types/feedback";
 
@@ -232,6 +234,23 @@ export const feedbackRepository = {
       `/public/forms/${workspaceSlug}/${formSlug}`,
       {
         method: "GET",
+      }
+    );
+  },
+
+  /**
+   * Public unauthenticated submission of feedback from a hosted page or widget.
+   */
+  async submitFeedback(
+    workspaceSlug: string,
+    formSlug: string,
+    payload: FeedbackSubmissionCreate
+  ): Promise<FeedbackSubmissionResponse> {
+    return apiClient<FeedbackSubmissionResponse>(
+      `/public/forms/${workspaceSlug}/${formSlug}/submit`,
+      {
+        method: "POST",
+        body: payload,
       }
     );
   },
