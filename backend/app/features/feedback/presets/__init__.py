@@ -8,4 +8,3 @@ from app.features.feedback.presets.categories import (
 )
 
 __all__ = ["INDUSTRY_CATEGORY_PRESETS", "get_preset_categories"]
-

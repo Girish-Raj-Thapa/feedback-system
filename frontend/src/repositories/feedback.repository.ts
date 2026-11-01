@@ -5,6 +5,10 @@ import type {
   FeedbackCategoryReorderItem,
   FeedbackCategorySeedRequest,
   FeedbackCategoryUpdate,
+  FeedbackForm,
+  FeedbackFormCreate,
+  FeedbackFormUpdate,
+  PublicFeedbackForm,
 } from "@/types/feedback";
 
 export const feedbackRepository = {
@@ -118,6 +122,116 @@ export const feedbackRepository = {
         method: "POST",
         workspaceId,
         body: { items },
+      }
+    );
+  },
+
+  /**
+   * List all active feedback forms for a workspace.
+   */
+  async listForms(workspaceId: string): Promise<FeedbackForm[]> {
+    return apiClient<FeedbackForm[]>(
+      `/workspaces/${workspaceId}/feedback/forms`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Get a specific feedback form by ID.
+   */
+  async getForm(
+    workspaceId: string,
+    formId: string
+  ): Promise<FeedbackForm> {
+    return apiClient<FeedbackForm>(
+      `/workspaces/${workspaceId}/feedback/forms/${formId}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Create a new feedback form or widget.
+   */
+  async createForm(
+    workspaceId: string,
+    payload: FeedbackFormCreate
+  ): Promise<FeedbackForm> {
+    return apiClient<FeedbackForm>(
+      `/workspaces/${workspaceId}/feedback/forms`,
+      {
+        method: "POST",
+        workspaceId,
+        body: payload,
+      }
+    );
+  },
+
+  /**
+   * Update an existing feedback form.
+   */
+  async updateForm(
+    workspaceId: string,
+    formId: string,
+    payload: FeedbackFormUpdate
+  ): Promise<FeedbackForm> {
+    return apiClient<FeedbackForm>(
+      `/workspaces/${workspaceId}/feedback/forms/${formId}`,
+      {
+        method: "PATCH",
+        workspaceId,
+        body: payload,
+      }
+    );
+  },
+
+  /**
+   * Soft-delete a feedback form.
+   */
+  async deleteForm(workspaceId: string, formId: string): Promise<void> {
+    return apiClient<void>(
+      `/workspaces/${workspaceId}/feedback/forms/${formId}`,
+      {
+        method: "DELETE",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Clone / duplicate an existing form.
+   */
+  async duplicateForm(
+    workspaceId: string,
+    formId: string,
+    payload: { name?: string } = {}
+  ): Promise<FeedbackForm> {
+    return apiClient<FeedbackForm>(
+      `/workspaces/${workspaceId}/feedback/forms/${formId}/duplicate`,
+      {
+        method: "POST",
+        workspaceId,
+        body: payload,
+      }
+    );
+  },
+
+  /**
+   * Public unauthenticated fetch of form configuration for embed widgets and standalone links.
+   */
+  async getPublicForm(
+    workspaceSlug: string,
+    formSlug: string
+  ): Promise<PublicFeedbackForm> {
+    return apiClient<PublicFeedbackForm>(
+      `/public/forms/${workspaceSlug}/${formSlug}`,
+      {
+        method: "GET",
       }
     );
   },

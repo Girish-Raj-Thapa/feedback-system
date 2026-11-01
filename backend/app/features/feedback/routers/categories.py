@@ -138,4 +138,3 @@ async def delete_category(
     The default 'Other / Uncategorized' category is protected and cannot be deleted.
     """
     await service.delete_category(workspace_id, category_id)
-

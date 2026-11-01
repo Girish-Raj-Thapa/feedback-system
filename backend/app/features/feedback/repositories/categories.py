@@ -129,4 +129,3 @@ class FeedbackCategoryRepository:
         for cat in categories:
             cat.deleted_at = now
         await self.session.flush()
-

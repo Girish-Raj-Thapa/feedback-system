@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  FileText,
   LayoutDashboard,
   PanelLeft,
   Settings,
@@ -40,6 +41,7 @@ export function WorkspaceSidebar({
   const isDashboardActive =
     pathname === `/workspace/${currentSlug}` ||
     pathname === `/workspace/${currentSlug}/dashboard`;
+  const isFormsActive = pathname.startsWith(`/workspace/${currentSlug}/forms`);
   const isSettingsActive = pathname.startsWith(`/workspace/${currentSlug}/settings`);
 
   return (
@@ -113,6 +115,23 @@ export function WorkspaceSidebar({
             )}
             <LayoutDashboard className="ml-1.5 size-5 shrink-0" aria-hidden="true" />
             <span className="ml-2.5 truncate">Dashboard</span>
+          </Link>
+
+          {/* Forms & Widgets Studio */}
+          <Link
+            href={`/workspace/${currentSlug}/forms`}
+            onClick={() => setIsSidebarOpen(false)}
+            className={`relative flex h-9 items-center rounded-[10px] px-2.5 text-[14px] transition-colors ${
+              isFormsActive
+                ? "bg-[#F0F2FE] font-semibold text-[#363BA6] dark:bg-[#4249C9]/20 dark:text-[#2997FF]"
+                : "font-normal text-[#556070] hover:bg-[#F3F5F9] hover:text-[#161C26] dark:text-[#A1A1A6] dark:hover:bg-white/5 dark:hover:text-white"
+            }`}
+          >
+            {isFormsActive && (
+              <div className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-r-full bg-[#4249C9]" />
+            )}
+            <FileText className="ml-1.5 size-5 shrink-0" aria-hidden="true" />
+            <span className="ml-2.5 truncate">Forms & Widgets</span>
           </Link>
 
           {/* Workspace Settings */}

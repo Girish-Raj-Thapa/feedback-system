@@ -118,5 +118,125 @@ describe("feedbackRepository", () => {
       }
     );
   });
+
+  it("listForms calls GET with workspaceId", async () => {
+    const mockForms = [
+      { id: "form-1", name: "Main Widget", slug: "main-widget" },
+    ];
+    (apiClient as any).mockResolvedValue(mockForms);
+
+    const result = await feedbackRepository.listForms(workspaceId);
+    expect(result).toEqual(mockForms);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/forms`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
+
+  it("getForm calls GET with workspaceId and formId", async () => {
+    const formId = "form-123";
+    const mockForm = { id: formId, name: "Main Widget", slug: "main-widget" };
+    (apiClient as any).mockResolvedValue(mockForm);
+
+    const result = await feedbackRepository.getForm(workspaceId, formId);
+    expect(result).toEqual(mockForm);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/forms/${formId}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
+
+  it("createForm calls POST with payload", async () => {
+    const payload = {
+      name: "SaaS Feedback",
+      slug: "saas-feedback",
+      template: "saas" as const,
+    };
+    const mockCreated = { id: "form-new", ...payload };
+    (apiClient as any).mockResolvedValue(mockCreated);
+
+    const result = await feedbackRepository.createForm(workspaceId, payload);
+    expect(result).toEqual(mockCreated);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/forms`,
+      {
+        method: "POST",
+        workspaceId,
+        body: payload,
+      }
+    );
+  });
+
+  it("updateForm calls PATCH with payload", async () => {
+    const formId = "form-update-id";
+    const payload = { title: "Updated Feedback Title" };
+    const mockUpdated = { id: formId, ...payload };
+    (apiClient as any).mockResolvedValue(mockUpdated);
+
+    const result = await feedbackRepository.updateForm(workspaceId, formId, payload);
+    expect(result).toEqual(mockUpdated);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/forms/${formId}`,
+      {
+        method: "PATCH",
+        workspaceId,
+        body: payload,
+      }
+    );
+  });
+
+  it("deleteForm calls DELETE", async () => {
+    const formId = "form-delete-id";
+    (apiClient as any).mockResolvedValue({});
+
+    await feedbackRepository.deleteForm(workspaceId, formId);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/forms/${formId}`,
+      {
+        method: "DELETE",
+        workspaceId,
+      }
+    );
+  });
+
+  it("duplicateForm calls POST to duplicate endpoint", async () => {
+    const formId = "form-dup-id";
+    const payload = { name: "Main Widget (Copy)" };
+    const mockDuplicated = { id: "form-new-dup", ...payload };
+    (apiClient as any).mockResolvedValue(mockDuplicated);
+
+    const result = await feedbackRepository.duplicateForm(workspaceId, formId, payload);
+    expect(result).toEqual(mockDuplicated);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/forms/${formId}/duplicate`,
+      {
+        method: "POST",
+        workspaceId,
+        body: payload,
+      }
+    );
+  });
+
+  it("getPublicForm calls GET on public route without workspaceId auth", async () => {
+    const wsSlug = "acme";
+    const formSlug = "survey";
+    const mockPublic = { id: "form-pub", slug: formSlug, title: "Acme Survey" };
+    (apiClient as any).mockResolvedValue(mockPublic);
+
+    const result = await feedbackRepository.getPublicForm(wsSlug, formSlug);
+    expect(result).toEqual(mockPublic);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/public/forms/${wsSlug}/${formSlug}`,
+      {
+        method: "GET",
+      }
+    );
+  });
 });
 
