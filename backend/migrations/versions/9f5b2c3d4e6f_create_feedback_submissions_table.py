@@ -155,4 +155,3 @@ def downgrade() -> None:
         table_name="feedback_submissions",
     )
     op.drop_table("feedback_submissions")
-

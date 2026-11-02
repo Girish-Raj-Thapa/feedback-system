@@ -192,3 +192,44 @@ export interface FeedbackSubmissionResponse {
   outcome: FeedbackOutcomeResponse;
 }
 
+export type SubmissionStatus = "new" | "reviewed" | "archived";
+
+export interface FeedbackSubmissionUpdate {
+  status?: SubmissionStatus;
+  category_id?: string | null;
+}
+
+export interface FeedbackSubmissionRead {
+  id: string;
+  workspace_id: string;
+  form_id: string;
+  category_id: string | null;
+  category_pill_label: string | null;
+  rating: number | null;
+  rating_scale_type: string;
+  comment: string | null;
+  custom_answers: Record<string, any>;
+  customer_email: string | null;
+  customer_name: string | null;
+  customer_metadata: Record<string, any>;
+  status: SubmissionStatus | string;
+  sentiment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerHistoryRead {
+  customer_email: string | null;
+  customer_name: string | null;
+  total_submissions: number;
+  avg_rating: number | null;
+  submissions: FeedbackSubmissionRead[];
+}
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+

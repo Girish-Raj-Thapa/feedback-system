@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import RootHomePage from "@/app/page";
 import DashboardPage from "@/app/dashboard/page";
-import WorkspaceDashboardPage from "@/app/workspace/[workspaceSlug]/page";
+import WorkspaceDashboardSubPage from "@/app/workspace/[workspaceSlug]/dashboard/page";
 import { authRepository } from "@/repositories/auth.repository";
 import { useRouter } from "next/navigation";
 
@@ -67,8 +67,8 @@ describe("RootHomePage and Dashboard Pages", () => {
       expect(screen.getByRole("heading", { name: "Welcome to dashboard" })).toBeInTheDocument();
     });
 
-    it("renders WorkspaceDashboardPage", () => {
-      render(<WorkspaceDashboardPage />);
+    it("renders WorkspaceDashboardSubPage", () => {
+      render(<WorkspaceDashboardSubPage />);
       expect(screen.getByRole("heading", { name: "Welcome to dashboard" })).toBeInTheDocument();
     });
   });

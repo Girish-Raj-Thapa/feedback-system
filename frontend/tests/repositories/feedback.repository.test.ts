@@ -271,5 +271,88 @@ describe("feedbackRepository", () => {
       }
     );
   });
+
+  it("listSubmissions calls GET with pagination parameters", async () => {
+    const mockPage = {
+      items: [{ id: "sub-1", comment: "Great app!", rating: 5 }],
+      total: 1,
+      limit: 20,
+      offset: 0,
+    };
+    (apiClient as any).mockResolvedValue(mockPage);
+
+    const result = await feedbackRepository.listSubmissions(workspaceId, { limit: 20, offset: 0 });
+    expect(result).toEqual(mockPage);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/submissions?limit=20&offset=0`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
+
+  it("getSubmission calls GET with workspaceId and submissionId", async () => {
+    const submissionId = "sub-123";
+    const mockSubmission = { id: submissionId, comment: "Love it!", rating: 5 };
+    (apiClient as any).mockResolvedValue(mockSubmission);
+
+    const result = await feedbackRepository.getSubmission(workspaceId, submissionId);
+    expect(result).toEqual(mockSubmission);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/submissions/${submissionId}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
+
+  it("updateSubmission calls PATCH with workspaceId, submissionId, and payload", async () => {
+    const submissionId = "sub-123";
+    const payload = { status: "reviewed" as const };
+    const mockUpdated = { id: submissionId, status: "reviewed" };
+    (apiClient as any).mockResolvedValue(mockUpdated);
+
+    const result = await feedbackRepository.updateSubmission(
+      workspaceId,
+      submissionId,
+      payload
+    );
+    expect(result).toEqual(mockUpdated);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/submissions/${submissionId}`,
+      {
+        method: "PATCH",
+        workspaceId,
+        body: payload,
+      }
+    );
+  });
+
+  it("getCustomerHistory calls GET with workspaceId and submissionId", async () => {
+    const submissionId = "sub-123";
+    const mockHistory = {
+      customer_email: "test@example.com",
+      customer_name: "Test User",
+      total_submissions: 2,
+      avg_rating: 4.5,
+      submissions: [],
+    };
+    (apiClient as any).mockResolvedValue(mockHistory);
+
+    const result = await feedbackRepository.getCustomerHistory(
+      workspaceId,
+      submissionId
+    );
+    expect(result).toEqual(mockHistory);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/submissions/${submissionId}/customer-history`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
 });
 

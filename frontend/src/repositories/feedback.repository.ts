@@ -1,5 +1,6 @@
 import { apiClient } from "@/repositories/client";
 import type {
+  CustomerHistoryRead,
   FeedbackCategory,
   FeedbackCategoryCreate,
   FeedbackCategoryReorderItem,
@@ -9,7 +10,10 @@ import type {
   FeedbackFormCreate,
   FeedbackFormUpdate,
   FeedbackSubmissionCreate,
+  FeedbackSubmissionRead,
   FeedbackSubmissionResponse,
+  FeedbackSubmissionUpdate,
+  Page,
   PublicFeedbackForm,
 } from "@/types/feedback";
 
@@ -251,6 +255,77 @@ export const feedbackRepository = {
       {
         method: "POST",
         body: payload,
+      }
+    );
+  },
+
+  /**
+   * List feedback submissions for a workspace with pagination.
+   */
+  async listSubmissions(
+    workspaceId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<Page<FeedbackSubmissionRead>> {
+    const query = new URLSearchParams();
+    if (params?.limit !== undefined) query.set("limit", String(params.limit));
+    if (params?.offset !== undefined) query.set("offset", String(params.offset));
+    const qs = query.toString() ? `?${query.toString()}` : "";
+
+    return apiClient<Page<FeedbackSubmissionRead>>(
+      `/workspaces/${workspaceId}/feedback/submissions${qs}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Get a specific feedback submission by ID.
+   */
+  async getSubmission(
+    workspaceId: string,
+    submissionId: string
+  ): Promise<FeedbackSubmissionRead> {
+    return apiClient<FeedbackSubmissionRead>(
+      `/workspaces/${workspaceId}/feedback/submissions/${submissionId}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Update feedback submission status or classification.
+   */
+  async updateSubmission(
+    workspaceId: string,
+    submissionId: string,
+    payload: FeedbackSubmissionUpdate
+  ): Promise<FeedbackSubmissionRead> {
+    return apiClient<FeedbackSubmissionRead>(
+      `/workspaces/${workspaceId}/feedback/submissions/${submissionId}`,
+      {
+        method: "PATCH",
+        workspaceId,
+        body: payload,
+      }
+    );
+  },
+
+  /**
+   * Get all previous feedback submissions and metrics from the same customer.
+   */
+  async getCustomerHistory(
+    workspaceId: string,
+    submissionId: string
+  ): Promise<CustomerHistoryRead> {
+    return apiClient<CustomerHistoryRead>(
+      `/workspaces/${workspaceId}/feedback/submissions/${submissionId}/customer-history`,
+      {
+        method: "GET",
+        workspaceId,
       }
     );
   },

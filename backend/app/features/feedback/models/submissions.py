@@ -148,4 +148,3 @@ class FeedbackSubmission(Base):
             "customer_email",
         ),
     )
-

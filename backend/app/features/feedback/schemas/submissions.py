@@ -3,10 +3,27 @@ Pydantic schemas for Feedback Submissions.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+SubmissionStatus = Literal["new", "reviewed", "archived"]
+
+
+class FeedbackSubmissionUpdate(BaseModel):
+    """
+    Payload for updating submission status or triage classification.
+    """
+
+    status: SubmissionStatus | None = Field(
+        default=None,
+        description="Updated submission status (new, reviewed, archived)",
+    )
+    category_id: UUID | None = Field(
+        default=None,
+        description="Reclassified category/theme bucket ID",
+    )
 
 
 class FeedbackSubmissionCreate(BaseModel):
@@ -72,6 +89,7 @@ class FeedbackSubmissionResponse(BaseModel):
     category_pill_label: str | None
     category_id: UUID | None
     status: str
+    sentiment: str | None = None
     created_at: datetime
     outcome: FeedbackOutcomeResponse
 
@@ -100,3 +118,14 @@ class FeedbackSubmissionRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class CustomerHistoryRead(BaseModel):
+    """
+    Consolidated history of submissions and aggregate rating for a customer.
+    """
+
+    customer_email: str | None
+    customer_name: str | None
+    total_submissions: int
+    avg_rating: float | None = None
+    submissions: list[FeedbackSubmissionRead] = Field(default_factory=list)

@@ -58,3 +58,40 @@ class SubmissionRepository:
         count_result = await self.session.execute(count_stmt)
 
         return result.scalars().all(), count_result.scalar_one()
+
+    async def update(
+        self,
+        submission: FeedbackSubmission,
+        status: str | None = None,
+        category_id: UUID | None = None,
+    ) -> FeedbackSubmission:
+        """
+        Update an existing submission record.
+        """
+        if status is not None:
+            submission.status = status
+        if category_id is not None:
+            submission.category_id = category_id
+        await self.session.flush()
+        return submission
+
+    async def list_by_customer_email(
+        self,
+        workspace_id: UUID,
+        customer_email: str,
+        limit: int = 50,
+    ) -> Sequence[FeedbackSubmission]:
+        """
+        Fetch submissions from a specific customer email within a workspace.
+        """
+        stmt = (
+            select(FeedbackSubmission)
+            .where(
+                FeedbackSubmission.workspace_id == workspace_id,
+                FeedbackSubmission.customer_email.ilike(customer_email.strip()),
+            )
+            .order_by(FeedbackSubmission.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
