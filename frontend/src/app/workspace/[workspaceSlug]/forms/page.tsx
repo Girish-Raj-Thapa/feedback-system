@@ -123,7 +123,11 @@ export default function WorkspaceFormsPage() {
           (w) => w.workspace_slug.toLowerCase() === workspaceSlug.toLowerCase()
         );
         if (!membership) {
-          router.replace("/dashboard/workspaces");
+          if (wsList.length > 0) {
+            router.replace(`/workspace/${wsList[0].workspace_slug}`);
+          } else {
+            router.replace("/create-workspace");
+          }
           return;
         }
 

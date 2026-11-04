@@ -214,4 +214,15 @@ describe("FormStudioPage", () => {
 
     expect(screen.queryByText("Leave a Google Review")).not.toBeInTheDocument();
   });
+
+  it("switches to Outcomes tab and renders compliant outcome configuration", async () => {
+    render(<FormStudioPage />);
+    await screen.findByText("Customer Survey");
+
+    const outcomesTab = screen.getByRole("button", { name: "Outcomes" });
+    fireEvent.click(outcomesTab);
+
+    expect(screen.getByText(/FTC & Platform Policy Compliant/i)).toBeInTheDocument();
+    expect(screen.getByText(/Priority Support Button/i)).toBeInTheDocument();
+  });
 });

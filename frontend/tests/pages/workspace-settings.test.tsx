@@ -195,6 +195,17 @@ describe("WorkspaceSettingsPage", () => {
     });
   });
 
+  it("switches to My Profile & Security tab and displays personal profile controls", async () => {
+    (useSearchParams as any).mockReturnValue(new URLSearchParams({ tab: "account" }));
+
+    render(<WorkspaceSettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Personal Profile")).toBeInTheDocument();
+      expect(screen.getByText("Password & Security")).toBeInTheDocument();
+    });
+  });
+
   it("switches to Categories tab and displays feedback categories", async () => {
     (useSearchParams as any).mockReturnValue(new URLSearchParams({ tab: "categories" }));
     (feedbackRepository.listCategories as any).mockResolvedValue([

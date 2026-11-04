@@ -256,4 +256,54 @@ describe("PublicFormPage", () => {
       await screen.findByText("This form has just been deactivated.")
     ).toBeInTheDocument();
   });
+
+  it("renders priority support button and compliant public review link on low score when configured", async () => {
+    const compliantLowScoreForm: PublicFeedbackForm = {
+      ...mockPublicForm,
+      outcome_screen: {
+        ...mockPublicForm.outcome_screen,
+        low_score_support_text: "Talk to Founder",
+        low_score_support_url: "mailto:founder@acme.com",
+        public_review_url: "https://g2.com/products/example",
+        public_review_text: "Share on G2",
+      },
+    };
+    (feedbackRepository.getPublicForm as any).mockResolvedValue(compliantLowScoreForm);
+
+    const lowScoreOutcome: FeedbackSubmissionResponse = {
+      id: "sub-123",
+      workspace_slug: wsSlug,
+      form_slug: formSlug,
+      rating_scale_type: "5_star",
+      category_pill_label: "Bug Report",
+      category_id: "pill-1",
+      status: "new",
+      created_at: new Date().toISOString(),
+      rating: 1,
+      outcome: {
+        title: "We are sorry we missed the mark",
+        message: "Our engineering team has been alerted.",
+        is_high_score: false,
+        support_text: "Talk to Founder",
+        support_url: "mailto:founder@acme.com",
+        public_review_text: "Share on G2",
+        public_review_url: "https://g2.com/products/example",
+      },
+    };
+    (feedbackRepository.submitFeedback as any).mockResolvedValue(lowScoreOutcome);
+
+    render(<PublicFormPage />);
+    await screen.findByText("How was your experience today?");
+
+    // Rate 1 star
+    fireEvent.click(screen.getByLabelText("1 star"));
+    fireEvent.click(screen.getByRole("radio", { name: "Safari" }));
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "user@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send Feedback" }));
+
+    expect(await screen.findByText("Talk to Founder")).toBeInTheDocument();
+    expect(screen.getByText("Share on G2")).toBeInTheDocument();
+  });
 });

@@ -55,4 +55,36 @@ describe("handleAuthRouting middleware", () => {
     const res = handleAuthRouting(req);
     expect(res).toBeNull();
   });
+
+  it("allows user to access /login when cookie contains an expired JWT", () => {
+    const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const expiredPayload = Buffer.from(
+      JSON.stringify({ sub: "user-123", type: "access", exp: Math.floor(Date.now() / 1000) - 3600 })
+    ).toString("base64url");
+    const expiredJwt = `${header}.${expiredPayload}.signature`;
+
+    const req = createMockRequest("http://localhost:3000/login", {
+      ff_session: expiredJwt,
+    });
+    const res = handleAuthRouting(req);
+
+    // Should NOT redirect away to / (res should either be null or next with deleted cookie)
+    expect(res?.status).not.toBe(307);
+  });
+
+  it("allows user to access /login when cookie contains a foreign localhost token (e.g. cronlink)", () => {
+    const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
+    const foreignPayload = Buffer.from(
+      JSON.stringify({ sub: "23", iss: "cronlink-auth", aud: "cronlink-services", type: "access" })
+    ).toString("base64url");
+    const foreignJwt = `${header}.${foreignPayload}.signature`;
+
+    const req = createMockRequest("http://localhost:3000/login", {
+      access_token: foreignJwt,
+    });
+    const res = handleAuthRouting(req);
+
+    // Foreign token must not be recognized as an authenticated session for feedback-system
+    expect(res?.status).not.toBe(307);
+  });
 });

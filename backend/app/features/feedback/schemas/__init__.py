@@ -17,11 +17,21 @@ from app.features.feedback.schemas.forms import (
     FormUpdate,
     PublicFormRead,
 )
+from app.features.feedback.schemas.insights import (
+    CategoryInsightItem,
+    FeedbackInsightsResponse,
+    InsightSummary,
+    ScoreDriverItem,
+    SentimentBreakdown,
+)
 from app.features.feedback.schemas.submissions import (
+    CustomerHistoryRead,
     FeedbackOutcomeResponse,
     FeedbackSubmissionCreate,
     FeedbackSubmissionRead,
     FeedbackSubmissionResponse,
+    FeedbackSubmissionUpdate,
+    SampleDataResponse,
 )
 
 __all__ = [
@@ -40,4 +50,12 @@ __all__ = [
     "FeedbackSubmissionRead",
     "FeedbackSubmissionResponse",
     "FeedbackOutcomeResponse",
+    "CustomerHistoryRead",
+    "FeedbackSubmissionUpdate",
+    "SampleDataResponse",
+    "CategoryInsightItem",
+    "FeedbackInsightsResponse",
+    "InsightSummary",
+    "ScoreDriverItem",
+    "SentimentBreakdown",
 ]

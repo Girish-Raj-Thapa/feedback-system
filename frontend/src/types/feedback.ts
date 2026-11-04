@@ -66,10 +66,14 @@ export interface ThemeConfig {
 export interface OutcomeScreenConfig {
   low_score_title?: string;
   low_score_message?: string;
+  low_score_support_text?: string;
+  low_score_support_url?: string;
   high_score_title?: string;
   high_score_message?: string;
   high_score_cta_text?: string;
   high_score_cta_url?: string;
+  public_review_text?: string;
+  public_review_url?: string;
 }
 
 export interface WidgetSettingsConfig {
@@ -177,6 +181,10 @@ export interface FeedbackOutcomeResponse {
   is_high_score: boolean;
   cta_text?: string | null;
   cta_url?: string | null;
+  support_text?: string | null;
+  support_url?: string | null;
+  public_review_text?: string | null;
+  public_review_url?: string | null;
 }
 
 export interface FeedbackSubmissionResponse {
@@ -192,11 +200,17 @@ export interface FeedbackSubmissionResponse {
   outcome: FeedbackOutcomeResponse;
 }
 
-export type SubmissionStatus = "new" | "reviewed" | "archived";
+export type SubmissionStatus =
+  | "new"
+  | "in_progress"
+  | "resolved"
+  | "archived"
+  | "reviewed";
 
 export interface FeedbackSubmissionUpdate {
   status?: SubmissionStatus;
   category_id?: string | null;
+  sentiment?: "positive" | "neutral" | "negative" | null;
 }
 
 export interface FeedbackSubmissionRead {
@@ -231,5 +245,52 @@ export interface Page<T> {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface SentimentBreakdown {
+  positive: number;
+  neutral: number;
+  negative: number;
+}
+
+export interface ScoreDriverItem {
+  category_id: string | null;
+  category_name: string;
+  average_rating: number | null;
+  score_impact: number;
+  count: number;
+}
+
+export interface CategoryInsightItem {
+  category_id: string | null;
+  category_name: string;
+  color: string;
+  icon: string | null;
+  count: number;
+  percentage: number;
+  average_rating: number | null;
+  score_impact: number;
+  sentiment_counts: SentimentBreakdown;
+}
+
+export interface InsightSummary {
+  total_submissions: number;
+  rated_submissions_count: number;
+  average_rating: number | null;
+  sentiment_breakdown: SentimentBreakdown;
+  at_risk_count: number;
+  has_sample_data?: boolean;
+  top_negative_driver: ScoreDriverItem | null;
+  top_positive_driver: ScoreDriverItem | null;
+}
+
+export interface SampleDataResponse {
+  message: string;
+  count: number;
+}
+
+export interface FeedbackInsightsResponse {
+  summary: InsightSummary;
+  categories: CategoryInsightItem[];
 }
 

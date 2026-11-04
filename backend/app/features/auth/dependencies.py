@@ -38,8 +38,8 @@ async def get_token_payload(
     if credentials is not None:
         token = credentials.credentials
     else:
-        # Fall back to cookie (ff_session or access_token) for Next.js web application
-        token = request.cookies.get("ff_session") or request.cookies.get("access_token")
+        # Fall back to our dedicated cookie (ff_session) for Next.js web application
+        token = request.cookies.get("ff_session")
 
     if not token:
         raise AuthenticationError("Authorization credentials missing")

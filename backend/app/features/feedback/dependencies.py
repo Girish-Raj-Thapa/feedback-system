@@ -7,9 +7,12 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.core.dependencies import DBSession
+from app.features.feedback.repositories.categories import FeedbackCategoryRepository
+from app.features.feedback.repositories.submissions import SubmissionRepository
 from app.features.feedback.services import (
     FeedbackService,
     FormService,
+    InsightsService,
     SubmissionService,
 )
 
@@ -26,6 +29,15 @@ def get_submission_service(session: DBSession) -> SubmissionService:
     return SubmissionService(session)
 
 
+def get_insights_service(session: DBSession) -> InsightsService:
+    return InsightsService(
+        session=session,
+        submission_repo=SubmissionRepository(session),
+        category_repo=FeedbackCategoryRepository(session),
+    )
+
+
 FeedbackServiceDep = Annotated[FeedbackService, Depends(get_feedback_service)]
 FormServiceDep = Annotated[FormService, Depends(get_form_service)]
 SubmissionServiceDep = Annotated[SubmissionService, Depends(get_submission_service)]
+InsightsServiceDep = Annotated[InsightsService, Depends(get_insights_service)]

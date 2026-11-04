@@ -3,6 +3,7 @@ Repository layer for Feedback Submissions.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -38,11 +39,29 @@ class SubmissionRepository:
         workspace_id: UUID,
         limit: int = 50,
         offset: int = 0,
+        status: str | None = None,
+        category_id: UUID | None = None,
+        sentiment: str | None = None,
+        query: str | None = None,
     ) -> tuple[Sequence[FeedbackSubmission], int]:
         """
-        List submissions for a workspace with pagination.
+        List submissions for a workspace with pagination and optional filters.
         """
         conditions = [FeedbackSubmission.workspace_id == workspace_id]
+        if status:
+            conditions.append(FeedbackSubmission.status == status)
+        if category_id:
+            conditions.append(FeedbackSubmission.category_id == category_id)
+        if sentiment:
+            conditions.append(FeedbackSubmission.sentiment == sentiment)
+        if query:
+            q_lower = f"%{query.lower()}%"
+            conditions.append(
+                (func.lower(FeedbackSubmission.comment).like(q_lower))
+                | (func.lower(FeedbackSubmission.customer_email).like(q_lower))
+                | (func.lower(FeedbackSubmission.customer_name).like(q_lower))
+            )
+
         stmt = (
             select(FeedbackSubmission)
             .where(*conditions)
@@ -75,6 +94,29 @@ class SubmissionRepository:
         await self.session.flush()
         return submission
 
+    async def list_for_insights(
+        self,
+        workspace_id: UUID,
+        since: datetime | None = None,
+        form_id: UUID | None = None,
+    ) -> Sequence[FeedbackSubmission]:
+        """
+        Retrieve all submissions for a workspace within an optional timeframe and form filter for analytics calculation.
+        """
+        conditions = [FeedbackSubmission.workspace_id == workspace_id]
+        if since is not None:
+            conditions.append(FeedbackSubmission.created_at >= since)
+        if form_id is not None:
+            conditions.append(FeedbackSubmission.form_id == form_id)
+
+        stmt = (
+            select(FeedbackSubmission)
+            .where(*conditions)
+            .order_by(FeedbackSubmission.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
     async def list_by_customer_email(
         self,
         workspace_id: UUID,
@@ -95,3 +137,40 @@ class SubmissionRepository:
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def list_sample_submissions(
+        self,
+        workspace_id: UUID,
+    ) -> Sequence[FeedbackSubmission]:
+        """
+        Fetch all sample/demo feedback submissions for a workspace.
+        """
+        stmt = (
+            select(FeedbackSubmission)
+            .where(
+                FeedbackSubmission.workspace_id == workspace_id,
+            )
+            .order_by(FeedbackSubmission.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        submissions = result.scalars().all()
+        return [
+            s
+            for s in submissions
+            if isinstance(s.customer_metadata, dict)
+            and s.customer_metadata.get("is_sample") is True
+        ]
+
+    async def delete_sample_submissions(
+        self,
+        workspace_id: UUID,
+    ) -> int:
+        """
+        Delete all sample/demo feedback submissions for a workspace.
+        """
+        samples = await self.list_sample_submissions(workspace_id)
+        count = len(samples)
+        for s in samples:
+            await self.session.delete(s)
+        await self.session.flush()
+        return count

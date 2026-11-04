@@ -1,49 +1,66 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-
-import { authRepository } from "@/repositories/auth.repository";
-import { useAuthStore } from "@/store/auth.store";
-import { AmbientBackground } from "@/components/auth/ambient-background";
+import { HeroProductMockup } from "@/components/landing/hero-product-mockup";
+import { InteractiveWidgetDemo } from "@/components/landing/interactive-widget-demo";
+import { LandingCta } from "@/components/landing/landing-cta";
+import { LandingFeaturesBento } from "@/components/landing/landing-features-bento";
+import { LandingFooter } from "@/components/landing/landing-footer";
+import { LandingHeader } from "@/components/landing/landing-header";
+import { LandingHero } from "@/components/landing/landing-hero";
+import { LandingHowItWorks } from "@/components/landing/landing-how-it-works";
+import { LandingStats } from "@/components/landing/landing-stats";
 
 export default function RootHomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    async function initSession() {
-      try {
-        const user = await authRepository.getMe();
-        useAuthStore.getState().setUser(user);
-
-        if (user.workspaces && user.workspaces.length > 0) {
-          router.replace("/dashboard");
-          return;
-        }
-
-        // Authenticated user with no workspaces yet -> onboarding
-        router.replace("/create-workspace");
-      } catch {
-        // Unauthenticated session -> login
-        router.replace("/login");
-      }
-    }
-
-    initSession();
-  }, [router]);
-
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[#F7F9FC] dark:bg-[#0C0C0E]">
-      <AmbientBackground />
-      <div className="relative z-10 flex flex-col items-center gap-3">
-        <div className="flex size-12 items-center justify-center rounded-full bg-[#0071E3]/10 text-[#0071E3] dark:bg-[#0071E3]/20 dark:text-[#2997FF]">
-          <Loader2 className="size-6 animate-spin" aria-hidden="true" />
+    <div className="min-h-screen bg-canvas text-text selection:bg-[#0071E3]/20 selection:text-[#0071E3] transition-colors duration-200">
+      {/* Sticky Glassmorphic Header */}
+      <LandingHeader />
+
+      <main id="main-content">
+        {/* Hero Section */}
+        <div className="relative">
+          <LandingHero />
+          {/* Hero Product Browser Frame Mockup */}
+          <div className="px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-10 mb-16">
+            <HeroProductMockup />
+          </div>
         </div>
-        <p className="text-sm font-medium text-[#64748B] dark:text-[#A1A1A6]">
-          Loading your workspace…
-        </p>
-      </div>
+
+        {/* Stats & Trust Bar */}
+        <LandingStats />
+
+        {/* Interactive Live Playground Section */}
+        <section id="demo" className="py-24 sm:py-32 scroll-mt-16 relative">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center mb-12">
+            <span className="text-[12px] font-bold uppercase tracking-wider text-action">
+              Live Widget Playground
+            </span>
+            <h2 className="mt-2 text-[32px] sm:text-[44px] font-bold tracking-tight text-text leading-[1.15]">
+              Try it right now. See how your customers experience it.
+            </h2>
+            <p className="mt-3 text-[15px] text-text-muted max-w-xl mx-auto">
+              Switch rating scales, select category tags, and submit test feedback to
+              experience the tailored outcome screen.
+            </p>
+          </div>
+
+          <div className="px-4 sm:px-6 lg:px-8">
+            <InteractiveWidgetDemo />
+          </div>
+        </section>
+
+        {/* Features Bento Grid */}
+        <LandingFeaturesBento />
+
+        {/* How It Works (3 Steps) */}
+        <LandingHowItWorks />
+
+        {/* Conversion CTA Banner */}
+        <LandingCta />
+      </main>
+
+      {/* Modern Footer */}
+      <LandingFooter />
     </div>
   );
 }

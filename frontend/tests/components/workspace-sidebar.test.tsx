@@ -67,5 +67,17 @@ describe("WorkspaceSidebar", () => {
     fireEvent.click(screen.getByText("Dashboard"));
     expect(setIsSidebarOpen).toHaveBeenCalledWith(false);
   });
+
+  it("opens workspace switcher popover and displays available workspaces and create action", () => {
+    render(<WorkspaceSidebar {...defaultProps} />);
+    
+    const switcherButton = screen.getByRole("button", { name: /switch workspace/i });
+    expect(switcherButton).toBeInTheDocument();
+
+    // Click to open switcher
+    fireEvent.click(switcherButton);
+    expect(screen.getByText("Workspaces")).toBeInTheDocument();
+    expect(screen.getByText("Create new workspace")).toBeInTheDocument();
+  });
 });
 

@@ -55,9 +55,14 @@ export default function LoginPage() {
         password: data.password,
       });
 
-      await useAuthStore.getState().fetchMe();
+      const me = await useAuthStore.getState().fetchMe();
       toast.success("Welcome back!");
-      router.push(redirectPath);
+      const targetPath =
+        searchParams.get("redirect") ||
+        (me?.workspaces && me.workspaces.length > 0
+          ? `/workspace/${me.workspaces[0].workspace_slug}`
+          : "/create-workspace");
+      router.push(targetPath);
       router.refresh();
     } catch (err: unknown) {
       const message = (err as Error).message;

@@ -7,6 +7,7 @@ from fastapi import APIRouter
 
 from app.features.feedback.routers.categories import router as categories_router
 from app.features.feedback.routers.forms import router as forms_router
+from app.features.feedback.routers.insights import router as insights_router
 from app.features.feedback.routers.public_forms import (
     router as public_forms_router,
 )
@@ -21,12 +22,14 @@ feedback_router = APIRouter(
 
 feedback_router.include_router(categories_router)
 feedback_router.include_router(forms_router)
+feedback_router.include_router(insights_router)
 feedback_router.include_router(submissions_router)
 
 __all__ = [
     "categories_router",
     "feedback_router",
     "forms_router",
+    "insights_router",
     "public_forms_router",
     "submissions_router",
 ]

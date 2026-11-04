@@ -9,12 +9,14 @@ import type {
   FeedbackForm,
   FeedbackFormCreate,
   FeedbackFormUpdate,
+  FeedbackInsightsResponse,
   FeedbackSubmissionCreate,
   FeedbackSubmissionRead,
   FeedbackSubmissionResponse,
   FeedbackSubmissionUpdate,
   Page,
   PublicFeedbackForm,
+  SampleDataResponse,
 } from "@/types/feedback";
 
 export const feedbackRepository = {
@@ -260,15 +262,26 @@ export const feedbackRepository = {
   },
 
   /**
-   * List feedback submissions for a workspace with pagination.
+   * List feedback submissions for a workspace with pagination and filters.
    */
   async listSubmissions(
     workspaceId: string,
-    params?: { limit?: number; offset?: number }
+    params?: {
+      limit?: number;
+      offset?: number;
+      status?: string;
+      category_id?: string;
+      sentiment?: string;
+      query?: string;
+    }
   ): Promise<Page<FeedbackSubmissionRead>> {
     const query = new URLSearchParams();
     if (params?.limit !== undefined) query.set("limit", String(params.limit));
     if (params?.offset !== undefined) query.set("offset", String(params.offset));
+    if (params?.status) query.set("status", params.status);
+    if (params?.category_id) query.set("category_id", params.category_id);
+    if (params?.sentiment) query.set("sentiment", params.sentiment);
+    if (params?.query) query.set("query", params.query);
     const qs = query.toString() ? `?${query.toString()}` : "";
 
     return apiClient<Page<FeedbackSubmissionRead>>(
@@ -325,6 +338,52 @@ export const feedbackRepository = {
       `/workspaces/${workspaceId}/feedback/submissions/${submissionId}/customer-history`,
       {
         method: "GET",
+        workspaceId,
+      }
+    );
+  },
+  /**
+   * Get aggregated insights, score drivers, and category impacts for a workspace.
+   */
+  async getInsights(
+    workspaceId: string,
+    params?: { days?: number | string; form_id?: string }
+  ): Promise<FeedbackInsightsResponse> {
+    const query = new URLSearchParams();
+    if (params?.days !== undefined) query.set("days", String(params.days));
+    if (params?.form_id) query.set("form_id", params.form_id);
+    const qs = query.toString() ? `?${query.toString()}` : "";
+
+    return apiClient<FeedbackInsightsResponse>(
+      `/workspaces/${workspaceId}/feedback/insights${qs}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Load 6 sample customer feedback responses to preview score drivers and triage workflows.
+   */
+  async loadSampleData(workspaceId: string): Promise<SampleDataResponse> {
+    return apiClient<SampleDataResponse>(
+      `/workspaces/${workspaceId}/feedback/submissions/sample-data`,
+      {
+        method: "POST",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Remove all sample/demo feedback responses from the workspace.
+   */
+  async clearSampleData(workspaceId: string): Promise<SampleDataResponse> {
+    return apiClient<SampleDataResponse>(
+      `/workspaces/${workspaceId}/feedback/submissions/sample-data`,
+      {
+        method: "DELETE",
         workspaceId,
       }
     );

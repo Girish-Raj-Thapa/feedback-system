@@ -257,6 +257,7 @@ export default function PublicFormPage() {
               </p>
             </div>
 
+            {/* High-Score Promoter Review Action */}
             {(submissionOutcome?.is_high_score ?? !isLowScore) &&
               (submissionOutcome?.cta_url ||
                 form.outcome_screen?.high_score_cta_url) && (
@@ -283,6 +284,60 @@ export default function PublicFormPage() {
                   </a>
                 </div>
               )}
+
+            {/* Low-Score Detractor Support Action & Compliant Review Access */}
+            {(submissionOutcome?.is_high_score === false || isLowScore) && (
+              <div className="pt-3 space-y-3">
+                {(submissionOutcome?.support_url ||
+                  form.outcome_screen?.low_score_support_url) && (
+                  <div>
+                    <a
+                      href={
+                        submissionOutcome?.support_url ||
+                        form.outcome_screen?.low_score_support_url
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-[10px] px-5 py-2.5 text-[14px] font-medium text-white shadow-sm transition-opacity hover:opacity-90"
+                      style={{
+                        backgroundColor: primaryColor,
+                        borderRadius: `${borderRadius}px`,
+                      }}
+                    >
+                      <span>
+                        {submissionOutcome?.support_text ||
+                          form.outcome_screen?.low_score_support_text ||
+                          "Contact Support / Get Help"}
+                      </span>
+                      <ExternalLink className="size-4" />
+                    </a>
+                  </div>
+                )}
+
+                {/* FTC Compliance: Equal Access to Public Review Links */}
+                {(submissionOutcome?.public_review_url ||
+                  form.outcome_screen?.public_review_url) && (
+                  <div className="pt-1">
+                    <p className="text-[12px] text-[#556070] dark:text-[#8E8E93]">
+                      You are also welcome to leave a public review:{" "}
+                      <a
+                        href={
+                          submissionOutcome?.public_review_url ||
+                          form.outcome_screen?.public_review_url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium underline hover:text-[#161C26] dark:hover:text-white"
+                      >
+                        {submissionOutcome?.public_review_text ||
+                          form.outcome_screen?.public_review_text ||
+                          "Share public review"}
+                      </a>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="pt-6 border-t border-[#E1E5EB] dark:border-white/10">
               <button

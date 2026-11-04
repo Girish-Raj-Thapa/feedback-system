@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import RootHomePage from "@/app/page";
 import DashboardPage from "@/app/dashboard/page";
 import WorkspaceDashboardSubPage from "@/app/workspace/[workspaceSlug]/dashboard/page";
+import { ThemeProvider } from "@/components/theme-provider";
 import { authRepository } from "@/repositories/auth.repository";
 import { useRouter } from "next/navigation";
 
@@ -21,42 +22,51 @@ describe("RootHomePage and Dashboard Pages", () => {
     });
   });
 
-  describe("RootHomePage redirection logic", () => {
-    it("redirects to /login if unauthenticated", async () => {
+  describe("RootHomePage Landing Page", () => {
+    it("renders landing page with headline and navigation for guests", async () => {
       (authRepository.getMe as any).mockRejectedValue(new Error("Unauthorized"));
 
-      render(<RootHomePage />);
+      render(
+        <ThemeProvider>
+          <RootHomePage />
+        </ThemeProvider>
+      );
 
+      expect(
+        screen.getByRole("heading", {
+          name: /turn raw customer feedback into high-impact product decisions\./i,
+        })
+      ).toBeInTheDocument();
+      expect(screen.getAllByRole("link", { name: /features/i })[0]).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /live demo/i })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /start free trial/i })).toBeInTheDocument();
+
+      // For unauthenticated visitors, header shows Sign In and Get Started Free
       await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith("/login");
+        expect(
+          screen.getAllByRole("link", { name: /sign in/i })[0]
+        ).toBeInTheDocument();
+        expect(
+          screen.getAllByRole("link", { name: /get started/i })[0]
+        ).toBeInTheDocument();
       });
     });
 
-    it("redirects to /create-workspace if authenticated but has no workspaces", async () => {
-      (authRepository.getMe as any).mockResolvedValue({
-        id: "u-1",
-        email: "user@example.com",
-        workspaces: [],
-      });
-
-      render(<RootHomePage />);
-
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith("/create-workspace");
-      });
-    });
-
-    it("redirects to /dashboard if authenticated and has workspaces", async () => {
+    it("renders Dashboard link when user is authenticated with workspaces", async () => {
       (authRepository.getMe as any).mockResolvedValue({
         id: "u-1",
         email: "user@example.com",
         workspaces: [{ workspace_id: "ws-1", workspace_slug: "acme" }],
       });
 
-      render(<RootHomePage />);
+      render(
+        <ThemeProvider>
+          <RootHomePage />
+        </ThemeProvider>
+      );
 
       await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith("/dashboard");
+        expect(screen.getByRole("link", { name: /dashboard/i })).toBeInTheDocument();
       });
     });
   });

@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 
 import { authRepository } from "@/repositories/auth.repository";
+import { AccountSettingsTab } from "@/components/workspace/account-settings-tab";
 import { WorkspaceCategoriesTab } from "@/components/workspace/workspace-categories-tab";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspaceStore } from "@/store/workspace.store";
@@ -143,7 +144,11 @@ export default function WorkspaceSettingsPage() {
           (w) => w.workspace_slug.toLowerCase() === workspaceSlug.toLowerCase()
         );
         if (!membership) {
-          router.replace("/dashboard/workspaces");
+          if (wsList.length > 0) {
+            router.replace(`/workspace/${wsList[0].workspace_slug}`);
+          } else {
+            router.replace("/create-workspace");
+          }
           return;
         }
 
@@ -192,7 +197,9 @@ export default function WorkspaceSettingsPage() {
     };
   }, [workspaceSlug, workspaces, router, setWorkspaces, inviteRoleId]);
 
-  const setTab = (tab: "general" | "members" | "invitations" | "categories") => {
+  const setTab = (
+    tab: "general" | "members" | "invitations" | "categories" | "account"
+  ) => {
     router.replace(`/workspace/${workspaceSlug}/settings?tab=${tab}`, {
       scroll: false,
     });
@@ -265,7 +272,11 @@ export default function WorkspaceSettingsPage() {
       );
       setWorkspaces(remaining);
 
-      router.replace(remaining.length > 0 ? "/dashboard/workspaces" : "/create-workspace");
+      router.replace(
+        remaining.length > 0
+          ? `/workspace/${remaining[0].workspace_slug}`
+          : "/create-workspace"
+      );
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to delete workspace";
@@ -539,6 +550,22 @@ export default function WorkspaceSettingsPage() {
           >
             <span>Categories</span>
             {currentTab === "categories" && (
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
+            )}
+          </button>
+
+          {/* Account & Security Tab */}
+          <button
+            type="button"
+            onClick={() => setTab("account")}
+            className={`relative flex items-center gap-2 pb-3 text-[14px] transition-colors cursor-pointer ${
+              currentTab === "account"
+                ? "font-semibold text-[#161C26] dark:text-white"
+                : "font-medium text-[#556070] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:text-white"
+            }`}
+          >
+            <span>My Profile & Security</span>
+            {currentTab === "account" && (
               <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
             )}
           </button>
@@ -1033,6 +1060,9 @@ export default function WorkspaceSettingsPage() {
           isOwner={isOwner}
         />
       )}
+
+      {/* ================= TAB 5: MY PROFILE & SECURITY ================= */}
+      {currentTab === "account" && <AccountSettingsTab />}
 
       {/* ================= MODAL 1: INVITE TEAMMATE ================= */}
       {isInviteModalOpen && (

@@ -94,8 +94,10 @@ export default function WorkspaceLayout({
             // Non-blocking if details fetch fails
           }
         } else if (wsList.length > 0) {
-          // If slug doesn't match any of user's workspaces, redirect to workspaces hub
-          router.replace("/dashboard/workspaces");
+          router.replace(`/workspace/${wsList[0].workspace_slug}`);
+          return;
+        } else {
+          router.replace("/create-workspace");
           return;
         }
 
@@ -196,19 +198,16 @@ export default function WorkspaceLayout({
 
           {/* Breadcrumb Hierarchy */}
           <nav className="hidden items-center gap-2 text-[14px] text-[#556070] sm:flex dark:text-[#8E8E93]">
-            <Link
-              href="/dashboard/workspaces"
-              className="transition-colors hover:text-[#161C26] dark:hover:text-white"
-            >
-              Workspaces
-            </Link>
-            <span>/</span>
-            <span className="font-medium text-[#161C26] dark:text-white">
+            <span className="font-semibold text-[#161C26] dark:text-white">
               {activeWs?.workspace_name || "Workspace"}
             </span>
             <span>/</span>
-            <span className="text-[#161C26] dark:text-white">
-              {isSettingsActive ? "Settings" : "Dashboard"}
+            <span className="text-[#556070] dark:text-[#8E8E93]">
+              {isSettingsActive
+                ? "Settings"
+                : pathname.includes("/forms")
+                ? "Forms & Widgets"
+                : "Dashboard"}
             </span>
           </nav>
 
@@ -244,7 +243,7 @@ export default function WorkspaceLayout({
                 </div>
                 <div className="my-1 h-[1px] bg-[#E1E5EB] dark:bg-white/10" />
                 <Link
-                  href="/dashboard/account"
+                  href={`/workspace/${workspaceSlug}/settings?tab=account`}
                   onClick={() => setIsAccountDropdownOpen(false)}
                   className="flex items-center gap-2.5 px-3.5 py-2 text-[14px] font-normal text-[#161C26] transition-colors hover:bg-[#F3F5F9] dark:text-white dark:hover:bg-white/5"
                 >

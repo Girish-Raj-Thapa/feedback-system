@@ -19,6 +19,7 @@ import {
   Plus,
   RefreshCw,
   Share2,
+  ShieldCheck,
   Smartphone,
   Smile,
   Sparkles,
@@ -102,6 +103,8 @@ export default function FormStudioPage() {
   // Outcome screen state
   const [lowTitle, setLowTitle] = useState("");
   const [lowMessage, setLowMessage] = useState("");
+  const [lowSupportText, setLowSupportText] = useState("Contact Support / Get Help");
+  const [lowSupportUrl, setLowSupportUrl] = useState("");
   const [highTitle, setHighTitle] = useState("");
   const [highMessage, setHighMessage] = useState("");
   const [highCtaText, setHighCtaText] = useState("");
@@ -145,7 +148,11 @@ export default function FormStudioPage() {
           (w) => w.workspace_slug.toLowerCase() === workspaceSlug.toLowerCase()
         );
         if (!membership) {
-          router.replace("/dashboard/workspaces");
+          if (wsList.length > 0) {
+            router.replace(`/workspace/${wsList[0].workspace_slug}`);
+          } else {
+            router.replace("/create-workspace");
+          }
           return;
         }
 
@@ -185,6 +192,10 @@ export default function FormStudioPage() {
           outcome.low_score_message ||
             "We're sorry your experience wasn't ideal. Our team reviews all issues directly."
         );
+        setLowSupportText(
+          outcome.low_score_support_text || "Contact Support / Get Help"
+        );
+        setLowSupportUrl(outcome.low_score_support_url || "");
         setHighTitle(outcome.high_score_title || "Thank you so much!");
         setHighMessage(
           outcome.high_score_message ||
@@ -240,10 +251,13 @@ export default function FormStudioPage() {
         outcome_screen: {
           low_score_title: lowTitle,
           low_score_message: lowMessage,
+          low_score_support_text: lowSupportText.trim() || undefined,
+          low_score_support_url: lowSupportUrl.trim() || undefined,
           high_score_title: highTitle,
           high_score_message: highMessage,
           high_score_cta_text: highCtaText.trim() || undefined,
           high_score_cta_url: highCtaUrl.trim() || undefined,
+          public_review_url: highCtaUrl.trim() || undefined,
         },
         widget_settings: {
           position: widgetPosition,
@@ -838,6 +852,14 @@ export default function FormStudioPage() {
             {/* ================= TAB 5: OUTCOMES ================= */}
             {activeTab === "outcomes" && (
               <div className="space-y-6">
+                {/* FTC & Review Policy Compliance Banner */}
+                <div className="rounded-[10px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 p-3 flex items-start gap-2.5">
+                  <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="text-[12px] text-emerald-800 dark:text-emerald-300">
+                    <span className="font-semibold">FTC & Platform Policy Compliant:</span> Happy customers are nudged to review platforms, while unhappy customers are prioritized with direct support resolution without suppressing their right to leave a public review.
+                  </div>
+                </div>
+
                 {/* High Score Screen */}
                 <div className="rounded-[12px] border border-[#E1E5EB] p-4 space-y-3 dark:border-white/10">
                   <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
@@ -905,6 +927,27 @@ export default function FormStudioPage() {
                     placeholder="Message"
                     className="w-full rounded-[8px] border border-[#E1E5EB] p-2 text-[13px] dark:border-white/15 dark:bg-[#2C2C2E]"
                   />
+                  <div>
+                    <label className="text-[11px] text-[#556070] dark:text-[#8E8E93]">
+                      Priority Support Button (Optional Direct Resolution Link / Email):
+                    </label>
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={lowSupportText}
+                        onChange={(e) => setLowSupportText(e.target.value)}
+                        placeholder="Button Text (e.g. Contact Support)"
+                        className="h-8 rounded-[8px] border border-[#E1E5EB] px-2 text-[12px] dark:border-white/15 dark:bg-[#2C2C2E]"
+                      />
+                      <input
+                        type="text"
+                        value={lowSupportUrl}
+                        onChange={(e) => setLowSupportUrl(e.target.value)}
+                        placeholder="mailto:support@company.com or https://..."
+                        className="h-8 rounded-[8px] border border-[#E1E5EB] px-2 text-[12px] dark:border-white/15 dark:bg-[#2C2C2E]"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1096,6 +1139,29 @@ export default function FormStudioPage() {
                           <span>{highCtaText}</span>
                           <ExternalLink className="size-3.5" />
                         </button>
+                      </div>
+                    )}
+
+                    {isLowScorePreview && (
+                      <div className="pt-2 space-y-2">
+                        {lowSupportText && (
+                          <div>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2 text-[13px] font-medium text-white shadow-sm transition-opacity hover:opacity-90"
+                              style={{ backgroundColor: primaryColor }}
+                            >
+                              <span>{lowSupportText}</span>
+                              <ExternalLink className="size-3.5" />
+                            </button>
+                          </div>
+                        )}
+                        {highCtaText && (
+                          <p className="text-[11px] text-[#556070] dark:text-[#8E8E93]">
+                            You can also leave a public review:{" "}
+                            <span className="underline font-medium">{highCtaText}</span>
+                          </p>
+                        )}
                       </div>
                     )}
 

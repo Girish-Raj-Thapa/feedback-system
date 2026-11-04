@@ -7,6 +7,7 @@ from app.features.feedback.services.categories import (
     slugify,
 )
 from app.features.feedback.services.forms import FormService
+from app.features.feedback.services.insights import InsightsService
 from app.features.feedback.services.submissions import SubmissionService
 
 # Alias for feature-level service orchestration
@@ -16,6 +17,7 @@ __all__ = [
     "FeedbackCategoryService",
     "FeedbackService",
     "FormService",
+    "InsightsService",
     "SubmissionService",
     "slugify",
 ]

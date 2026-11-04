@@ -8,7 +8,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-SubmissionStatus = Literal["new", "reviewed", "archived"]
+SubmissionStatus = Literal[
+    "new", "in_progress", "resolved", "archived", "reviewed"
+]
 
 
 class FeedbackSubmissionUpdate(BaseModel):
@@ -18,11 +20,15 @@ class FeedbackSubmissionUpdate(BaseModel):
 
     status: SubmissionStatus | None = Field(
         default=None,
-        description="Updated submission status (new, reviewed, archived)",
+        description="Updated submission status (new, in_progress, resolved, archived, reviewed)",
     )
     category_id: UUID | None = Field(
         default=None,
         description="Reclassified category/theme bucket ID",
+    )
+    sentiment: Literal["positive", "neutral", "negative"] | None = Field(
+        default=None,
+        description="Manual override for customer sentiment",
     )
 
 
@@ -67,6 +73,8 @@ class FeedbackSubmissionCreate(BaseModel):
 class FeedbackOutcomeResponse(BaseModel):
     """
     Tailored outcome configuration returned to the user upon submission.
+    Complies with FTC 16 CFR § 465 & platform policies by providing
+    transparent review access alongside priority support resolution.
     """
 
     title: str
@@ -74,6 +82,10 @@ class FeedbackOutcomeResponse(BaseModel):
     is_high_score: bool
     cta_text: str | None = None
     cta_url: str | None = None
+    support_text: str | None = None
+    support_url: str | None = None
+    public_review_text: str | None = None
+    public_review_url: str | None = None
 
 
 class FeedbackSubmissionResponse(BaseModel):
@@ -129,3 +141,12 @@ class CustomerHistoryRead(BaseModel):
     total_submissions: int
     avg_rating: float | None = None
     submissions: list[FeedbackSubmissionRead] = Field(default_factory=list)
+
+
+class SampleDataResponse(BaseModel):
+    """
+    Response model for loading or clearing sample feedback data.
+    """
+
+    message: str
+    count: int = 0

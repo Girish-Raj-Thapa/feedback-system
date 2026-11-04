@@ -110,6 +110,50 @@ async def test_submit_feedback_low_score_outcome(
 
 
 @pytest.mark.asyncio
+async def test_submit_feedback_compliant_outcome_support_and_review(
+    client: AsyncClient,
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+) -> None:
+    """
+    Submitting low score returns support assistance while maintaining FTC-compliant review link.
+    """
+    create_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/forms",
+        json={
+            "name": "Compliant Survey",
+            "slug": "compliant-survey",
+            "outcome_screen": {
+                "low_score_title": "We are so sorry",
+                "low_score_message": "Our founders are here to help.",
+                "low_score_support_text": "Talk to Founder",
+                "low_score_support_url": "mailto:founder@example.com",
+                "public_review_url": "https://g2.com/products/example",
+                "public_review_text": "Leave a G2 Review",
+            },
+        },
+    )
+    assert create_res.status_code == 201
+
+    submit_payload = {
+        "rating": 1,
+        "comment": "System crashed on checkout.",
+    }
+    res = await client.post(
+        f"/api/v1/public/forms/{test_workspace.slug}/compliant-survey/submit",
+        json=submit_payload,
+    )
+    assert res.status_code == 201
+    data = res.json()
+    outcome = data["outcome"]
+    assert outcome["is_high_score"] is False
+    assert outcome["support_text"] == "Talk to Founder"
+    assert outcome["support_url"] == "mailto:founder@example.com"
+    assert outcome["public_review_url"] == "https://g2.com/products/example"
+    assert outcome["public_review_text"] == "Leave a G2 Review"
+
+
+@pytest.mark.asyncio
 async def test_submit_feedback_missing_required_rating(
     client: AsyncClient,
     auth_client: AsyncClient,

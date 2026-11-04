@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.auth.models import Workspace
+from app.features.feedback.models.forms import Form
 from app.features.feedback.models.submissions import FeedbackSubmission
 from app.features.feedback.repositories.categories import FeedbackCategoryRepository
 from app.features.feedback.repositories.forms import FormRepository
@@ -159,6 +160,13 @@ class SubmissionService:
                 is_high_score = payload.rating >= 7
 
         outcome_config = form.outcome_screen or {}
+        public_review_url = outcome_config.get("public_review_url") or outcome_config.get("high_score_cta_url")
+        public_review_text = (
+            outcome_config.get("public_review_text")
+            or outcome_config.get("high_score_cta_text")
+            or "Share public review"
+        )
+
         if is_high_score:
             outcome_title = (
                 outcome_config.get("high_score_title") or "Thank you for your feedback!"
@@ -167,8 +175,10 @@ class SubmissionService:
                 outcome_config.get("high_score_message")
                 or "We truly appreciate you taking the time to share your experience."
             )
-            cta_text = outcome_config.get("high_score_cta_text")
-            cta_url = outcome_config.get("high_score_cta_url")
+            cta_text = outcome_config.get("high_score_cta_text") or "Share Your Review"
+            cta_url = outcome_config.get("high_score_cta_url") or public_review_url
+            support_text = None
+            support_url = None
         else:
             outcome_title = (
                 outcome_config.get("low_score_title")
@@ -176,10 +186,12 @@ class SubmissionService:
             )
             outcome_message = (
                 outcome_config.get("low_score_message")
-                or "Our team takes this seriously and will look into what went wrong."
+                or "Our team takes this seriously and is here to make things right."
             )
             cta_text = None
             cta_url = None
+            support_text = outcome_config.get("low_score_support_text") or "Contact Support / Get Help"
+            support_url = outcome_config.get("low_score_support_url")
 
         outcome = FeedbackOutcomeResponse(
             title=outcome_title,
@@ -187,6 +199,10 @@ class SubmissionService:
             is_high_score=is_high_score,
             cta_text=cta_text,
             cta_url=cta_url,
+            support_text=support_text if support_url else None,
+            support_url=support_url,
+            public_review_text=public_review_text if public_review_url else None,
+            public_review_url=public_review_url,
         )
 
         # 5b. Rule-based / Deterministic Sentiment Tagging ($0 LLM-free)
@@ -292,9 +308,13 @@ class SubmissionService:
         workspace_id: UUID,
         limit: int = 20,
         offset: int = 0,
+        status_filter: str | None = None,
+        category_id: UUID | None = None,
+        sentiment: str | None = None,
+        query: str | None = None,
     ) -> tuple[Sequence[FeedbackSubmission], int]:
         """
-        List feedback submissions for a workspace with pagination.
+        List feedback submissions for a workspace with pagination and optional filters.
         """
         ws = await self.session.get(Workspace, workspace_id)
         if not ws or ws.deleted_at is not None:
@@ -306,6 +326,10 @@ class SubmissionService:
             workspace_id=workspace_id,
             limit=limit,
             offset=offset,
+            status=status_filter,
+            category_id=category_id,
+            sentiment=sentiment,
+            query=query,
         )
 
     async def get_submission(
@@ -331,13 +355,20 @@ class SubmissionService:
         payload: FeedbackSubmissionUpdate,
     ) -> FeedbackSubmission:
         """
-        Update submission status (e.g. reviewed, archived) with tenant isolation.
+        Update submission status (e.g. in_progress, resolved, archived) or category/sentiment with tenant isolation.
         """
         submission = await self.get_submission(workspace_id, submission_id)
         if payload.status is not None:
             submission.status = payload.status
         if payload.category_id is not None:
             submission.category_id = payload.category_id
+            cat = await self.category_repo.get_by_id(
+                workspace_id, payload.category_id
+            )
+            if cat:
+                submission.category_pill_label = cat.name
+        if payload.sentiment is not None:
+            submission.sentiment = payload.sentiment
 
         await self.session.commit()
         await self.session.refresh(submission)
@@ -395,3 +426,173 @@ class SubmissionService:
                 for s in customer_submissions
             ],
         )
+
+    async def load_sample_data(self, workspace_id: UUID) -> int:
+        """
+        Seeds 6 realistic customer feedback responses across diverse categories and sentiments.
+        Enables instant exploration of the Decision Insights & Score Drivers engine.
+        """
+        ws = await self.session.get(Workspace, workspace_id)
+        if not ws or ws.deleted_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found",
+            )
+
+        # 1. Ensure an active form exists
+        forms = await self.form_repo.list_active(workspace_id)
+        if not forms:
+            default_form = Form(
+                workspace_id=workspace_id,
+                name="Product Feedback",
+                title="Product Feedback",
+                slug="product-feedback",
+                subtitle="Share your thoughts, suggestions, and feedback with our team.",
+                rating_scale_type="5_star",
+                rating_required=True,
+                is_active=True,
+            )
+            self.session.add(default_form)
+            await self.session.flush()
+            target_form_id = default_form.id
+        else:
+            target_form_id = forms[0].id
+
+        # 2. Check if sample submissions are already present
+        existing = await self.submission_repo.list_sample_submissions(workspace_id)
+        if len(existing) >= 6:
+            return len(existing)
+
+        # 3. Fetch workspace categories to link realistically
+        categories = await self.category_repo.list_active(workspace_id)
+
+        def match_cat(keywords: list[str]):
+            for cat in categories:
+                cat_slug = cat.slug.lower()
+                cat_name = cat.name.lower()
+                for kw in keywords:
+                    if kw in cat_slug or kw in cat_name:
+                        return cat
+            return None
+
+        cat_ux = match_cat(["ease", "ux", "design", "product"])
+        cat_pricing = match_cat(["pric", "bill", "cost"])
+        cat_support = match_cat(["support", "help", "service"])
+        cat_bug = match_cat(["bug", "qual", "issue", "error"])
+        cat_feat = match_cat(["feat", "request", "integration"])
+        cat_speed = match_cat(["speed", "perf", "fast"])
+
+        sample_definitions = [
+            {
+                "rating": 5,
+                "rating_scale_type": "5_star",
+                "comment": "Super fast setup and intuitive UI! The score drivers dashboard made prioritizing our sprint backlog 10x easier.",
+                "sentiment": "positive",
+                "status": "new",
+                "customer_email": "sarah.jenkins@acme.com",
+                "customer_name": "Sarah Jenkins",
+                "category": cat_ux,
+                "role": "VP Product",
+            },
+            {
+                "rating": 2,
+                "rating_scale_type": "5_star",
+                "comment": "Pricing is way too steep for early-stage startups and solopreneurs. Please offer a lower tier.",
+                "sentiment": "negative",
+                "status": "new",
+                "customer_email": "marcus.vance@techfounder.io",
+                "customer_name": "Marcus Vance",
+                "category": cat_pricing,
+                "role": "Founder",
+            },
+            {
+                "rating": 5,
+                "rating_scale_type": "5_star",
+                "comment": "Customer support responded in 5 minutes and solved our domain configuration issue immediately.",
+                "sentiment": "positive",
+                "status": "resolved",
+                "customer_email": "elena.rostova@designflow.co",
+                "customer_name": "Elena Rostova",
+                "category": cat_support,
+                "role": "Lead Designer",
+            },
+            {
+                "rating": 1,
+                "rating_scale_type": "5_star",
+                "comment": "Hit a 500 error when attempting to export large CSV datasets. Needs fixing ASAP.",
+                "sentiment": "negative",
+                "status": "in_progress",
+                "customer_email": "david.kim@hypergrowth.org",
+                "customer_name": "David Kim",
+                "category": cat_bug,
+                "role": "Data Analyst",
+            },
+            {
+                "rating": 3,
+                "rating_scale_type": "5_star",
+                "comment": "Overall clean experience, but would love a native Slack or Linear webhook integration.",
+                "sentiment": "neutral",
+                "status": "new",
+                "customer_email": "alex.chen@innovate.dev",
+                "customer_name": "Alex Chen",
+                "category": cat_feat,
+                "role": "Staff Engineer",
+            },
+            {
+                "rating": 5,
+                "rating_scale_type": "5_star",
+                "comment": "Page loading speed is lightning fast even with dozens of feedback cards on screen.",
+                "sentiment": "positive",
+                "status": "resolved",
+                "customer_email": "claire.dupont@saasmetrics.app",
+                "customer_name": "Claire Dupont",
+                "category": cat_speed,
+                "role": "Growth Marketer",
+            },
+        ]
+
+        created_count = 0
+        for item in sample_definitions:
+            cat = item["category"]
+            cat_id = cat.id if cat else None
+            cat_label = cat.name if cat else None
+
+            sub = FeedbackSubmission(
+                workspace_id=workspace_id,
+                form_id=target_form_id,
+                category_id=cat_id,
+                category_pill_label=cat_label,
+                rating=item["rating"],
+                rating_scale_type=item["rating_scale_type"],
+                comment=item["comment"],
+                custom_answers={},
+                customer_email=item["customer_email"],
+                customer_name=item["customer_name"],
+                customer_metadata={
+                    "is_sample": True,
+                    "source": "Sample Feedback",
+                    "role": item["role"],
+                },
+                status=item["status"],
+                sentiment=item["sentiment"],
+            )
+            self.session.add(sub)
+            created_count += 1
+
+        await self.session.commit()
+        return created_count
+
+    async def clear_sample_data(self, workspace_id: UUID) -> int:
+        """
+        Removes all sample/demo feedback responses from a workspace.
+        """
+        ws = await self.session.get(Workspace, workspace_id)
+        if not ws or ws.deleted_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found",
+            )
+
+        deleted = await self.submission_repo.delete_sample_submissions(workspace_id)
+        await self.session.commit()
+        return deleted

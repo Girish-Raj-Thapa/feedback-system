@@ -5,6 +5,7 @@ import {
   Archive,
   Calendar,
   CheckCircle,
+  Clock,
   ExternalLink,
   Globe,
   HelpCircle,
@@ -22,7 +23,9 @@ import {
 import { feedbackRepository } from "@/repositories/feedback.repository";
 import type {
   CustomerHistoryRead,
+  FeedbackCategory,
   FeedbackSubmissionRead,
+  FeedbackSubmissionUpdate,
   SubmissionStatus,
 } from "@/types/feedback";
 
@@ -31,21 +34,34 @@ interface FeedbackDetailDrawerProps {
   onClose: () => void;
   submission: FeedbackSubmissionRead | null;
   workspaceId?: string;
+  categories?: FeedbackCategory[];
   onSelectSubmission?: (submission: FeedbackSubmissionRead) => void;
   onStatusChange?: (
     submissionId: string,
     status: SubmissionStatus
+  ) => Promise<void> | void;
+  onUpdateSubmission?: (
+    submissionId: string,
+    payload: FeedbackSubmissionUpdate
   ) => Promise<void> | void;
   isUpdatingStatus?: boolean;
 }
 
 export function getStatusBadge(statusStr: string) {
   const s = statusStr.toLowerCase();
-  if (s === "reviewed") {
+  if (s === "in_progress") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+        <Clock className="size-3 text-amber-600 dark:text-amber-400" />
+        <span>In Progress</span>
+      </span>
+    );
+  }
+  if (s === "resolved" || s === "reviewed") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
         <CheckCircle className="size-3 text-emerald-600 dark:text-emerald-400" />
-        <span>Reviewed</span>
+        <span>{s === "reviewed" ? "Reviewed" : "Resolved"}</span>
       </span>
     );
   }
@@ -166,8 +182,10 @@ export function FeedbackDetailDrawer({
   onClose,
   submission,
   workspaceId,
+  categories = [],
   onSelectSubmission,
   onStatusChange,
+  onUpdateSubmission,
   isUpdatingStatus = false,
 }: FeedbackDetailDrawerProps) {
   const [customerHistory, setCustomerHistory] =
@@ -280,6 +298,21 @@ export function FeedbackDetailDrawer({
                 <Calendar className="size-3 shrink-0" />
                 <span>{formatDateFull(submission.created_at)}</span>
               </div>
+              {submission.customer_email && (
+                <div className="mt-2.5">
+                  <a
+                    href={`mailto:${submission.customer_email}?subject=${encodeURIComponent(
+                      "Feedback regarding your experience"
+                    )}&body=${encodeURIComponent(
+                      `Hi ${submission.customer_name || "there"},\n\nThank you for sharing your feedback with us:\n"${submission.comment || ""}"\n\nI wanted to follow up directly to let you know...`
+                    )}`}
+                    className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#4249C9] px-2.5 py-1 text-[12px] font-medium text-white shadow-xs transition-colors hover:bg-[#363BA6]"
+                  >
+                    <Mail className="size-3.5" />
+                    <span>Reply to Customer</span>
+                  </a>
+                </div>
+              )}
             </div>
             <div className="shrink-0">
               {getStatusBadge(submission.status || "new")}
@@ -372,6 +405,79 @@ export function FeedbackDetailDrawer({
                     <span>{submission.category_pill_label}</span>
                   </span>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Classification & Triage Overrides */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[12px] font-semibold uppercase tracking-wider text-[#8E8E93]">
+                Classification Overrides
+              </label>
+              <span className="text-[11px] text-[#8E8E93]">1-click updates</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-[12px] border border-[#E1E5EB] bg-white p-3.5 shadow-2xs dark:border-white/10 dark:bg-white/5">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="drawer-category-select"
+                  className="flex items-center gap-1.5 text-[12px] font-medium text-[#556070] dark:text-[#8E8E93]"
+                >
+                  <Tag className="size-3 text-[#4249C9] dark:text-[#7B82F6]" />
+                  <span>Category</span>
+                </label>
+                <select
+                  id="drawer-category-select"
+                  aria-label="Category"
+                  value={submission.category_id || ""}
+                  disabled={isUpdatingStatus}
+                  onChange={(e) => {
+                    const newCatId = e.target.value || null;
+                    if (onUpdateSubmission) {
+                      onUpdateSubmission(submission.id, { category_id: newCatId });
+                    }
+                  }}
+                  className="w-full rounded-[8px] border border-[#E1E5EB] bg-[#F7F9FC] px-2.5 py-1.5 text-[13px] font-medium text-[#161C26] transition-colors focus:border-[#4249C9] focus:outline-hidden dark:border-white/10 dark:bg-[#2C2C2E] dark:text-white"
+                >
+                  <option value="">Uncategorized</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="drawer-sentiment-select"
+                  className="flex items-center gap-1.5 text-[12px] font-medium text-[#556070] dark:text-[#8E8E93]"
+                >
+                  <span className="size-2 rounded-full bg-[#4249C9] dark:bg-[#7B82F6]" />
+                  <span>Sentiment</span>
+                </label>
+                <select
+                  id="drawer-sentiment-select"
+                  aria-label="Sentiment"
+                  value={submission.sentiment || ""}
+                  disabled={isUpdatingStatus}
+                  onChange={(e) => {
+                    const newSent = (e.target.value || null) as
+                      | "positive"
+                      | "neutral"
+                      | "negative"
+                      | null;
+                    if (onUpdateSubmission) {
+                      onUpdateSubmission(submission.id, { sentiment: newSent });
+                    }
+                  }}
+                  className="w-full rounded-[8px] border border-[#E1E5EB] bg-[#F7F9FC] px-2.5 py-1.5 text-[13px] font-medium text-[#161C26] transition-colors focus:border-[#4249C9] focus:outline-hidden dark:border-white/10 dark:bg-[#2C2C2E] dark:text-white"
+                >
+                  <option value="">Unclassified</option>
+                  <option value="positive">Positive</option>
+                  <option value="neutral">Neutral</option>
+                  <option value="negative">Negative</option>
+                </select>
               </div>
             </div>
           </div>
@@ -487,20 +593,40 @@ export function FeedbackDetailDrawer({
 
         {/* Footer with Triage Actions */}
         <div className="flex h-16 shrink-0 items-center justify-between border-t border-[#E1E5EB] bg-[#F7F9FC] px-6 dark:border-white/10 dark:bg-white/5">
-          <div className="flex items-center gap-2">
-            {submission.status !== "reviewed" && (
+          <div className="flex flex-wrap items-center gap-2">
+            {submission.status !== "resolved" && (
               <button
                 type="button"
                 disabled={isUpdatingStatus}
-                onClick={() => onStatusChange?.(submission.id, "reviewed")}
-                className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#4249C9] px-3.5 py-2 text-[13px] font-medium text-white shadow-xs transition-colors hover:bg-[#363BA6] disabled:opacity-50 dark:bg-[#4249C9] dark:hover:bg-[#363BA6]"
+                onClick={() =>
+                  onStatusChange
+                    ? onStatusChange(submission.id, "resolved")
+                    : onUpdateSubmission?.(submission.id, { status: "resolved" })
+                }
+                className="inline-flex items-center gap-1.5 rounded-[10px] bg-emerald-600 px-3.5 py-2 text-[13px] font-medium text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
               >
                 {isUpdatingStatus ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <CheckCircle className="size-3.5" />
                 )}
-                <span>Mark Reviewed</span>
+                <span>Mark Resolved</span>
+              </button>
+            )}
+
+            {submission.status !== "in_progress" && (
+              <button
+                type="button"
+                disabled={isUpdatingStatus}
+                onClick={() =>
+                  onStatusChange
+                    ? onStatusChange(submission.id, "in_progress")
+                    : onUpdateSubmission?.(submission.id, { status: "in_progress" })
+                }
+                className="inline-flex items-center gap-1.5 rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
+              >
+                <Clock className="size-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Mark In Progress</span>
               </button>
             )}
 
@@ -508,7 +634,11 @@ export function FeedbackDetailDrawer({
               <button
                 type="button"
                 disabled={isUpdatingStatus}
-                onClick={() => onStatusChange?.(submission.id, "archived")}
+                onClick={() =>
+                  onStatusChange
+                    ? onStatusChange(submission.id, "archived")
+                    : onUpdateSubmission?.(submission.id, { status: "archived" })
+                }
                 className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#E1E5EB] bg-white px-3 py-2 text-[13px] font-medium text-[#556070] transition-colors hover:bg-[#F3F5F9] hover:text-[#161C26] disabled:opacity-50 dark:border-white/10 dark:bg-[#2C2C2E] dark:text-[#8E8E93] dark:hover:bg-white/10 dark:hover:text-white"
               >
                 <Archive className="size-3.5" />
@@ -520,7 +650,11 @@ export function FeedbackDetailDrawer({
               <button
                 type="button"
                 disabled={isUpdatingStatus}
-                onClick={() => onStatusChange?.(submission.id, "new")}
+                onClick={() =>
+                  onStatusChange
+                    ? onStatusChange(submission.id, "new")
+                    : onUpdateSubmission?.(submission.id, { status: "new" })
+                }
                 className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#E1E5EB] bg-white px-3 py-2 text-[13px] font-medium text-[#556070] transition-colors hover:bg-[#F3F5F9] hover:text-[#161C26] disabled:opacity-50 dark:border-white/10 dark:bg-[#2C2C2E] dark:text-[#8E8E93] dark:hover:bg-white/10 dark:hover:text-white"
               >
                 <RotateCcw className="size-3.5" />
