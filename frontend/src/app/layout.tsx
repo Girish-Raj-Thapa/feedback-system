@@ -1,16 +1,7 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
-import { Caveat } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
-
-const caveat = Caveat({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-caveat",
-});
 
 export const metadata: Metadata = {
   title: "Feedback System | Customer Feedback & Decision Insights",
@@ -27,7 +18,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`h-full antialiased ${GeistSans.variable} ${GeistMono.variable} ${caveat.variable}`}
+      className="h-full antialiased font-sans"
     >
       <head>
         <script
