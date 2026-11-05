@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Code2, Paintbrush, Sliders, Zap } from "lucide-react";
+import { ArrowRight, Code2, Paintbrush, Zap } from "lucide-react";
 
 export function LandingHowItWorks() {
   const steps = [
@@ -48,7 +48,7 @@ export function LandingHowItWorks() {
 
         {/* Steps Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-          {steps.map((step, idx) => {
+          {steps.map((step) => {
             const Icon = step.icon;
             return (
               <div

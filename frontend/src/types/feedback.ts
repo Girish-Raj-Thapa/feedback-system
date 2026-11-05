@@ -165,14 +165,23 @@ export interface PublicFeedbackForm {
   widget_settings: WidgetSettingsConfig;
 }
 
+export interface CustomerMetadata {
+  page_url?: string | null;
+  referrer?: string | null;
+  user_agent?: string | null;
+  [key: string]: unknown;
+}
+
+export type FeedbackCustomAnswers = Record<string, unknown>;
+
 export interface FeedbackSubmissionCreate {
   rating?: number | null;
   category_pill_label?: string | null;
   comment?: string | null;
-  custom_answers?: Record<string, any>;
+  custom_answers?: FeedbackCustomAnswers;
   customer_email?: string | null;
   customer_name?: string | null;
-  customer_metadata?: Record<string, any>;
+  customer_metadata?: CustomerMetadata;
 }
 
 export interface FeedbackOutcomeResponse {
@@ -222,10 +231,10 @@ export interface FeedbackSubmissionRead {
   rating: number | null;
   rating_scale_type: string;
   comment: string | null;
-  custom_answers: Record<string, any>;
+  custom_answers: FeedbackCustomAnswers;
   customer_email: string | null;
   customer_name: string | null;
-  customer_metadata: Record<string, any>;
+  customer_metadata: CustomerMetadata;
   status: SubmissionStatus | string;
   sentiment: string | null;
   created_at: string;

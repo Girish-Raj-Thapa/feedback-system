@@ -16,7 +16,6 @@ import {
   Repeat,
   Share2,
   ShoppingBag,
-  Sparkles,
   Star,
   Trash2,
   X,
@@ -251,8 +250,8 @@ export default function WorkspaceFormsPage() {
     return (
       <div className="flex h-96 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="size-8 animate-spin text-[#4249C9]" />
-          <p className="text-sm font-medium text-[#556070] dark:text-[#8E8E93]">
+          <Loader2 className="size-8 animate-spin text-action" />
+          <p className="text-[14px] font-medium text-text-muted">
             Loading forms & widgets…
           </p>
         </div>
@@ -261,14 +260,14 @@ export default function WorkspaceFormsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1020px] pb-12">
+    <div className="w-full pb-12">
       {/* Page Header */}
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-[24px] font-semibold leading-8 tracking-tight text-[#161C26] dark:text-white">
-            Forms & Widgets
+          <h1 className="text-[24px] font-semibold leading-8 tracking-tight text-text">
+            Forms & widgets
           </h1>
-          <p className="mt-0.5 text-[14px] text-[#556070] dark:text-[#8E8E93]">
+          <p className="mt-0.5 text-[14px] text-text-muted">
             Design embeddable widgets, popups, and standalone feedback pages.
           </p>
         </div>
@@ -276,64 +275,64 @@ export default function WorkspaceFormsPage() {
         <button
           type="button"
           onClick={handleOpenCreateModal}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-[10px] bg-[#4249C9] px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-[#363BA6]"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-[10px] bg-action px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-action-hover active:scale-[0.98] shadow-xs"
         >
           <Plus className="size-4" />
-          <span>New Form</span>
+          <span>New form</span>
         </button>
       </div>
 
       {/* Forms Card / Table */}
-      <section className="overflow-hidden rounded-[14px] border border-[#E1E5EB] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-white/10 dark:bg-[#1C1C1E]">
+      <section className="overflow-hidden rounded-[14px] border border-border bg-surface shadow-card">
         {forms.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-[#F0F2FE] text-[#4249C9] dark:bg-[#4249C9]/20">
+            <div className="flex size-12 items-center justify-center rounded-full bg-action-subtle text-action-subtle-fg">
               <FileText className="size-6" />
             </div>
-            <h3 className="mt-4 text-[16px] font-semibold text-[#161C26] dark:text-white">
+            <h3 className="mt-4 text-[16px] font-semibold text-text">
               No feedback forms created yet
             </h3>
-            <p className="mt-1 max-w-sm text-[13px] text-[#556070] dark:text-[#8E8E93]">
+            <p className="mt-1 max-w-sm text-[13px] text-text-muted">
               Create your first form using our pre-built SaaS, e-commerce, or exit survey templates.
             </p>
             <button
               type="button"
               onClick={handleOpenCreateModal}
-              className="mt-5 inline-flex items-center gap-2 rounded-[10px] bg-[#4249C9] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#363BA6]"
+              className="mt-5 inline-flex items-center gap-2 rounded-[10px] bg-action px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-action-hover active:scale-[0.98] shadow-xs"
             >
-              <Sparkles className="size-4" />
-              <span>Create with Template</span>
+              <Plus className="size-4" />
+              <span>Create with template</span>
             </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-[#E1E5EB] bg-[#F7F9FC] text-[12px] font-semibold uppercase tracking-wider text-[#556070] dark:border-white/10 dark:bg-white/5 dark:text-[#8E8E93]">
+                <tr className="border-b border-border bg-subtle text-[12px] font-semibold text-text-muted">
                   <th className="px-6 py-3">Form</th>
-                  <th className="px-6 py-3">Public Link</th>
+                  <th className="px-6 py-3">Public link</th>
                   <th className="px-6 py-3">Scale</th>
                   <th className="px-6 py-3">Pills</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E1E5EB] dark:divide-white/10">
+              <tbody className="divide-y divide-border">
                 {forms.map((form) => (
                   <tr
                     key={form.id}
-                    className="group transition-colors hover:bg-[#F9FAFC] dark:hover:bg-white/5"
+                    className="group transition-colors hover:bg-hover"
                   >
                     {/* Name & Title */}
                     <td className="px-6 py-4">
                       <div>
                         <Link
                           href={`/workspace/${workspaceSlug}/forms/${form.id}`}
-                          className="text-[14px] font-semibold text-[#161C26] transition-colors hover:text-[#4249C9] dark:text-white dark:hover:text-[#7B82F6]"
+                          className="text-[14px] font-semibold text-text transition-colors hover:text-action"
                         >
                           {form.name}
                         </Link>
-                        <p className="line-clamp-1 text-[12px] text-[#556070] dark:text-[#8E8E93]">
+                        <p className="line-clamp-1 text-[12px] text-text-muted">
                           {form.title}
                         </p>
                       </div>
@@ -345,7 +344,7 @@ export default function WorkspaceFormsPage() {
                         href={`/f/${workspaceSlug}/${form.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-mono text-[12px] text-[#4249C9] hover:underline dark:text-[#7B82F6]"
+                        className="inline-flex items-center gap-1 font-mono text-[12px] text-action hover:underline"
                       >
                         <span>/f/{form.slug}</span>
                         <ExternalLink className="size-3" />
@@ -354,14 +353,14 @@ export default function WorkspaceFormsPage() {
 
                     {/* Rating Scale Badge */}
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center rounded-md bg-[#EDF0F5] px-2 py-0.5 text-[12px] font-medium text-[#556070] dark:bg-white/10 dark:text-[#8E8E93]">
+                      <span className="inline-flex items-center rounded-md bg-subtle px-2 py-0.5 text-[12px] font-medium text-text-muted">
                         {getScaleBadgeLabel(form.rating_scale_type)}
                       </span>
                     </td>
 
                     {/* Category Pills Count */}
                     <td className="px-6 py-4">
-                      <span className="text-[13px] text-[#556070] dark:text-[#8E8E93]">
+                      <span className="text-[13px] tabular-nums text-text-muted">
                         {form.category_pills.length} {form.category_pills.length === 1 ? "pill" : "pills"}
                       </span>
                     </td>
@@ -389,7 +388,7 @@ export default function WorkspaceFormsPage() {
                           href={`/workspace/${workspaceSlug}/forms/${form.id}`}
                           title="Open Form Studio"
                           aria-label={`Open Form Studio for ${form.name}`}
-                          className="flex size-8 items-center justify-center rounded-lg text-[#556070] transition-colors hover:bg-[#EDF0F5] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:bg-white/10 dark:hover:text-white"
+                          className="flex size-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-hover hover:text-text active:scale-[0.98]"
                         >
                           <Edit2 className="size-4" />
                         </Link>
@@ -400,7 +399,7 @@ export default function WorkspaceFormsPage() {
                           onClick={() => setShareForm(form)}
                           title="Share & Embed Widget"
                           aria-label={`Share ${form.name}`}
-                          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#556070] transition-colors hover:bg-[#EDF0F5] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:bg-white/10 dark:hover:text-white"
+                          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-hover hover:text-text active:scale-[0.98]"
                         >
                           <Share2 className="size-4" />
                         </button>
@@ -411,7 +410,7 @@ export default function WorkspaceFormsPage() {
                           onClick={() => handleDuplicate(form)}
                           title="Duplicate Form"
                           aria-label={`Duplicate ${form.name}`}
-                          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#556070] transition-colors hover:bg-[#EDF0F5] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:bg-white/10 dark:hover:text-white"
+                          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-hover hover:text-text active:scale-[0.98]"
                         >
                           <Copy className="size-4" />
                         </button>
@@ -422,7 +421,7 @@ export default function WorkspaceFormsPage() {
                           onClick={() => setDeleteFormTarget(form)}
                           title="Delete Form"
                           aria-label={`Delete ${form.name}`}
-                          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#C0281B] transition-colors hover:bg-[#FDECEB] dark:text-red-400 dark:hover:bg-red-950/20"
+                          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-status-error transition-colors hover:bg-status-error-bg active:scale-[0.98]"
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -434,7 +433,7 @@ export default function WorkspaceFormsPage() {
             </table>
 
             {/* Table Footer */}
-            <div className="flex h-12 items-center justify-between border-t border-[#E1E5EB] bg-[#F7F9FC] px-6 text-[12px] text-[#556070] dark:border-white/10 dark:bg-white/5 dark:text-[#8E8E93]">
+            <div className="flex h-12 items-center justify-between border-t border-border bg-subtle px-6 text-[12px] tabular-nums text-text-muted">
               <span>
                 Total: {forms.length} {forms.length === 1 ? "form" : "forms"}
               </span>
@@ -448,21 +447,21 @@ export default function WorkspaceFormsPage() {
 
       {/* ================= MODAL 1: CREATE FORM (TEMPLATE SELECTOR) ================= */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(16,24,40,0.45)] p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-[560px] rounded-[20px] border border-[#E1E5EB] bg-white p-6 shadow-[0_24px_48px_-12px_rgba(16,24,40,0.25)] dark:border-white/15 dark:bg-[#2C2C2E]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(16,24,40,0.45)] p-4 backdrop-blur-xs">
+          <div className="w-full max-w-[560px] rounded-[20px] border border-border bg-surface p-6 shadow-xl">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-[18px] font-semibold text-[#161C26] dark:text-white">
+                <h3 className="text-[18px] font-semibold text-text">
                   Create Feedback Form
                 </h3>
-                <p className="mt-1 text-[13px] text-[#556070] dark:text-[#8E8E93]">
+                <p className="mt-1 text-[13px] text-text-muted">
                   Select an industry starter template or build a custom form.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#556070] hover:bg-[#F3F5F9] dark:text-[#8E8E93] dark:hover:bg-white/5"
+                className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-muted hover:bg-hover active:scale-[0.98]"
               >
                 <X className="size-4" />
               </button>
@@ -470,8 +469,8 @@ export default function WorkspaceFormsPage() {
 
             <form onSubmit={handleCreateForm} className="mt-5 space-y-4">
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-[#161C26] dark:text-white">
-                  Form Name <span className="text-red-500">*</span>
+                <label className="mb-1.5 block text-[13px] font-medium text-text">
+                  Form name <span className="text-status-error">*</span>
                 </label>
                 <input
                   type="text"
@@ -479,30 +478,30 @@ export default function WorkspaceFormsPage() {
                   value={newFormName}
                   onChange={(e) => setNewFormName(e.target.value)}
                   placeholder="e.g. Website Feedback Widget"
-                  className="h-10 w-full rounded-[10px] border border-[#E1E5EB] px-3.5 text-[14px] text-[#161C26] transition-colors focus:border-[#4249C9] focus:outline-none dark:border-white/15 dark:bg-[#1C1C1E] dark:text-white"
+                  className="h-10 w-full rounded-[10px] border border-border bg-surface px-3.5 text-[14px] text-text transition-colors focus:border-action focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-[#161C26] dark:text-white">
-                  URL Slug (Optional)
+                <label className="mb-1.5 block text-[13px] font-medium text-text">
+                  URL slug (optional)
                 </label>
-                <div className="flex items-center rounded-[10px] border border-[#E1E5EB] bg-white px-3 dark:border-white/15 dark:bg-[#1C1C1E]">
-                  <span className="font-mono text-[12px] text-[#8E8E93]">/f/{workspaceSlug}/</span>
+                <div className="flex items-center rounded-[10px] border border-border bg-surface px-3">
+                  <span className="font-mono text-[12px] text-text-muted">/f/{workspaceSlug}/</span>
                   <input
                     type="text"
                     value={newFormSlug}
                     onChange={(e) => setNewFormSlug(e.target.value)}
                     placeholder="feedback"
-                    className="h-10 w-full bg-transparent px-1 font-mono text-[13px] text-[#161C26] focus:outline-none dark:text-white"
+                    className="h-10 w-full bg-transparent px-1 font-mono text-[13px] text-text focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Template Picker */}
               <div>
-                <label className="mb-2 block text-[13px] font-medium text-[#161C26] dark:text-white">
-                  Starter Template
+                <label className="mb-2 block text-[13px] font-medium text-text">
+                  Starter template
                 </label>
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {STARTER_TEMPLATES.map((tmpl) => {
@@ -512,8 +511,8 @@ export default function WorkspaceFormsPage() {
                         key={tmpl.id}
                         className={`flex cursor-pointer items-start gap-3 rounded-[12px] border p-3 transition-colors ${
                           selectedTemplate === tmpl.id
-                            ? "border-[#4249C9] bg-[#F0F2FE]/50 dark:border-[#7B82F6] dark:bg-[#4249C9]/10"
-                            : "border-[#E1E5EB] hover:bg-[#F7F9FC] dark:border-white/10 dark:hover:bg-white/5"
+                            ? "border-action bg-action-subtle"
+                            : "border-border hover:bg-hover"
                         }`}
                       >
                         <input
@@ -522,16 +521,16 @@ export default function WorkspaceFormsPage() {
                           value={tmpl.id}
                           checked={selectedTemplate === tmpl.id}
                           onChange={(e) => setSelectedTemplate(e.target.value)}
-                          className="mt-0.5 size-4 text-[#4249C9]"
+                          className="mt-0.5 size-4 accent-action"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <Icon className="size-4 text-[#4249C9] dark:text-[#7B82F6]" />
-                            <span className="text-[13px] font-semibold text-[#161C26] dark:text-white">
+                            <Icon className="size-4 text-action" />
+                            <span className="text-[13px] font-semibold text-text">
                               {tmpl.name}
                             </span>
                           </div>
-                          <p className="mt-0.5 text-[11px] text-[#556070] dark:text-[#8E8E93]">
+                          <p className="mt-0.5 text-[11px] text-text-muted">
                             {tmpl.description}
                           </p>
                         </div>
@@ -545,14 +544,14 @@ export default function WorkspaceFormsPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-[10px] border border-[#E1E5EB] px-4 py-2 text-[14px] font-medium text-[#161C26] hover:bg-[#F3F5F9] dark:border-white/15 dark:text-white dark:hover:bg-white/5"
+                  className="rounded-[10px] border border-border px-4 py-2 text-[14px] font-medium text-text hover:bg-hover active:scale-[0.98]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !newFormName.trim()}
-                  className="flex items-center gap-2 rounded-[10px] bg-[#4249C9] px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-[#363BA6] disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-[10px] bg-action px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-action-hover active:scale-[0.98] disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
@@ -571,16 +570,16 @@ export default function WorkspaceFormsPage() {
 
       {/* ================= MODAL 2: DELETE FORM CONFIRMATION ================= */}
       {deleteFormTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(16,24,40,0.45)] p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-[460px] rounded-[20px] border border-[#E1E5EB] bg-white p-6 shadow-[0_24px_48px_-12px_rgba(16,24,40,0.25)] dark:border-white/15 dark:bg-[#2C2C2E]">
-            <div className="flex size-11 items-center justify-center rounded-full bg-[#FDECEB] text-[#C0281B] dark:bg-red-950/40 dark:text-red-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(16,24,40,0.45)] p-4 backdrop-blur-xs">
+          <div className="w-full max-w-[460px] rounded-[20px] border border-border bg-surface p-6 shadow-xl">
+            <div className="flex size-11 items-center justify-center rounded-full bg-status-error-bg text-status-error">
               <AlertTriangle className="size-5" />
             </div>
 
-            <h3 className="mt-4 text-[18px] font-semibold text-[#161C26] dark:text-white">
+            <h3 className="mt-4 text-[18px] font-semibold text-text">
               Delete form &ldquo;{deleteFormTarget.name}&rdquo;?
             </h3>
-            <p className="mt-2 text-[13px] leading-relaxed text-[#556070] dark:text-[#8E8E93]">
+            <p className="mt-2 text-[13px] leading-relaxed text-text-muted">
               Are you sure you want to delete this form? Any embedded widgets will stop loading. Historical feedback submissions already captured will remain preserved in your dashboard.
             </p>
 
@@ -588,7 +587,7 @@ export default function WorkspaceFormsPage() {
               <button
                 type="button"
                 onClick={() => setDeleteFormTarget(null)}
-                className="rounded-[10px] border border-[#E1E5EB] px-4 py-2 text-[14px] font-medium text-[#161C26] hover:bg-[#F3F5F9] dark:border-white/15 dark:text-white dark:hover:bg-white/5"
+                className="rounded-[10px] border border-border px-4 py-2 text-[14px] font-medium text-text hover:bg-hover active:scale-[0.98]"
               >
                 Cancel
               </button>
@@ -596,7 +595,7 @@ export default function WorkspaceFormsPage() {
                 type="button"
                 onClick={handleDeleteForm}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 rounded-[10px] bg-[#C0281B] px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-[#A32216] disabled:opacity-50"
+                className="flex items-center gap-2 rounded-[10px] bg-status-error px-4 py-2 text-[14px] font-medium text-white transition-colors hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>

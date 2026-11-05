@@ -34,12 +34,14 @@ describe("WorkspaceSidebar", () => {
     expect(screen.getByText("AC")).toBeInTheDocument();
   });
 
-  it("renders workspace-scoped Dashboard and Settings links", () => {
+  it("renders workspace-scoped Insights, Inbox, and Settings links", () => {
     render(<WorkspaceSidebar {...defaultProps} />);
-    const dashboardLink = screen.getByText("Dashboard").closest("a");
+    const insightsLink = screen.getByText("Insights").closest("a");
+    const inboxLink = screen.getByText("Inbox").closest("a");
     const settingsLink = screen.getByText("Settings").closest("a");
 
-    expect(dashboardLink).toHaveAttribute("href", "/workspace/acme");
+    expect(insightsLink).toHaveAttribute("href", "/workspace/acme");
+    expect(inboxLink).toHaveAttribute("href", "/workspace/acme?tab=inbox");
     expect(settingsLink).toHaveAttribute("href", "/workspace/acme/settings");
   });
 
@@ -56,15 +58,15 @@ describe("WorkspaceSidebar", () => {
       />
     );
     const settingsLink = screen.getByText("Settings").closest("a");
-    expect(settingsLink?.className).toContain("font-semibold");
-    expect(settingsLink?.className).toContain("text-[#363BA6]");
+    expect(settingsLink?.className).toContain("font-medium");
+    expect(settingsLink?.className).toContain("text-action-subtle-fg");
   });
 
   it("calls setIsSidebarOpen(false) when a link is clicked", () => {
     const setIsSidebarOpen = vi.fn();
     render(<WorkspaceSidebar {...defaultProps} setIsSidebarOpen={setIsSidebarOpen} />);
     
-    fireEvent.click(screen.getByText("Dashboard"));
+    fireEvent.click(screen.getByText("Insights"));
     expect(setIsSidebarOpen).toHaveBeenCalledWith(false);
   });
 

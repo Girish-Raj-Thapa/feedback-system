@@ -203,13 +203,18 @@ export function FeedbackDetailDrawer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  const submissionId = submission?.id;
+  const customerEmail = submission?.customer_email;
+
   // Fetch customer submission history when email is present
   useEffect(() => {
     let isMounted = true;
-    if (isOpen && submission && workspaceId && submission.customer_email) {
-      setIsLoadingHistory(true);
+    if (isOpen && submissionId && workspaceId && customerEmail) {
+      queueMicrotask(() => {
+        if (isMounted) setIsLoadingHistory(true);
+      });
       feedbackRepository
-        .getCustomerHistory(workspaceId, submission.id)
+        .getCustomerHistory(workspaceId, submissionId)
         .then((res) => {
           if (isMounted) {
             setCustomerHistory(res);
@@ -220,12 +225,14 @@ export function FeedbackDetailDrawer({
           if (isMounted) setIsLoadingHistory(false);
         });
     } else {
-      setCustomerHistory(null);
+      queueMicrotask(() => {
+        if (isMounted) setCustomerHistory(null);
+      });
     }
     return () => {
       isMounted = false;
     };
-  }, [isOpen, submission?.id, submission?.customer_email, workspaceId]);
+  }, [isOpen, submissionId, customerEmail, workspaceId]);
 
   if (!isOpen || !submission) return null;
 

@@ -174,7 +174,7 @@ describe("WorkspaceDashboardPage (Inbox)", () => {
 
     render(<WorkspaceDashboardPage />);
 
-    expect(await screen.findByRole("heading", { name: "Feedback Inbox" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Inbox" })).toBeInTheDocument();
     expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1); // Count badge
 
     // First submission

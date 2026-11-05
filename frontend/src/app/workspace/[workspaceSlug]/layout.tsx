@@ -149,10 +149,8 @@ export default function WorkspaceLayout({
     workspaces.find((w) => w.workspace_slug === workspaceSlug) ||
     workspaces[0];
 
-  const isSettingsActive = pathname.includes("/settings");
-
   return (
-    <div className="flex min-h-screen w-full bg-[#F5F7FA] text-[#161C26] antialiased selection:bg-[#F0F2FE] selection:text-[#363BA6] dark:bg-[#000000] dark:text-[#F5F5F7]">
+    <div className="flex min-h-screen w-full bg-canvas text-text antialiased selection:bg-action-subtle selection:text-action-subtle-fg">
       {/* Isolated Workspace Sidebar Component */}
       <WorkspaceSidebar
         isSidebarOpen={isSidebarOpen}
@@ -165,14 +163,14 @@ export default function WorkspaceLayout({
 
       {/* MAIN WRAPPER (Offset by sidebar 240px) */}
       <div className="flex min-w-0 flex-1 flex-col transition-all duration-200 ease-out lg:pl-[240px]">
-        {/* TOP NAVBAR (56px) */}
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[#E1E5EB] bg-white/75 px-4 backdrop-blur-md sm:px-8 dark:border-white/10 dark:bg-[#1C1C1E]/75">
+        {/* TOP NAVBAR (56px) - Glass Header with border */}
+        <header className="glass-header sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface/85 px-6 backdrop-blur-md lg:px-8">
           {/* Mobile menu trigger & workspace identity */}
           <div className="flex items-center gap-2.5 lg:hidden">
             <button
               type="button"
               onClick={() => setIsSidebarOpen(true)}
-              className="flex size-9 items-center justify-center rounded-[10px] text-[#556070] hover:bg-[#F3F5F9] dark:text-[#A1A1A6] dark:hover:bg-white/5"
+              className="flex size-9 items-center justify-center rounded-[10px] text-text-muted hover:bg-hover"
               aria-label="Open sidebar"
             >
               <Menu className="size-5" />
@@ -186,30 +184,18 @@ export default function WorkspaceLayout({
                   className="size-6 shrink-0 rounded-[6px] object-cover"
                 />
               ) : (
-                <div className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-[#161C26] text-[10px] font-bold text-white dark:bg-white dark:text-[#161C26]">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-text text-[10px] font-bold text-surface">
                   {getWorkspaceInitials(activeWs?.workspace_name)}
                 </div>
               )}
-              <span className="truncate text-[14px] font-semibold text-[#161C26] dark:text-white">
+              <span className="truncate text-[14px] font-semibold text-text">
                 {activeWs?.workspace_name || "Workspace"}
               </span>
             </div>
           </div>
 
-          {/* Breadcrumb Hierarchy */}
-          <nav className="hidden items-center gap-2 text-[14px] text-[#556070] sm:flex dark:text-[#8E8E93]">
-            <span className="font-semibold text-[#161C26] dark:text-white">
-              {activeWs?.workspace_name || "Workspace"}
-            </span>
-            <span>/</span>
-            <span className="text-[#556070] dark:text-[#8E8E93]">
-              {isSettingsActive
-                ? "Settings"
-                : pathname.includes("/forms")
-                ? "Forms & Widgets"
-                : "Dashboard"}
-            </span>
-          </nav>
+          {/* Left spacer on desktop (replaces removed redundant breadcrumb) */}
+          <div className="hidden lg:block" />
 
           {/* Right actions: ThemeToggle + Account dropdown */}
           <div className="relative flex items-center gap-2">
@@ -219,42 +205,42 @@ export default function WorkspaceLayout({
             <button
               type="button"
               onClick={() => setIsAccountDropdownOpen((prev) => !prev)}
-              className="flex h-9 cursor-pointer items-center gap-2 rounded-[10px] border border-transparent px-2 transition-colors hover:border-[#E1E5EB] hover:bg-[#F3F5F9] dark:hover:border-white/15 dark:hover:bg-white/5"
+              className="flex h-9 cursor-pointer items-center gap-2 rounded-[10px] border border-transparent px-2 transition-colors hover:border-border hover:bg-hover"
             >
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#E8EBF8] text-[12px] font-semibold text-[#4249C9] dark:bg-[#4249C9]/20 dark:text-[#2997FF]">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-action-subtle text-[12px] font-semibold text-action-subtle-fg">
                 {getUserInitials(user?.full_name, user?.email)}
               </div>
-              <span className="hidden text-[14px] font-medium text-[#161C26] sm:inline dark:text-white">
+              <span className="hidden text-[14px] font-medium text-text sm:inline">
                 {user?.full_name || user?.email?.split("@")[0] || "Account"}
               </span>
-              <ChevronDown className="size-3.5 text-[#556070] dark:text-[#8E8E93]" />
+              <ChevronDown className="size-3.5 text-text-muted" />
             </button>
 
             {/* Floating Account Menu */}
             {isAccountDropdownOpen && (
-              <div className="absolute top-12 right-0 z-40 w-60 rounded-[14px] border border-[#E1E5EB] bg-white py-1.5 shadow-[0_8px_24px_-4px_rgba(16,24,40,0.12)] dark:border-white/15 dark:bg-[#2C2C2E]">
+              <div className="absolute top-12 right-0 z-40 w-60 rounded-[14px] border border-border bg-surface py-1.5 shadow-menu">
                 <div className="px-3.5 py-2.5">
-                  <div className="truncate text-[14px] font-semibold text-[#161C26] dark:text-white">
+                  <div className="truncate text-[14px] font-semibold text-text">
                     {user?.full_name || "User"}
                   </div>
-                  <div className="mt-0.5 truncate text-[12px] font-normal text-[#556070] dark:text-[#8E8E93]">
+                  <div className="mt-0.5 truncate text-[12px] font-normal text-text-muted">
                     {user?.email}
                   </div>
                 </div>
-                <div className="my-1 h-[1px] bg-[#E1E5EB] dark:bg-white/10" />
+                <div className="my-1 h-[1px] bg-border" />
                 <Link
                   href={`/workspace/${workspaceSlug}/settings?tab=account`}
                   onClick={() => setIsAccountDropdownOpen(false)}
-                  className="flex items-center gap-2.5 px-3.5 py-2 text-[14px] font-normal text-[#161C26] transition-colors hover:bg-[#F3F5F9] dark:text-white dark:hover:bg-white/5"
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-[14px] font-normal text-text transition-colors hover:bg-hover"
                 >
-                  <User className="size-4 text-[#556070] dark:text-[#8E8E93]" />
+                  <User className="size-4 text-text-muted" />
                   <span>Account settings</span>
                 </Link>
-                <div className="my-1 h-[1px] bg-[#E1E5EB] dark:bg-white/10" />
+                <div className="my-1 h-[1px] bg-border" />
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-[14px] font-normal text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-[14px] font-normal text-status-error transition-colors hover:bg-status-error-bg"
                 >
                   <LogOut className="size-4" />
                   <span>Log out</span>
@@ -265,7 +251,7 @@ export default function WorkspaceLayout({
         </header>
 
         {/* Content Canvas */}
-        <main className="flex-1 p-4 sm:p-8">{children}</main>
+        <main className="flex-1 w-full max-w-[1400px] px-6 py-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

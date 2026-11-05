@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  BarChart3,
   Filter,
   Inbox,
   Loader2,
   Search,
+  Share2,
   Sparkles,
   Star,
   Tag,
@@ -43,6 +43,13 @@ const STATUS_TABS = [
   { id: "in_progress", label: "In Progress" },
   { id: "resolved", label: "Resolved" },
   { id: "archived", label: "Archived" },
+];
+
+const TIMEFRAME_OPTIONS = [
+  { label: "Last 7 days", value: 7 },
+  { label: "Last 30 days", value: 30 },
+  { label: "Last 90 days", value: 90 },
+  { label: "All time", value: 0 },
 ];
 
 function formatDate(dateStr: string): string {
@@ -130,6 +137,12 @@ export default function WorkspaceDashboardPage() {
   const [sentimentFilter, setSentimentFilter] = useState("all");
 
   const isInitialLoaded = useRef(false);
+
+  const [prevTabParam, setPrevTabParam] = useState(tabParam);
+  if (tabParam !== prevTabParam) {
+    setPrevTabParam(tabParam);
+    setActiveView(tabParam === "inbox" ? "inbox" : "insights");
+  }
 
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
@@ -424,71 +437,81 @@ export default function WorkspaceDashboardPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1020px] pb-12">
-      {/* Header with Title and View Switcher */}
+    <div className="w-full pb-12">
+      {/* Header with Title and Unified Page Controls */}
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-[24px] font-semibold leading-8 tracking-tight text-[#161C26] dark:text-white">
-              {activeView === "insights" ? "Decision Insights" : "Feedback Inbox"}
+          <div className="flex items-center gap-3">
+            <h1 className="text-[24px] font-semibold leading-8 tracking-tight text-text">
+              {activeView === "insights" ? "Insights" : "Inbox"}
             </h1>
-            {activeView === "inbox" && (
-              <span className="inline-flex items-center rounded-full bg-[#F0F2FE] px-2.5 py-0.5 text-[12px] font-semibold text-[#363BA6] dark:bg-[#4249C9]/20 dark:text-[#7B82F6]">
-                {totalSubmissions}
-              </span>
-            )}
+            {/* Quiet Segmented Control [spec] */}
+            <div className="inline-flex h-8 items-center rounded-[8px] bg-subtle p-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveView("insights")}
+                className={`h-7 rounded-[6px] px-3 text-[12px] font-medium transition-all ${
+                  activeView === "insights"
+                    ? "bg-surface text-text shadow-2xs"
+                    : "text-text-muted hover:text-text"
+                }`}
+              >
+                Insights
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView("inbox")}
+                className={`flex h-7 items-center gap-1.5 rounded-[6px] px-3 text-[12px] font-medium transition-all ${
+                  activeView === "inbox"
+                    ? "bg-surface text-text shadow-2xs"
+                    : "text-text-muted hover:text-text"
+                }`}
+              >
+                <span>Inbox</span>
+                {totalSubmissions > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-action-subtle px-1.5 py-0.2 text-[10px] font-semibold tabular-nums text-action-subtle-fg">
+                    {totalSubmissions}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-          <p className="mt-0.5 text-[14px] text-[#556070] dark:text-[#8E8E93]">
+          <p className="mt-1 text-[13px] text-text-muted">
             {activeView === "insights"
-              ? "Macro satisfaction drivers, customer sentiment trends, and friction points."
+              ? "How customers rate you, and what's moving the score."
               : "Live incoming customer feedback submitted via widgets and hosted links."}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* View Mode Switcher Pills */}
-          <div className="flex items-center gap-1 rounded-[10px] border border-[#E1E5EB] bg-white p-1 shadow-2xs dark:border-white/10 dark:bg-[#1C1C1E]">
-            <button
-              type="button"
-              onClick={() => setActiveView("insights")}
-              className={`flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                activeView === "insights"
-                  ? "bg-[#4249C9] text-white shadow-xs"
-                  : "text-[#556070] hover:bg-[#F3F5F9] dark:text-[#8E8E93] dark:hover:bg-white/5"
-              }`}
-            >
-              <BarChart3 className="size-3.5" />
-              <span>Insights</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView("inbox")}
-              className={`flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                activeView === "inbox"
-                  ? "bg-[#4249C9] text-white shadow-xs"
-                  : "text-[#556070] hover:bg-[#F3F5F9] dark:text-[#8E8E93] dark:hover:bg-white/5"
-              }`}
-            >
-              <Inbox className="size-3.5" />
-              <span>Feedback Inbox</span>
-              <span
-                className={`inline-flex items-center rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                  activeView === "inbox"
-                    ? "bg-white/25 text-white"
-                    : "bg-[#F0F2FE] text-[#363BA6] dark:bg-white/10 dark:text-white"
-                }`}
-              >
-                {totalSubmissions}
-              </span>
-            </button>
+          {/* Top-Level Date Range Segmented Control (32px / h-8) */}
+          <div className="flex h-8 items-center rounded-[8px] border border-border bg-surface p-0.5 shadow-2xs">
+            {TIMEFRAME_OPTIONS.map((opt) => {
+              const isActive = String(selectedDays) === String(opt.value);
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => handleDaysChange(opt.value)}
+                  className={`h-7 rounded-[6px] px-2.5 text-[12px] font-medium transition-colors ${
+                    isActive
+                      ? "bg-action text-white shadow-2xs"
+                      : "text-text-muted hover:bg-hover hover:text-text"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
 
+          {/* Primary Action Button: Share Form */}
           <Link
             href={`/workspace/${workspaceSlug}/forms`}
-            className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#E1E5EB] bg-white px-3.5 py-2 text-[13px] font-medium text-[#161C26] shadow-xs transition-colors hover:bg-[#F3F5F9] dark:border-white/15 dark:bg-[#2C2C2E] dark:text-white dark:hover:bg-white/10"
+            className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-action px-3 text-[12px] font-medium text-white shadow-xs transition-colors hover:bg-action-hover active:scale-[0.98]"
           >
-            <Sparkles className="size-3.5 text-[#4249C9] dark:text-[#7B82F6]" />
-            <span>Forms & Widgets</span>
+            <Share2 className="size-3.5" />
+            <span>Share form</span>
           </Link>
         </div>
       </div>
@@ -516,6 +539,8 @@ export default function WorkspaceDashboardPage() {
           onLoadSampleData={handleLoadSampleData}
           onClearSampleData={handleClearSampleData}
           isLoadingSampleData={isLoadingSampleData}
+          recentSubmissions={submissions}
+          onSelectSubmission={setSelectedSubmission}
         />
       ) : (
         /* Submissions Section */

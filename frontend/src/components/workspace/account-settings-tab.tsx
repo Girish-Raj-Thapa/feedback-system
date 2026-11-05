@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Check,
-  CheckCircle2,
   Eye,
   EyeOff,
   Lock,

@@ -2,19 +2,10 @@
 
 import {
   Archive,
-  ArrowUpRight,
   CheckCircle2,
-  Clock,
-  Filter,
-  Globe,
-  Inbox,
-  Mail,
-  MoreVertical,
-  Search,
   Sparkles,
   Star,
   Tag,
-  User,
 } from "lucide-react";
 
 export function HeroProductMockup() {
@@ -102,7 +93,7 @@ export function HeroProductMockup() {
                       </span>
                     </div>
                     <p className="text-[12px] text-text-muted line-clamp-1">
-                      "The checkout flow is seamless and fast now. Great job on the redesign!"
+                      &ldquo;The checkout flow is seamless and fast now. Great job on the redesign!&rdquo;
                     </p>
                   </div>
                 </div>
@@ -137,7 +128,7 @@ export function HeroProductMockup() {
                       </span>
                     </div>
                     <p className="text-[12px] text-text font-medium line-clamp-1">
-                      "Settings page freezes when exporting team CSV reports."
+                      &ldquo;Settings page freezes when exporting team CSV reports.&rdquo;
                     </p>
                   </div>
                 </div>
@@ -172,7 +163,7 @@ export function HeroProductMockup() {
                       </span>
                     </div>
                     <p className="text-[12px] text-text-muted line-clamp-1">
-                      "Would love an API webhook to push alerts directly into Slack."
+                      &ldquo;Would love an API webhook to push alerts directly into Slack.&rdquo;
                     </p>
                   </div>
                 </div>
@@ -207,7 +198,7 @@ export function HeroProductMockup() {
                 Verbatim Customer Feedback
               </span>
               <p className="text-[12px] text-text leading-relaxed">
-                "Settings page freezes when exporting team CSV reports. Happening on Chrome 124."
+                &ldquo;Settings page freezes when exporting team CSV reports. Happening on Chrome 124.&rdquo;
               </p>
             </div>
 
@@ -218,7 +209,7 @@ export function HeroProductMockup() {
                 <span>$0 Auto Keyword Engine</span>
               </div>
               <p className="text-[11px] text-text-muted">
-                Matched keyword: <span className="font-semibold text-text">"freezes"</span> → Assigned to{" "}
+                Matched keyword: <span className="font-semibold text-text">&ldquo;freezes&rdquo;</span> → Assigned to{" "}
                 <span className="font-semibold text-text">Bug Report</span> bucket.
               </p>
             </div>

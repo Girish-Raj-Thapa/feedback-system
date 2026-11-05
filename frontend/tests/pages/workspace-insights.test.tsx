@@ -157,17 +157,17 @@ describe("WorkspaceDashboardPage (Insights & Score Drivers)", () => {
     (feedbackRepository.getInsights as any).mockResolvedValue(mockInsights);
   });
 
-  it("renders Decision Insights as the default view with Top Decision Cards", async () => {
+  it("renders Insights as the default view with Top Decision Cards", async () => {
     render(<WorkspaceDashboardPage />);
 
-    expect(await screen.findByRole("heading", { name: "Decision Insights" })).toBeInTheDocument();
-    expect(screen.getByText(/Macro satisfaction drivers, customer sentiment trends/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Insights" })).toBeInTheDocument();
+    expect(screen.getByText(/How customers rate you, and what's moving the score/i)).toBeInTheDocument();
 
     // Overall satisfaction card
     expect(screen.getByText("4.1 ★")).toBeInTheDocument();
     expect(screen.getByText(/from 30 responses/i)).toBeInTheDocument();
-    expect(screen.getByText(/20 Positive/i)).toBeInTheDocument();
-    expect(screen.getByText(/4 Negative/i)).toBeInTheDocument();
+    expect(screen.getByText(/20 positive/i)).toBeInTheDocument();
+    expect(screen.getByText(/4 negative/i)).toBeInTheDocument();
 
     // Top Negative Driver card
     expect(screen.getAllByText("Pricing & Billing").length).toBeGreaterThanOrEqual(1);
@@ -179,13 +179,13 @@ describe("WorkspaceDashboardPage (Insights & Score Drivers)", () => {
 
     // At-Risk Customers card
     expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("unresolved issues")).toBeInTheDocument();
+    expect(screen.getByText("need a reply")).toBeInTheDocument();
   });
 
-  it("renders Theme Bucket Impact table with categories, volume, and sentiment splits", async () => {
+  it("renders Categories table with volume and score impact", async () => {
     render(<WorkspaceDashboardPage />);
 
-    expect(await screen.findByText("Theme Bucket Impact & Net Score Drivers")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Categories" })).toBeInTheDocument();
 
     // Table rows
     expect(screen.getAllByText("Speed & Performance").length).toBeGreaterThanOrEqual(1);
@@ -197,9 +197,9 @@ describe("WorkspaceDashboardPage (Insights & Score Drivers)", () => {
   it("changes timeframe and fetches updated insights", async () => {
     render(<WorkspaceDashboardPage />);
 
-    expect(await screen.findByRole("heading", { name: "Decision Insights" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Insights" })).toBeInTheDocument();
 
-    const last7DaysBtn = screen.getByRole("button", { name: "Last 7 Days" });
+    const last7DaysBtn = screen.getByRole("button", { name: "Last 7 days" });
     fireEvent.click(last7DaysBtn);
 
     await waitFor(() => {
@@ -213,31 +213,31 @@ describe("WorkspaceDashboardPage (Insights & Score Drivers)", () => {
   it("allows switching between Insights view and Feedback Inbox view", async () => {
     render(<WorkspaceDashboardPage />);
 
-    expect(await screen.findByRole("heading", { name: "Decision Insights" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Insights" })).toBeInTheDocument();
 
-    // Click Feedback Inbox pill in view switcher
-    const inboxBtn = screen.getByRole("button", { name: /Feedback Inbox/i });
+    // Click Inbox pill in view switcher
+    const inboxBtn = screen.getByRole("button", { name: /^Inbox/i });
     fireEvent.click(inboxBtn);
 
-    expect(await screen.findByRole("heading", { name: "Feedback Inbox" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Inbox" })).toBeInTheDocument();
     expect(screen.getByText("Pricing is way too steep for solopreneurs.")).toBeInTheDocument();
 
     // Click back to Insights
     const insightsBtn = screen.getByRole("button", { name: "Insights" });
     fireEvent.click(insightsBtn);
 
-    expect(await screen.findByRole("heading", { name: "Decision Insights" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Insights" })).toBeInTheDocument();
   });
 
   it("drills down into Inbox prefiltered by category when 'Inspect feedback' is clicked", async () => {
     render(<WorkspaceDashboardPage />);
 
-    expect(await screen.findByRole("heading", { name: "Decision Insights" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Insights" })).toBeInTheDocument();
 
     const inspectBtn = screen.getByRole("button", { name: /Inspect feedback/i });
     fireEvent.click(inspectBtn);
 
-    expect(await screen.findByRole("heading", { name: "Feedback Inbox" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Inbox" })).toBeInTheDocument();
   });
 
   it("renders empty state when no feedback exists in the selected timeframe", async () => {

@@ -5,12 +5,10 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
-  Check,
   Edit2,
   FolderOpen,
   Loader2,
   Plus,
-  RefreshCw,
   Sparkles,
   Tag,
   Trash2,
@@ -73,7 +71,6 @@ interface WorkspaceCategoriesTabProps {
 
 export function WorkspaceCategoriesTab({
   workspaceId,
-  isOwner = true,
 }: WorkspaceCategoriesTabProps) {
   const [categories, setCategories] = useState<FeedbackCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -335,16 +332,16 @@ export function WorkspaceCategoriesTab({
   return (
     <div className="space-y-6">
       {/* Card Header & Controls */}
-      <section className="overflow-hidden rounded-[14px] border border-[#E1E5EB] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-white/10 dark:bg-[#1C1C1E]">
+      <section className="overflow-hidden rounded-[14px] border border-border bg-surface shadow-card">
         <div className="flex flex-col justify-between gap-4 p-6 sm:flex-row sm:items-center">
           <div>
             <div className="flex items-center gap-2">
-              <Tag className="size-5 text-[#4249C9] dark:text-[#7B82F6]" />
-              <h2 className="text-[16px] font-semibold text-[#161C26] dark:text-white">
+              <Tag className="size-5 text-action" />
+              <h2 className="text-[16px] font-semibold text-text">
                 Feedback Categories
               </h2>
             </div>
-            <p className="mt-1 text-[13px] text-[#556070] dark:text-[#8E8E93]">
+            <p className="mt-1 text-[13px] text-text-muted">
               Organize user feedback into thematic buckets. Custom categories can be tagged, colored, and sorted.
             </p>
           </div>
@@ -353,15 +350,15 @@ export function WorkspaceCategoriesTab({
             <button
               type="button"
               onClick={() => setIsSeedModalOpen(true)}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-[10px] border border-[#E1E5EB] bg-white px-3.5 py-2 text-[13px] font-medium text-[#161C26] transition-colors hover:bg-[#F3F5F9] dark:border-white/15 dark:bg-[#2C2C2E] dark:text-white dark:hover:bg-white/10"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-[10px] border border-border bg-surface px-3.5 py-2 text-[13px] font-medium text-text transition-colors hover:bg-hover active:scale-[0.98]"
             >
-              <Sparkles className="size-4 text-[#4249C9] dark:text-[#7B82F6]" />
+              <FolderOpen className="size-4 text-action" />
               <span>Presets & Templates</span>
             </button>
             <button
               type="button"
               onClick={handleOpenAddModal}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-[#4249C9] px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#363BA6]"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-action px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-action-hover active:scale-[0.98] shadow-xs"
             >
               <Plus className="size-4" />
               <span>Add Category</span>
@@ -370,30 +367,30 @@ export function WorkspaceCategoriesTab({
         </div>
 
         {/* Categories List / Table */}
-        <div className="border-t border-[#E1E5EB] dark:border-white/10">
+        <div className="border-t border-border">
           {categories.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-[#F0F2FE] text-[#4249C9] dark:bg-[#4249C9]/20">
+              <div className="flex size-12 items-center justify-center rounded-full bg-action-subtle text-action-subtle-fg">
                 <FolderOpen className="size-6" />
               </div>
-              <h3 className="mt-4 text-[15px] font-semibold text-[#161C26] dark:text-white">
+              <h3 className="mt-4 text-[15px] font-semibold text-text">
                 No categories found
               </h3>
-              <p className="mt-1 max-w-sm text-[13px] text-[#556070] dark:text-[#8E8E93]">
+              <p className="mt-1 max-w-sm text-[13px] text-text-muted">
                 Start by adding your first category or initialize with industry presets.
               </p>
               <div className="mt-4 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setIsSeedModalOpen(true)}
-                  className="rounded-[10px] border border-[#E1E5EB] px-3.5 py-2 text-[13px] font-medium text-[#161C26] hover:bg-[#F3F5F9] dark:border-white/15 dark:text-white"
+                  className="rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-medium text-text hover:bg-hover active:scale-[0.98]"
                 >
                   Apply Preset
                 </button>
                 <button
                   type="button"
                   onClick={handleOpenAddModal}
-                  className="rounded-[10px] bg-[#4249C9] px-3.5 py-2 text-[13px] font-medium text-white hover:bg-[#363BA6]"
+                  className="rounded-[10px] bg-action px-3.5 py-2 text-[13px] font-medium text-white hover:bg-action-hover active:scale-[0.98]"
                 >
                   Create Category
                 </button>
@@ -403,7 +400,7 @@ export function WorkspaceCategoriesTab({
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-[#E1E5EB] bg-[#F7F9FC] text-[12px] font-semibold uppercase tracking-wider text-[#556070] dark:border-white/10 dark:bg-white/5 dark:text-[#8E8E93]">
+                  <tr className="border-b border-border bg-subtle text-[12px] font-semibold text-text-muted">
                     <th className="w-16 px-4 py-3 text-center">Order</th>
                     <th className="px-6 py-3">Category</th>
                     <th className="px-6 py-3">Description</th>
@@ -411,11 +408,11 @@ export function WorkspaceCategoriesTab({
                     <th className="px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E1E5EB] dark:divide-white/10">
+                <tbody className="divide-y divide-border">
                   {categories.map((cat, index) => (
                     <tr
                       key={cat.id}
-                      className="group transition-colors hover:bg-[#F9FAFC] dark:hover:bg-white/5"
+                      className="group transition-colors hover:bg-hover"
                     >
                       {/* Order / Reorder */}
                       <td className="px-4 py-4 text-center">
@@ -425,7 +422,7 @@ export function WorkspaceCategoriesTab({
                             title="Move up"
                             disabled={index === 0}
                             onClick={() => handleMoveOrder(index, "up")}
-                            className="cursor-pointer rounded p-1 text-[#556070] transition-colors hover:bg-[#E1E5EB] disabled:cursor-not-allowed disabled:opacity-30 dark:text-[#8E8E93] dark:hover:bg-white/10"
+                            className="cursor-pointer rounded p-1 text-text-muted transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-30 active:scale-[0.98]"
                           >
                             <ArrowUp className="size-3.5" />
                           </button>
@@ -434,7 +431,7 @@ export function WorkspaceCategoriesTab({
                             title="Move down"
                             disabled={index === categories.length - 1}
                             onClick={() => handleMoveOrder(index, "down")}
-                            className="cursor-pointer rounded p-1 text-[#556070] transition-colors hover:bg-[#E1E5EB] disabled:cursor-not-allowed disabled:opacity-30 dark:text-[#8E8E93] dark:hover:bg-white/10"
+                            className="cursor-pointer rounded p-1 text-text-muted transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-30 active:scale-[0.98]"
                           >
                             <ArrowDown className="size-3.5" />
                           </button>
@@ -450,16 +447,16 @@ export function WorkspaceCategoriesTab({
                           />
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[14px] font-semibold text-[#161C26] dark:text-white">
+                              <span className="text-[14px] font-semibold text-text">
                                 {cat.name}
                               </span>
                               {cat.is_uncategorized && (
-                                <span className="rounded-[6px] bg-[#F0F2FE] px-2 py-0.5 text-[11px] font-medium text-[#363BA6] dark:bg-[#4249C9]/20 dark:text-[#7B82F6]">
+                                <span className="rounded-[6px] bg-action-subtle px-2 py-0.5 text-[11px] font-medium text-action-subtle-fg">
                                   Default Catch-all
                                 </span>
                               )}
                             </div>
-                            <span className="font-mono text-[12px] text-[#556070] dark:text-[#8E8E93]">
+                            <span className="font-mono text-[12px] text-text-muted">
                               {cat.slug}
                             </span>
                           </div>
@@ -468,7 +465,7 @@ export function WorkspaceCategoriesTab({
 
                       {/* Description */}
                       <td className="max-w-[260px] px-6 py-4">
-                        <p className="line-clamp-2 text-[13px] text-[#556070] dark:text-[#8E8E93]">
+                        <p className="line-clamp-2 text-[13px] text-text-muted">
                           {cat.description || "—"}
                         </p>
                       </td>
@@ -480,19 +477,19 @@ export function WorkspaceCategoriesTab({
                             {cat.keywords.slice(0, 3).map((kw, i) => (
                               <span
                                 key={i}
-                                className="rounded bg-[#EDF0F5] px-1.5 py-0.5 text-[11px] font-medium text-[#556070] dark:bg-white/10 dark:text-[#8E8E93]"
+                                className="rounded bg-subtle px-1.5 py-0.5 text-[11px] font-medium text-text-muted"
                               >
                                 {kw}
                               </span>
                             ))}
                             {cat.keywords.length > 3 && (
-                              <span className="text-[11px] text-[#8E8E93]">
+                              <span className="text-[11px] text-text-muted">
                                 +{cat.keywords.length - 3}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-[13px] text-[#8E8E93]">None</span>
+                          <span className="text-[13px] text-text-muted">—</span>
                         )}
                       </td>
 
@@ -504,7 +501,7 @@ export function WorkspaceCategoriesTab({
                             title={`Edit ${cat.name}`}
                             aria-label={`Edit ${cat.name}`}
                             onClick={() => handleOpenEditModal(cat)}
-                            className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#556070] transition-colors hover:bg-[#EDF0F5] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:bg-white/10 dark:hover:text-white"
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-hover hover:text-text active:scale-[0.98]"
                           >
                             <Edit2 className="size-4" />
                           </button>
@@ -522,7 +519,7 @@ export function WorkspaceCategoriesTab({
                             }
                             disabled={cat.is_uncategorized}
                             onClick={() => handleOpenDeleteModal(cat)}
-                            className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#C0281B] transition-colors hover:bg-[#FDECEB] disabled:cursor-not-allowed disabled:opacity-30 dark:text-red-400 dark:hover:bg-red-950/20"
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-status-error transition-colors hover:bg-status-error-bg disabled:cursor-not-allowed disabled:opacity-30 active:scale-[0.98]"
                           >
                             <Trash2 className="size-4" />
                           </button>
@@ -533,7 +530,7 @@ export function WorkspaceCategoriesTab({
                 </tbody>
               </table>
 
-              <div className="flex h-12 items-center justify-between border-t border-[#E1E5EB] bg-[#F7F9FC] px-6 text-[12px] text-[#556070] dark:border-white/10 dark:bg-white/5 dark:text-[#8E8E93]">
+              <div className="flex h-12 items-center justify-between border-t border-border bg-subtle px-6 text-[12px] tabular-nums text-text-muted">
                 <span>
                   Total: {categories.length} {categories.length === 1 ? "category" : "categories"}
                 </span>

@@ -16,7 +16,8 @@ vi.mock("@/repositories/auth.repository", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
   __esModule: true,
-  default: (props: any) => <img {...props} />,
+  // eslint-disable-next-line @next/next/no-img-element
+  default: (props: any) => <img alt="" {...props} />,
 }));
 
 describe("InvitePage", () => {

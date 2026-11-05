@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Check,
   ChevronsUpDown,
   FileText,
+  Inbox,
   LayoutDashboard,
   PanelLeft,
   Plus,
@@ -24,6 +25,7 @@ interface WorkspaceSidebarProps {
   workspaceSlug: string;
   activeWs: UserWorkspaceMembershipRead | null;
   workspaceDetails: WorkspaceRead | null;
+  inboxCount?: number;
 }
 
 function getWorkspaceInitials(name?: string): string {
@@ -42,6 +44,7 @@ export function WorkspaceSidebar({
   workspaceSlug,
   activeWs,
   workspaceDetails,
+  inboxCount,
 }: WorkspaceSidebarProps) {
   const router = useRouter();
   const { workspaces } = useWorkspaceStore();
@@ -49,11 +52,16 @@ export function WorkspaceSidebar({
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
 
+  const searchParams = useSearchParams();
+  const currentTab = searchParams?.get("tab");
   const currentSlug = workspaceSlug || activeWs?.workspace_slug || "";
 
-  const isDashboardActive =
+  const isBaseWorkspace =
     pathname === `/workspace/${currentSlug}` ||
     pathname === `/workspace/${currentSlug}/dashboard`;
+
+  const isInboxActive = isBaseWorkspace && currentTab === "inbox";
+  const isInsightsActive = isBaseWorkspace && (!currentTab || currentTab === "insights");
   const isFormsActive = pathname.startsWith(`/workspace/${currentSlug}/forms`);
   const isSettingsActive = pathname.startsWith(
     `/workspace/${currentSlug}/settings`
@@ -89,20 +97,20 @@ export function WorkspaceSidebar({
 
       {/* WORKSPACE SIDEBAR (240px wide) */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 flex w-[240px] flex-col border-r border-[#E1E5EB] bg-white transition-transform duration-200 ease-out dark:border-white/10 dark:bg-[#1C1C1E] lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 flex w-[240px] flex-col border-r border-border bg-surface transition-transform duration-200 ease-out lg:translate-x-0 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Top Workspace Brand Header & Popover Switcher (64px) */}
         <div
           ref={switcherRef}
-          className="relative border-b border-[#E1E5EB] dark:border-white/10"
+          className="relative border-b border-border"
         >
           <div className="flex h-16 shrink-0 items-center justify-between px-3">
             <button
               type="button"
               onClick={() => setIsSwitcherOpen((prev) => !prev)}
-              className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-[10px] p-1.5 text-left transition-colors hover:bg-[#F3F5F9] dark:hover:bg-white/5"
+              className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-[10px] p-1.5 text-left transition-colors hover:bg-hover"
               aria-expanded={isSwitcherOpen}
               aria-haspopup="true"
               aria-label="Switch workspace"
@@ -116,27 +124,27 @@ export function WorkspaceSidebar({
                     className="size-7 shrink-0 rounded-[8px] object-cover shadow-xs"
                   />
                 ) : (
-                  <div className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-[#161C26] text-[11px] font-bold tracking-tight text-white shadow-xs dark:bg-white dark:text-[#161C26]">
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-action text-[11px] font-bold tracking-tight text-white shadow-xs">
                     {getWorkspaceInitials(activeWs?.workspace_name)}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <span className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-[#161C26] dark:text-white">
+                  <span className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-text">
                     {activeWs?.workspace_name || "Workspace"}
                   </span>
-                  <span className="block truncate text-[11px] font-medium text-[#556070] dark:text-[#8E8E93]">
+                  <span className="block truncate text-[11px] font-medium text-text-muted">
                     {activeWs?.role_name || "Workspace"}
                   </span>
                 </div>
               </div>
-              <ChevronsUpDown className="size-4 shrink-0 text-[#556070] dark:text-[#8E8E93]" />
+              <ChevronsUpDown className="size-4 shrink-0 text-text-muted" />
             </button>
 
             {/* Mobile close button */}
             <button
               type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="ml-1 flex size-8 items-center justify-center rounded-[8px] text-[#556070] hover:bg-[#F3F5F9] lg:hidden dark:text-[#A1A1A6] dark:hover:bg-white/5"
+              className="ml-1 flex size-8 items-center justify-center rounded-[8px] text-text-muted hover:bg-hover lg:hidden"
               aria-label="Close sidebar"
             >
               <X className="size-4" />
@@ -145,9 +153,9 @@ export function WorkspaceSidebar({
 
           {/* Switcher Popover Dropdown */}
           {isSwitcherOpen && (
-            <div className="absolute top-[68px] right-3 left-3 z-50 rounded-[14px] border border-[#E1E5EB] bg-white p-1.5 shadow-[0_12px_32px_-4px_rgba(16,24,40,0.15)] dark:border-white/15 dark:bg-[#2C2C2E]">
+            <div className="absolute top-[68px] right-3 left-3 z-50 rounded-[14px] border border-border bg-surface p-1.5 shadow-menu">
               <div className="px-2.5 py-1.5">
-                <span className="text-[11px] font-semibold tracking-wide text-[#767685] uppercase dark:text-[#8E8E93]">
+                <span className="text-[11px] font-semibold tracking-wide text-text-muted uppercase">
                   Workspaces
                 </span>
               </div>
@@ -167,32 +175,32 @@ export function WorkspaceSidebar({
                       }}
                       className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-[8px] px-2.5 py-2 text-left transition-colors ${
                         isActive
-                          ? "bg-[#F0F2FE] font-medium text-[#161C26] dark:bg-[#4249C9]/25 dark:text-white"
-                          : "text-[#556070] hover:bg-[#F3F5F9] dark:text-[#A1A1A6] dark:hover:bg-white/5"
+                          ? "bg-action-subtle font-medium text-action-subtle-fg"
+                          : "text-text-muted hover:bg-hover"
                       }`}
                     >
                       <div className="flex min-w-0 items-center gap-2">
-                        <div className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-[#E1E5EB] text-[10px] font-bold text-[#161C26] dark:bg-white/15 dark:text-white">
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-subtle text-[10px] font-bold text-text">
                           {getWorkspaceInitials(ws.workspace_name)}
                         </div>
                         <div className="min-w-0">
-                          <span className="block truncate text-[13px] leading-tight text-[#161C26] dark:text-white">
+                          <span className="block truncate text-[13px] leading-tight text-text">
                             {ws.workspace_name}
                           </span>
-                          <span className="block truncate text-[11px] text-[#767685] dark:text-[#8E8E93]">
+                          <span className="block truncate text-[11px] text-text-muted">
                             {ws.role_name}
                           </span>
                         </div>
                       </div>
                       {isActive && (
-                        <Check className="size-4 shrink-0 text-[#4249C9] dark:text-[#2997FF]" />
+                        <Check className="size-4 shrink-0 text-action" />
                       )}
                     </button>
                   );
                 })}
               </div>
 
-              <div className="my-1 h-[1px] bg-[#E1E5EB] dark:bg-white/10" />
+              <div className="my-1 h-[1px] bg-border" />
 
               <Link
                 href="/create-workspace"
@@ -200,7 +208,7 @@ export function WorkspaceSidebar({
                   setIsSwitcherOpen(false);
                   setIsSidebarOpen(false);
                 }}
-                className="flex items-center gap-2 rounded-[8px] px-2.5 py-2 text-[13px] font-medium text-[#4249C9] transition-colors hover:bg-[#F0F2FE] dark:text-[#2997FF] dark:hover:bg-[#4249C9]/20"
+                className="flex items-center gap-2 rounded-[8px] px-2.5 py-2 text-[13px] font-medium text-action transition-colors hover:bg-action-subtle"
               >
                 <Plus className="size-4" />
                 <span>Create new workspace</span>
@@ -211,67 +219,85 @@ export function WorkspaceSidebar({
 
         {/* Navigation Links */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-3">
-          {/* Workspace Dashboard */}
+          {/* Insights */}
           <Link
             href={`/workspace/${currentSlug}`}
             onClick={() => setIsSidebarOpen(false)}
-            className={`relative flex h-9 items-center rounded-[10px] px-2.5 text-[14px] transition-colors ${
-              isDashboardActive
-                ? "bg-[#F0F2FE] font-semibold text-[#363BA6] dark:bg-[#4249C9]/20 dark:text-[#2997FF]"
-                : "font-normal text-[#556070] hover:bg-[#F3F5F9] hover:text-[#161C26] dark:text-[#A1A1A6] dark:hover:bg-white/5 dark:hover:text-white"
+            className={`flex h-9 items-center rounded-[10px] px-2.5 text-[14px] transition-colors ${
+              isInsightsActive
+                ? "bg-action-subtle font-medium text-action-subtle-fg"
+                : "font-normal text-text-muted hover:bg-hover hover:text-text"
             }`}
           >
-            {isDashboardActive && (
-              <div className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-r-full bg-[#4249C9]" />
-            )}
             <LayoutDashboard
-              className="ml-1.5 size-5 shrink-0"
+              className="ml-1 size-4.5 shrink-0"
               aria-hidden="true"
             />
-            <span className="ml-2.5 truncate">Dashboard</span>
+            <span className="ml-2.5 truncate">Insights</span>
           </Link>
 
-          {/* Forms & Widgets Studio */}
+          {/* Inbox */}
+          <Link
+            href={`/workspace/${currentSlug}?tab=inbox`}
+            onClick={() => setIsSidebarOpen(false)}
+            className={`flex h-9 items-center justify-between rounded-[10px] px-2.5 text-[14px] transition-colors ${
+              isInboxActive
+                ? "bg-action-subtle font-medium text-action-subtle-fg"
+                : "font-normal text-text-muted hover:bg-hover hover:text-text"
+            }`}
+          >
+            <div className="flex min-w-0 items-center">
+              <Inbox className="ml-1 size-4.5 shrink-0" aria-hidden="true" />
+              <span className="ml-2.5 truncate">Inbox</span>
+            </div>
+            {Boolean(inboxCount && inboxCount > 0) && (
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${
+                  isInboxActive
+                    ? "bg-action text-white"
+                    : "bg-subtle text-text-muted"
+                }`}
+              >
+                {inboxCount}
+              </span>
+            )}
+          </Link>
+
+          {/* Forms */}
           <Link
             href={`/workspace/${currentSlug}/forms`}
             onClick={() => setIsSidebarOpen(false)}
-            className={`relative flex h-9 items-center rounded-[10px] px-2.5 text-[14px] transition-colors ${
+            className={`flex h-9 items-center rounded-[10px] px-2.5 text-[14px] transition-colors ${
               isFormsActive
-                ? "bg-[#F0F2FE] font-semibold text-[#363BA6] dark:bg-[#4249C9]/20 dark:text-[#2997FF]"
-                : "font-normal text-[#556070] hover:bg-[#F3F5F9] hover:text-[#161C26] dark:text-[#A1A1A6] dark:hover:bg-white/5 dark:hover:text-white"
+                ? "bg-action-subtle font-medium text-action-subtle-fg"
+                : "font-normal text-text-muted hover:bg-hover hover:text-text"
             }`}
           >
-            {isFormsActive && (
-              <div className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-r-full bg-[#4249C9]" />
-            )}
-            <FileText className="ml-1.5 size-5 shrink-0" aria-hidden="true" />
-            <span className="ml-2.5 truncate">Forms & Widgets</span>
+            <FileText className="ml-1 size-4.5 shrink-0" aria-hidden="true" />
+            <span className="ml-2.5 truncate">Forms</span>
           </Link>
 
-          {/* Workspace Settings */}
+          {/* Settings */}
           <Link
             href={`/workspace/${currentSlug}/settings`}
             onClick={() => setIsSidebarOpen(false)}
-            className={`relative flex h-9 items-center rounded-[10px] px-2.5 text-[14px] transition-colors ${
+            className={`flex h-9 items-center rounded-[10px] px-2.5 text-[14px] transition-colors ${
               isSettingsActive
-                ? "bg-[#F0F2FE] font-semibold text-[#363BA6] dark:bg-[#4249C9]/20 dark:text-[#2997FF]"
-                : "font-normal text-[#556070] hover:bg-[#F3F5F9] hover:text-[#161C26] dark:text-[#A1A1A6] dark:hover:bg-white/5 dark:hover:text-white"
+                ? "bg-action-subtle font-medium text-action-subtle-fg"
+                : "font-normal text-text-muted hover:bg-hover hover:text-text"
             }`}
           >
-            {isSettingsActive && (
-              <div className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-r-full bg-[#4249C9]" />
-            )}
-            <Settings className="ml-1.5 size-5 shrink-0" aria-hidden="true" />
+            <Settings className="ml-1 size-4.5 shrink-0" aria-hidden="true" />
             <span className="ml-2.5 truncate">Settings</span>
           </Link>
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="flex shrink-0 items-center justify-between border-t border-[#E1E5EB] p-3 dark:border-white/10">
-          <div className="flex size-8 items-center justify-center rounded-[8px] text-[#556070] dark:text-[#8E8E93]">
+        <div className="flex shrink-0 items-center justify-between border-t border-border p-3">
+          <div className="flex size-7 items-center justify-center rounded-[8px] text-text-subtle opacity-40">
             <PanelLeft className="size-4" />
           </div>
-          <span className="text-[12px] font-normal text-[#556070] dark:text-[#8E8E93]">
+          <span className="text-[11px] font-normal text-text-subtle opacity-40">
             v1.0
           </span>
         </div>

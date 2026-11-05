@@ -2,20 +2,14 @@
 
 import { useState } from "react";
 import {
-  Archive,
   Check,
-  CheckCircle2,
   Code2,
   Copy,
-  ExternalLink,
   History,
   Layers,
-  MessageSquare,
   ShieldCheck,
   Sliders,
   Sparkles,
-  Star,
-  Tag,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -139,10 +133,10 @@ export function LandingFeaturesBento() {
               </span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="rounded-md border border-border bg-surface px-2 py-0.5 font-mono">
-                  "crash"
+                  &ldquo;crash&rdquo;
                 </span>
                 <span className="rounded-md border border-border bg-surface px-2 py-0.5 font-mono">
-                  "error"
+                  &ldquo;error&rdquo;
                 </span>
                 <span className="text-text-muted">→</span>
                 <span className="rounded-full bg-rose-50 px-2 py-0.5 font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">

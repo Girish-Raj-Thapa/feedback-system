@@ -185,7 +185,7 @@ export function ScoreDriverShowcase() {
 
       {/* Handwritten note in Caveat font */}
       <div className="pointer-events-none absolute bottom-[66px] left-[50px] sm:left-[130px] z-30 flex select-none items-center gap-2">
-        <span className="font-[family-name:var(--font-caveat)] text-[22px] sm:text-[24px] font-bold tracking-wide text-[#0071E3] dark:text-[#2997FF] transform -rotate-[4deg]">
+        <span className="font-caveat text-[22px] sm:text-[24px] font-bold tracking-wide text-[#0071E3] dark:text-[#2997FF] transform -rotate-[4deg]">
           this is what&apos;s costing you
         </span>
         <svg

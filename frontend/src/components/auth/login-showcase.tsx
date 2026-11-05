@@ -167,7 +167,7 @@ export function LoginShowcase() {
         </div>
 
         {/* Handwritten note in Caveat script font */}
-        <div className="font-[family-name:var(--font-caveat)] text-[#0071E3] dark:text-[#2997FF] text-[22px] font-bold tracking-wide pt-0.5 pointer-events-none select-none">
+        <div className="font-caveat text-[#0071E3] dark:text-[#2997FF] text-[22px] font-bold tracking-wide pt-0.5 pointer-events-none select-none">
           fix this one first
         </div>
       </div>

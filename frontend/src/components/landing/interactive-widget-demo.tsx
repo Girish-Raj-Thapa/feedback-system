@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  ArrowRight,
   CheckCircle2,
   ExternalLink,
   RotateCcw,

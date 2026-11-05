@@ -1,11 +1,4 @@
 import { useWorkspaceStore } from "@/store/workspace.store";
-import { authRepository } from "@/repositories/auth.repository";
-
-vi.mock("@/repositories/auth.repository", () => ({
-  authRepository: {
-    getWorkspaces: vi.fn(),
-  },
-}));
 
 describe("useWorkspaceStore", () => {
   beforeEach(() => {

@@ -459,44 +459,44 @@ export default function WorkspaceSettingsPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[880px] pb-12">
+    <div className="w-full max-w-[1000px] pb-12">
       {/* PAGE HEADER */}
       <header className="mb-6">
         <div className="mb-6">
           <div className="mb-1 flex items-center gap-2.5">
-            <h1 className="text-[24px] font-semibold leading-8 tracking-tight text-[#161C26] dark:text-white">
+            <h1 className="text-[24px] font-semibold leading-8 tracking-tight text-text">
               {workspace?.name}
             </h1>
             {isOwner ? (
-              <span className="rounded-[6px] bg-[#F0F2FE] px-2 py-0.5 text-[12px] font-medium text-[#363BA6] dark:bg-[#4249C9]/20 dark:text-[#2997FF]">
+              <span className="rounded-[6px] bg-action-subtle px-2 py-0.5 text-[12px] font-medium text-action-subtle-fg">
                 Owner
               </span>
             ) : (
-              <span className="rounded-[6px] bg-[#EDF0F5] px-2 py-0.5 text-[12px] font-medium text-[#556070] dark:bg-white/10 dark:text-[#8E8E93]">
+              <span className="rounded-[6px] bg-subtle px-2 py-0.5 text-[12px] font-medium text-text-muted">
                 {currentMembership?.role_name || "Member"}
               </span>
             )}
           </div>
-          <p className="text-[14px] text-[#556070] dark:text-[#8E8E93]">
+          <p className="text-[14px] text-text-muted">
             Manage your workspace profile, usage and team members.
           </p>
         </div>
 
-        {/* UNDERLINE TAB BAR (3 TABS) */}
-        <div className="flex items-center gap-8 border-b border-[#E1E5EB] dark:border-white/10">
+        {/* UNDERLINE TAB BAR (5 TABS) */}
+        <div className="flex items-center gap-8 border-b border-border">
           {/* General Tab */}
           <button
             type="button"
             onClick={() => setTab("general")}
             className={`relative pb-3 text-[14px] transition-colors cursor-pointer ${
               currentTab === "general"
-                ? "font-semibold text-[#161C26] dark:text-white"
-                : "font-medium text-[#556070] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:text-white"
+                ? "font-semibold text-text"
+                : "font-medium text-text-muted hover:text-text"
             }`}
           >
             General
             {currentTab === "general" && (
-              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
             )}
           </button>
 
@@ -506,16 +506,16 @@ export default function WorkspaceSettingsPage() {
             onClick={() => setTab("members")}
             className={`relative flex items-center gap-2 pb-3 text-[14px] transition-colors cursor-pointer ${
               currentTab === "members"
-                ? "font-semibold text-[#161C26] dark:text-white"
-                : "font-medium text-[#556070] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:text-white"
+                ? "font-semibold text-text"
+                : "font-medium text-text-muted hover:text-text"
             }`}
           >
             <span>Members</span>
-            <span className="rounded-[6px] bg-[#EDF0F5] px-1.5 py-0.5 text-[11px] font-medium text-[#556070] dark:bg-white/10 dark:text-[#8E8E93]">
+            <span className="rounded-[6px] bg-subtle px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-text-muted">
               {members.length}
             </span>
             {currentTab === "members" && (
-              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
             )}
           </button>
 
@@ -525,16 +525,16 @@ export default function WorkspaceSettingsPage() {
             onClick={() => setTab("invitations")}
             className={`relative flex items-center gap-2 pb-3 text-[14px] transition-colors cursor-pointer ${
               currentTab === "invitations"
-                ? "font-semibold text-[#161C26] dark:text-white"
-                : "font-medium text-[#556070] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:text-white"
+                ? "font-semibold text-text"
+                : "font-medium text-text-muted hover:text-text"
             }`}
           >
             <span>Invitations</span>
-            <span className="rounded-[6px] bg-[#EDF0F5] px-1.5 py-0.5 text-[11px] font-medium text-[#556070] dark:bg-white/10 dark:text-[#8E8E93]">
+            <span className="rounded-[6px] bg-subtle px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-text-muted">
               {invites.length}
             </span>
             {currentTab === "invitations" && (
-              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
             )}
           </button>
 
@@ -544,13 +544,13 @@ export default function WorkspaceSettingsPage() {
             onClick={() => setTab("categories")}
             className={`relative flex items-center gap-2 pb-3 text-[14px] transition-colors cursor-pointer ${
               currentTab === "categories"
-                ? "font-semibold text-[#161C26] dark:text-white"
-                : "font-medium text-[#556070] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:text-white"
+                ? "font-semibold text-text"
+                : "font-medium text-text-muted hover:text-text"
             }`}
           >
             <span>Categories</span>
             {currentTab === "categories" && (
-              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
             )}
           </button>
 
@@ -560,13 +560,13 @@ export default function WorkspaceSettingsPage() {
             onClick={() => setTab("account")}
             className={`relative flex items-center gap-2 pb-3 text-[14px] transition-colors cursor-pointer ${
               currentTab === "account"
-                ? "font-semibold text-[#161C26] dark:text-white"
-                : "font-medium text-[#556070] hover:text-[#161C26] dark:text-[#8E8E93] dark:hover:text-white"
+                ? "font-semibold text-text"
+                : "font-medium text-text-muted hover:text-text"
             }`}
           >
             <span>My Profile & Security</span>
             {currentTab === "account" && (
-              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-[#4249C9]" />
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
             )}
           </button>
         </div>

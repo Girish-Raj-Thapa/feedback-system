@@ -6,16 +6,10 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
-  ChevronDown,
   ExternalLink,
-  Eye,
-  FileText,
   Globe,
-  HelpCircle,
   Laptop,
-  Layers,
   Loader2,
-  Palette,
   Plus,
   RefreshCw,
   Share2,
@@ -23,8 +17,6 @@ import {
   Smartphone,
   Smile,
   Sparkles,
-  Star,
-  Tag,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -616,7 +608,7 @@ export default function FormStudioPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {categoryPills.map((pill, idx) => (
+                  {categoryPills.map((pill) => (
                     <div
                       key={pill.id}
                       className="flex items-center gap-2 rounded-[12px] border border-[#E1E5EB] p-3 dark:border-white/10"

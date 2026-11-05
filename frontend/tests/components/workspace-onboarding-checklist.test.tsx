@@ -27,15 +27,15 @@ describe("WorkspaceOnboardingChecklist", () => {
     expect(screen.getByText("2 of 3")).toBeInTheDocument();
 
     // Step 1: Categories
-    expect(screen.getByText("Review Theme Buckets")).toBeInTheDocument();
+    expect(screen.getByText("Review categories")).toBeInTheDocument();
     expect(screen.getByText("6 Categories")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Configure Categories/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Configure categories/i })).toHaveAttribute(
       "href",
       `/workspace/${wsSlug}/settings?tab=categories`
     );
 
     // Step 2: Forms
-    expect(screen.getByText("Launch Form or Widget")).toBeInTheDocument();
+    expect(screen.getByText("Share your form")).toBeInTheDocument();
     expect(screen.getByText("1 Form")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Open Form Studio/i })).toHaveAttribute(
       "href",
@@ -43,7 +43,7 @@ describe("WorkspaceOnboardingChecklist", () => {
     );
 
     // Step 3: Sample Feedback
-    expect(screen.getByText("Preview Decision Insights")).toBeInTheDocument();
+    expect(screen.getByText("Preview decision insights")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Load Sample Feedback/i })).toBeInTheDocument();
   });
 
