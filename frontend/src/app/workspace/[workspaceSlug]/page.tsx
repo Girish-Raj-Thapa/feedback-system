@@ -109,13 +109,14 @@ export default function WorkspaceDashboardPage() {
   const searchParams = useSearchParams();
   const workspaceSlug = params?.workspaceSlug as string;
   const tabParam = searchParams?.get("tab");
+  const idParam = searchParams?.get("id");
 
   const { workspaces, setWorkspaces } = useWorkspaceStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
   const [activeView, setActiveView] = useState<"insights" | "inbox">(
-    tabParam === "inbox" ? "inbox" : "insights"
+    tabParam === "inbox" || Boolean(idParam) ? "inbox" : "insights"
   );
   const [selectedDays, setSelectedDays] = useState<number | string>(30);
   const [insights, setInsights] = useState<FeedbackInsightsResponse | null>(null);
@@ -141,7 +142,7 @@ export default function WorkspaceDashboardPage() {
   const [prevTabParam, setPrevTabParam] = useState(tabParam);
   if (tabParam !== prevTabParam) {
     setPrevTabParam(tabParam);
-    setActiveView(tabParam === "inbox" ? "inbox" : "insights");
+    setActiveView(tabParam === "inbox" || Boolean(idParam) ? "inbox" : "insights");
   }
 
   const hasActiveFilters = Boolean(
@@ -404,6 +405,29 @@ export default function WorkspaceDashboardPage() {
         setTotalSubmissions(submissionsPage.total);
         setInsights(insightsData);
         setFormsCount(formsList?.length || 0);
+
+        // Auto-open deep linked submission if idParam is present in URL
+        if (idParam) {
+          const matched = submissionsPage.items.find((s) => s.id === idParam);
+          if (matched) {
+            setSelectedSubmission(matched);
+            setActiveView("inbox");
+          } else if (typeof feedbackRepository.getSubmission === "function") {
+            try {
+              const fetched = await feedbackRepository.getSubmission(
+                membership.workspace_id,
+                idParam
+              );
+              if (fetched && isMounted) {
+                setSelectedSubmission(fetched);
+                setActiveView("inbox");
+              }
+            } catch {
+              // Ignore if ID is invalid or not found
+            }
+          }
+        }
+
         isInitialLoaded.current = true;
         setIsLoading(false);
       } catch (err: unknown) {
@@ -421,7 +445,44 @@ export default function WorkspaceDashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [workspaceSlug, workspaces, router, setWorkspaces, selectedDays]);
+  }, [workspaceSlug, workspaces, router, setWorkspaces, selectedDays, idParam]);
+
+  // Respond to dynamic URL param changes for deep-linked triage drawer
+  useEffect(() => {
+    if (!idParam || !workspace || !isInitialLoaded.current) return;
+    if (selectedSubmission?.id === idParam) return;
+
+    const existing = submissions.find((s) => s.id === idParam);
+    if (existing) {
+      setSelectedSubmission(existing);
+      setActiveView("inbox");
+    } else if (typeof feedbackRepository.getSubmission === "function") {
+      feedbackRepository
+        .getSubmission(workspace.id, idParam)
+        .then((fetched) => {
+          if (fetched) {
+            setSelectedSubmission(fetched);
+            setActiveView("inbox");
+          }
+        })
+        .catch(() => {});
+    }
+  }, [idParam, workspace, submissions, selectedSubmission?.id]);
+
+  const handleCloseDrawer = () => {
+    setSelectedSubmission(null);
+    if (searchParams?.get("id")) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete("id");
+      const nextQuery = nextParams.toString();
+      router.replace(
+        nextQuery
+          ? `/workspace/${workspaceSlug}?${nextQuery}`
+          : `/workspace/${workspaceSlug}`,
+        { scroll: false }
+      );
+    }
+  };
 
   if (isLoading) {
     return (
@@ -862,7 +923,7 @@ export default function WorkspaceDashboardPage() {
         workspaceId={workspace?.id}
         categories={categories}
         onSelectSubmission={setSelectedSubmission}
-        onClose={() => setSelectedSubmission(null)}
+        onClose={handleCloseDrawer}
         onStatusChange={handleStatusChange}
         onUpdateSubmission={handleUpdateSubmission}
         isUpdatingStatus={isUpdatingStatus}

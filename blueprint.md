@@ -134,11 +134,29 @@ Bridges macro insights with lightweight daily action.
 - **5.1 Action Triage Feed:**
   - Filterable list of individual submissions with status pills: `New` -> `In Progress` -> `Resolved` (plus `Spam`).
   - **1-Click Personal Follow-Up:** If a customer included their email, clicking **Reply via Email** opens a pre-populated response template referencing their exact quote so the founder can close the loop.
-- **5.2 Real-Time Alert Rules ($0 Cost to Platform):**
-  - Configurable triggers (e.g., *All responses*, *Score <= 3 Stars*, *Specific Theme Bucket*, or *Paid Tier users*):
-    - **Slack & Discord Webhooks:** Pushes rich notification cards directly to a team channel.
-    - **Email Alerts:** Instant alert for critical negative ratings + automated **Monday Morning Top-3 Digest**.
-    - **Generic Outbound JSON Webhook:** Connects seamlessly to **Make.com**, **n8n**, **Zapier**, or internal APIs.
+- **5.2 Real-Time Alert Rules & Webhook Dispatches (Slack First):**
+  - **Independent Trigger Matrix:**
+    1. **Trigger Condition:** `Detractors Only (≤ 3★)` vs. `All Feedback Submissions`.
+    2. **Form Scope:** `All Forms` vs. `Selected Forms (by ID)`.
+    - Combining condition and form selection allows flexible routing without complex automation builders (e.g., all responses from an Exit Survey go to `#churn-alerts`, but only negative ratings from general widgets go to `#customer-issues`).
+  - **Multiple Alert Configurations per Workspace:**
+    - Workspaces can configure multiple independent Slack incoming webhooks targeting different channels.
+  - **Core Signal Trio Block Kit Card:**
+    - Severity & Form Header (`🔴 Detractor` vs `🟢 Promoter` + Form Name).
+    - Signal Grid: Rating stars (`★ ★ ☆ ☆ ☆`), Theme Bucket tag (`🏷️ Pricing & Billing`), and Sentiment badge.
+    - Verbatim Customer Quote (blockquoted).
+    - Optional Context: Customer email (with privacy mask options), user plan/tier, and source referrer (`?ref=...`).
+    - 1-Click Dashboard Deep Link (`View in Dashboard & Triage ↗`) opening the triage inspection drawer.
+  - **Delivery Orchestration & Security:**
+    - Async non-blocking Taskiq dispatch (feedback submissions return in < 50ms without waiting for Slack).
+    - Strict SSRF defense: enforced HTTPS and Slack webhook URL pattern whitelist.
+    - Idempotent dispatch keys to prevent duplicate channel pings on worker retries.
+    - Circuit breaker: automatically pauses dead or revoked webhook connections after repeated 404/410 errors.
+    - Delivery audit trail logged in `webhook_delivery_logs`.
+  - **Phase 2 Enhancements:**
+    - **Automated Monday Morning VoC Digest:** Weekly summary of total feedback volume, average rating, rating delta vs. prior week, and top negative score-driving theme.
+    - **Theme-Based Alert Filtering:** Filter alerts by specific Locked Theme Buckets once background LLM classification is fully active.
+    - **Additional Channels:** Discord Webhook and Generic Outbound JSON Webhook (Make/Zapier/n8n/Linear) via the shared provider interface.
 - **5.3 Data Export:**
   - Full CSV export of all filtered or unfiltered submissions at any time.
 

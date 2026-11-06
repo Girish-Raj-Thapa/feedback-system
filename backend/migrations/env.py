@@ -20,9 +20,15 @@ from app.features.auth.models import (  # noqa: F401
     WorkspaceMember,
 )
 from app.features.feedback.models import (  # noqa: F401
+    AlertRule,
     FeedbackCategory,
     FeedbackSubmission,
     Form,
+)
+from app.features.notifications.models import (  # noqa: F401
+    DeliveryAttempt,
+    NotificationConnection,
+    OutboundDelivery,
 )
 
 # this is the Alembic Config object, which provides

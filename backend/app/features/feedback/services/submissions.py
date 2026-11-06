@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
 from app.features.auth.models import Workspace
 from app.features.feedback.models.forms import Form
 from app.features.feedback.models.submissions import FeedbackSubmission
@@ -24,6 +25,8 @@ from app.features.feedback.schemas.submissions import (
     FeedbackSubmissionResponse,
     FeedbackSubmissionUpdate,
 )
+
+logger = get_logger("app.features.feedback.services.submissions")
 
 
 class SubmissionService:
@@ -57,7 +60,7 @@ class SubmissionService:
         # 1. Validate Rating
         if form.rating_required and payload.rating is None:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Rating is required for this form",
             )
 
@@ -65,20 +68,20 @@ class SubmissionService:
             if form.rating_scale_type in ("5_star", "5_emoji"):
                 if not (1 <= payload.rating <= 5):
                     raise HTTPException(
-                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                         detail="Rating must be an integer between 1 and 5",
                     )
             elif form.rating_scale_type == "1_10_numeric":
                 if not (1 <= payload.rating <= 10):
                     raise HTTPException(
-                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                         detail="Rating must be an integer between 1 and 10",
                     )
 
         # 2. Validate Contact Field
         if form.contact_field_mode == "required" and not payload.customer_email:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Customer email is required",
             )
 
@@ -147,7 +150,7 @@ class SubmissionService:
                     ):
                         q_label = q.get("label", "Question")
                         raise HTTPException(
-                            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                             detail=f"Question '{q_label}' is required",
                         )
 
@@ -288,6 +291,23 @@ class SubmissionService:
         await self.submission_repo.create(submission)
         await self.session.commit()
         await self.session.refresh(submission)
+
+        # 7. Asynchronously Enqueue Alert Evaluation to Background Worker
+        try:
+            from app.features.feedback.tasks import (
+                evaluate_submission_alerts_task,
+            )
+
+            await evaluate_submission_alerts_task.kiq(str(submission.id))
+        except Exception as exc:
+            # If Redis or broker is temporarily down, the submission is safely
+            # committed with alert_evaluated_at = NULL. The reconciliation sweeper
+            # will automatically pick it up when the broker recovers.
+            logger.warning(
+                "feedback.submission.taskiq_enqueue_warning",
+                submission_id=str(submission.id),
+                error=str(exc),
+            )
 
         return FeedbackSubmissionResponse(
             id=submission.id,

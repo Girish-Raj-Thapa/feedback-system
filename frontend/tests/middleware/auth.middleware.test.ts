@@ -37,6 +37,19 @@ describe("handleAuthRouting middleware", () => {
     );
   });
 
+  it("preserves full search query parameters in redirect param when unauthenticated", () => {
+    const req = createMockRequest(
+      "http://localhost:3000/workspace/bazar?tab=inbox&id=8b465f3e-3edf-47b4-89f8-694a5b078370"
+    );
+    const res = handleAuthRouting(req);
+
+    expect(res).not.toBeNull();
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get("location")).toBe(
+      "http://localhost:3000/login?redirect=%2Fworkspace%2Fbazar%3Ftab%3Dinbox%26id%3D8b465f3e-3edf-47b4-89f8-694a5b078370"
+    );
+  });
+
   it("redirects authenticated user away from login to root /", () => {
     const req = createMockRequest("http://localhost:3000/login", {
       ff_session: "valid-session-jwt",

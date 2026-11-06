@@ -70,7 +70,10 @@ export function handleAuthRouting(request: NextRequest): NextResponse | null {
   // If unauthenticated and trying to access a protected route
   if (!hasValidSession && !isPublicAuthPath && pathname !== "/") {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
+    const targetUrl = request.nextUrl.search
+      ? `${pathname}${request.nextUrl.search}`
+      : pathname;
+    loginUrl.searchParams.set("redirect", targetUrl);
     const redirectRes = NextResponse.redirect(loginUrl);
     // Sanitize any dead or invalid session cookie
     if (request.cookies.has("ff_session")) {

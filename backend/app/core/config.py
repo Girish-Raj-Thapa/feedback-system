@@ -91,5 +91,26 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str | None = None
     STRIPE_WEBHOOK_SECRET: str | None = None
 
+    # -----------------------------------------------------------------------
+    # Database Encryption at Rest (Field-Level / Envelope Encryption)
+    # -----------------------------------------------------------------------
+    FIELD_ENCRYPTION_KEY: str | None = None
+    FIELD_ENCRYPTION_ROTATION_KEYS: list[str] = Field(default_factory=list)
+
+    # -----------------------------------------------------------------------
+    # Slack OAuth v2 & Outbound Notifications
+    # -----------------------------------------------------------------------
+    SLACK_CLIENT_ID: str = ""
+    SLACK_CLIENT_SECRET: str = ""
+    SLACK_REDIRECT_URI: str = "http://localhost:3000/integrations/slack/callback"
+
+    @property
+    def SECRET_KEY(self) -> str:
+        return self.JWT_SECRET_KEY
+
+    @property
+    def master_encryption_key(self) -> str:
+        return self.FIELD_ENCRYPTION_KEY or self.JWT_SECRET_KEY
+
 
 settings = Settings()

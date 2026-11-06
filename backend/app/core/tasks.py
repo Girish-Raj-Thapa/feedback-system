@@ -4,6 +4,7 @@ Taskiq broker initialization.
 
 from taskiq_redis import ListQueueBroker
 
+import app.db.models  # noqa: F401 - Register all models and compile mappers for background workers
 from app.core.config import settings
 
 # Queue workers require socket_timeout=None to allow indefinite BRPOP long-polling.

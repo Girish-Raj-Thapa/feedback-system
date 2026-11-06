@@ -16,6 +16,7 @@ vi.mock("@/repositories/auth.repository", () => ({
 vi.mock("@/repositories/feedback.repository", () => ({
   feedbackRepository: {
     listSubmissions: vi.fn(),
+    getSubmission: vi.fn(),
     updateSubmission: vi.fn(),
     getCustomerHistory: vi.fn(),
     listCategories: vi.fn(),
@@ -516,6 +517,31 @@ describe("WorkspaceDashboardPage (Inbox)", () => {
     expect(
       screen.getAllByRole("button", { name: "Reset Filters" }).length
     ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("automatically opens FeedbackDetailDrawer when ?tab=inbox&id=... is present in searchParams", async () => {
+    (feedbackRepository.listSubmissions as any).mockResolvedValue({
+      items: mockSubmissions,
+      total: 2,
+      limit: 50,
+      offset: 0,
+    });
+    (useSearchParams as any).mockReturnValue({
+      get: (key: string) => {
+        if (key === "tab") return "inbox";
+        if (key === "id") return "sub-1";
+        return null;
+      },
+      toString: () => "tab=inbox&id=sub-1",
+    });
+
+    render(<WorkspaceDashboardPage />);
+    const aliceNodes = await screen.findAllByText("Alice");
+    expect(aliceNodes.length).toBeGreaterThanOrEqual(1);
+
+    // Verify detail drawer header/content for sub-1 is rendered
+    expect(await screen.findByText("Submission Details")).toBeInTheDocument();
+    expect(screen.getByLabelText("Feedback submission details")).toBeInTheDocument();
   });
 });
 

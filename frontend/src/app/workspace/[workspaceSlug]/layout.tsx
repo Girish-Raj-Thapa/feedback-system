@@ -103,7 +103,14 @@ export default function WorkspaceLayout({
 
         setIsLoading(false);
       } catch {
-        router.replace("/login");
+        const currentPath =
+          typeof window !== "undefined"
+            ? window.location.pathname + window.location.search
+            : "";
+        const loginTarget = currentPath
+          ? `/login?redirect=${encodeURIComponent(currentPath)}`
+          : "/login";
+        router.replace(loginTarget);
       }
     }
 

@@ -56,8 +56,15 @@ export default function LoginPage() {
 
       const me = await useAuthStore.getState().fetchMe();
       toast.success("Welcome back!");
+      const redirectParam = searchParams.get("redirect");
+      const safeRedirect =
+        redirectParam &&
+        redirectParam.startsWith("/") &&
+        !redirectParam.startsWith("//")
+          ? redirectParam
+          : null;
       const targetPath =
-        searchParams.get("redirect") ||
+        safeRedirect ||
         (me?.workspaces && me.workspaces.length > 0
           ? `/workspace/${me.workspaces[0].workspace_slug}`
           : "/create-workspace");

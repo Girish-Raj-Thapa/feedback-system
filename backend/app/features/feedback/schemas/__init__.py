@@ -2,6 +2,11 @@
 Schemas package for Feedback feature.
 """
 
+from app.features.feedback.schemas.alert_rules import (
+    AlertRuleCreate,
+    AlertRuleRead,
+    AlertRuleUpdate,
+)
 from app.features.feedback.schemas.categories import (
     FeedbackCategoryCreate,
     FeedbackCategoryRead,
@@ -35,6 +40,9 @@ from app.features.feedback.schemas.submissions import (
 )
 
 __all__ = [
+    "AlertRuleCreate",
+    "AlertRuleRead",
+    "AlertRuleUpdate",
     "FeedbackCategoryCreate",
     "FeedbackCategoryRead",
     "FeedbackCategoryReorderItem",

@@ -16,6 +16,7 @@ from app.core.logging import get_logger, setup_logging
 from app.core.middleware import RequestContextMiddleware
 from app.core.redis import close_redis
 from app.db.session import close_db_engine
+import app.db.models  # noqa: F401 - Register all models and compile mappers
 
 # Initialize structured logging immediately before application assembly
 setup_logging(log_level=settings.LOG_LEVEL, log_format=settings.LOG_FORMAT)

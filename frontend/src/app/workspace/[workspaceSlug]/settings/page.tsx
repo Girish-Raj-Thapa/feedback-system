@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { authRepository } from "@/repositories/auth.repository";
 import { AccountSettingsTab } from "@/components/workspace/account-settings-tab";
 import { WorkspaceCategoriesTab } from "@/components/workspace/workspace-categories-tab";
+import { WorkspaceIntegrationsTab } from "@/components/workspace/workspace-integrations-tab";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspaceStore } from "@/store/workspace.store";
 import type {
@@ -198,7 +199,13 @@ export default function WorkspaceSettingsPage() {
   }, [workspaceSlug, workspaces, router, setWorkspaces, inviteRoleId]);
 
   const setTab = (
-    tab: "general" | "members" | "invitations" | "categories" | "account"
+    tab:
+      | "general"
+      | "members"
+      | "invitations"
+      | "categories"
+      | "integrations"
+      | "account"
   ) => {
     router.replace(`/workspace/${workspaceSlug}/settings?tab=${tab}`, {
       scroll: false,
@@ -550,6 +557,22 @@ export default function WorkspaceSettingsPage() {
           >
             <span>Categories</span>
             {currentTab === "categories" && (
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
+            )}
+          </button>
+
+          {/* Integrations & Outbound Webhooks Tab */}
+          <button
+            type="button"
+            onClick={() => setTab("integrations")}
+            className={`relative flex items-center gap-2 pb-3 text-[14px] transition-colors cursor-pointer ${
+              currentTab === "integrations"
+                ? "font-semibold text-text"
+                : "font-medium text-text-muted hover:text-text"
+            }`}
+          >
+            <span>Integrations</span>
+            {currentTab === "integrations" && (
               <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
             )}
           </button>
@@ -1061,7 +1084,15 @@ export default function WorkspaceSettingsPage() {
         />
       )}
 
-      {/* ================= TAB 5: MY PROFILE & SECURITY ================= */}
+      {/* ================= TAB 5: INTEGRATIONS & OUTBOUND ALERTS ================= */}
+      {currentTab === "integrations" && workspace && (
+        <WorkspaceIntegrationsTab
+          workspaceId={workspace.id}
+          isOwner={isOwner}
+        />
+      )}
+
+      {/* ================= TAB 6: MY PROFILE & SECURITY ================= */}
       {currentTab === "account" && <AccountSettingsTab />}
 
       {/* ================= MODAL 1: INVITE TEAMMATE ================= */}

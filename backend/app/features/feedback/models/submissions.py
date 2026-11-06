@@ -109,6 +109,17 @@ class FeedbackSubmission(Base):
         String(50),
         nullable=True,
     )
+    alert_evaluated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    alert_evaluation_attempts: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        server_default=text("0"),
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -146,5 +157,12 @@ class FeedbackSubmission(Base):
             "ix_feedback_submissions_workspace_customer",
             "workspace_id",
             "customer_email",
+        ),
+        Index(
+            "ix_feedback_submissions_pending_eval",
+            "created_at",
+            postgresql_where=text(
+                "alert_evaluated_at IS NULL AND alert_evaluation_attempts < 5"
+            ),
         ),
     )

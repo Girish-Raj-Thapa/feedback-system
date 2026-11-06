@@ -29,7 +29,7 @@ class ConflictError(AppError):
 class ValidationError(AppError):
     def __init__(self, message: str = "Validation failed") -> None:
         super().__init__(
-            message=message, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+            message=message, status_code=status.HTTP_422_UNPROCESSABLE_CONTENT
         )
 
 
@@ -65,7 +65,7 @@ def register_error_handlers(app: FastAPI) -> None:
             formatted_message = "Validation failed"
 
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content={"error": formatted_message},
         )
 
