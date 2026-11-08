@@ -3,7 +3,6 @@ Service layer for Alert Rule evaluation.
 Evaluates incoming feedback submissions against active workspace alert rules and form scopes.
 """
 
-from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -5,6 +5,7 @@ and backward compatibility.
 """
 
 from uuid import uuid4
+
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -15,7 +16,6 @@ from app.core.security.encryption import (
     derive_hkdf_key,
     encrypt_secret,
     get_encryption_key,
-    set_current_tenant_id,
     tenant_encryption_context,
 )
 

@@ -496,3 +496,113 @@ async def test_get_customer_history(
     assert data["total_submissions"] == 2
     assert data["avg_rating"] == 4.0
     assert len(data["submissions"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_public_form_allowed_domains_enforcement(
+    client: AsyncClient,
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+) -> None:
+    """
+    Public forms with allowed_domains reject unauthorized origins/referers with 403,
+    while permitting whitelisted domains, wildcards, and platform origins.
+    """
+    # 1. Create a form restricted to allowed.com and *.partner.org
+    create_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/forms",
+        json={
+            "name": "Restricted Embed Form",
+            "slug": "restricted-embed",
+            "allowed_domains": ["allowed.com", "*.partner.org"],
+        },
+    )
+    assert create_res.status_code == 201
+
+    endpoint = f"/api/v1/public/forms/{test_workspace.slug}/restricted-embed"
+
+    # A. Unauthorized domain -> 403
+    unauth_get = await client.get(
+        endpoint,
+        headers={"origin": "https://malicious.com"},
+    )
+    assert unauth_get.status_code == 403
+    assert "not authorized" in unauth_get.json()["detail"].lower()
+
+    unauth_post = await client.post(
+        f"{endpoint}/submit",
+        json={"rating": 5},
+        headers={"origin": "https://malicious.com"},
+    )
+    assert unauth_post.status_code == 403
+
+    # B. Missing origin/referer when allowed_domains is enforced -> 403
+    no_origin_get = await client.get(endpoint)
+    assert no_origin_get.status_code == 403
+
+    # C. Whitelisted exact domain -> 200 / 201
+    auth_get = await client.get(
+        endpoint,
+        headers={"origin": "https://allowed.com"},
+    )
+    assert auth_get.status_code == 200
+
+    auth_post = await client.post(
+        f"{endpoint}/submit",
+        json={"rating": 5, "comment": "Great widget"},
+        headers={"origin": "https://allowed.com"},
+    )
+    assert auth_post.status_code == 201
+
+    # D. Whitelisted wildcard subdomain -> 200 / 201
+    wildcard_get = await client.get(
+        endpoint,
+        headers={"referer": "https://sub.partner.org/dashboard"},
+    )
+    assert wildcard_get.status_code == 200
+
+    # E. Platform origin (e.g. localhost:3000 for preview in studio) -> 200
+    platform_get = await client.get(
+        endpoint,
+        headers={"origin": "http://localhost:3000"},
+    )
+    assert platform_get.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_public_forms_cors_preflight(
+    client: AsyncClient,
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+) -> None:
+    """
+    OPTIONS preflight to /api/v1/public/* returns 204 with permissive CORS headers
+    enabling third-party embeds on external websites.
+    """
+    create_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/forms",
+        json={"name": "CORS Test Form", "slug": "cors-test"},
+    )
+    assert create_res.status_code == 201
+
+    # OPTIONS preflight
+    options_res = await client.request(
+        "OPTIONS",
+        f"/api/v1/public/forms/{test_workspace.slug}/cors-test",
+        headers={
+            "Origin": "https://external-client.com",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert options_res.status_code == 204
+    assert options_res.headers.get("access-control-allow-origin") == "https://external-client.com"
+    assert "GET" in options_res.headers.get("access-control-allow-methods", "")
+
+    # GET response includes access-control-allow-origin
+    get_res = await client.get(
+        f"/api/v1/public/forms/{test_workspace.slug}/cors-test",
+        headers={"Origin": "https://external-client.com"},
+    )
+    assert get_res.status_code == 200
+    assert get_res.headers.get("access-control-allow-origin") == "https://external-client.com"
+

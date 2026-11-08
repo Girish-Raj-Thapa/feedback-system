@@ -8,15 +8,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.db.models  # noqa: F401 - Register all models and compile mappers
 from app.api import health
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.errors import register_error_handlers
 from app.core.logging import get_logger, setup_logging
-from app.core.middleware import RequestContextMiddleware
+from app.core.middleware import PublicCORSMiddleware, RequestContextMiddleware
 from app.core.redis import close_redis
 from app.db.session import close_db_engine
-import app.db.models  # noqa: F401 - Register all models and compile mappers
 
 # Initialize structured logging immediately before application assembly
 setup_logging(log_level=settings.LOG_LEVEL, log_format=settings.LOG_FORMAT)
@@ -59,6 +59,7 @@ if settings.CORS_ORIGINS:
     )
 
 # Register pure ASGI context and access logging middleware
+app.add_middleware(PublicCORSMiddleware)
 app.add_middleware(RequestContextMiddleware)
 
 # Register central domain exception and validation handlers from core/errors.py

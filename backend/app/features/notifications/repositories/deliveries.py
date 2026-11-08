@@ -128,7 +128,7 @@ class OutboundDeliveryRepository:
             )
         )
         result = await self.session.execute(stmt)
-        return int(result.rowcount)
+        return int(getattr(result, "rowcount", 0))
 
     async def list_by_connection(
         self,

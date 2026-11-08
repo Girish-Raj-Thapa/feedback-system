@@ -5,7 +5,7 @@ Represents feedback domain routing rules linking form events/ratings to a notifi
 
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -13,7 +13,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
-    Text,
     func,
     text,
 )

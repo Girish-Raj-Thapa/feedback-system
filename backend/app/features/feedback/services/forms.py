@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.features.auth.models import Workspace
 from app.features.feedback.models.forms import Form
 from app.features.feedback.presets.form_templates import get_form_template
@@ -20,6 +21,8 @@ from app.features.feedback.schemas.forms import (
     FormUpdate,
     PublicFormRead,
 )
+from app.features.feedback.services.form_token import FormTokenService
+from app.features.feedback.utils import is_domain_allowed
 
 
 def slugify(text: str) -> str:
@@ -88,6 +91,7 @@ class FormService:
         self,
         workspace_slug: str,
         form_slug: str,
+        origin_or_referer: str | None = None,
     ) -> PublicFormRead:
         """
         Retrieve a public form configuration for embed widgets and hosted standalone pages.
@@ -99,6 +103,14 @@ class FormService:
                 detail="Form not found or is currently inactive",
             )
         form, ws = row
+        if form.allowed_domains and not is_domain_allowed(
+            form.allowed_domains, origin_or_referer
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Domain is not authorized to display this feedback form",
+            )
+        token = FormTokenService.generate_form_token(form.id, ws.id)
         return PublicFormRead(
             id=form.id,
             workspace_slug=ws.slug,
@@ -118,7 +130,34 @@ class FormService:
             theme_config=form.theme_config,
             outcome_screen=form.outcome_screen,
             widget_settings=form.widget_settings,
+            form_token=token,
+            turnstile_site_key=getattr(settings, "TURNSTILE_SITE_KEY", None),
         )
+
+    async def get_public_form_token(
+        self,
+        workspace_slug: str,
+        form_slug: str,
+        origin_or_referer: str | None = None,
+    ) -> str:
+        """
+        Refresh or mint a fresh HMAC form token for active public form sessions.
+        """
+        row = await self.form_repo.get_public_form(workspace_slug, form_slug)
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Form not found or is currently inactive",
+            )
+        form, ws = row
+        if form.allowed_domains and not is_domain_allowed(
+            form.allowed_domains, origin_or_referer
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Domain is not authorized to interact with this feedback form",
+            )
+        return FormTokenService.generate_form_token(form.id, ws.id)
 
     async def create_form(self, workspace_id: UUID, payload: FormCreate) -> Form:
         """

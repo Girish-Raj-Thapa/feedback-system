@@ -111,6 +111,7 @@ async def test_process_delivery_cancelled_when_connection_revoked() -> None:
     success = await service.process_delivery(delivery_id=uuid4())
     assert success is False
     assert delivery.status == "cancelled"
+    assert delivery.last_error is not None
     assert "revoked" in delivery.last_error
 
 

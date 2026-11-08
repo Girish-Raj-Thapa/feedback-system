@@ -68,6 +68,14 @@ class FeedbackSubmissionCreate(BaseModel):
         default_factory=dict,
         description="Client device, URL, referrer, and screen metadata",
     )
+    form_token: str | None = Field(
+        default=None,
+        description="Cryptographic HMAC form token issued during form initialization",
+    )
+    turnstile_token: str | None = Field(
+        default=None,
+        description="Cloudflare Turnstile verification response token",
+    )
 
 
 class FeedbackOutcomeResponse(BaseModel):

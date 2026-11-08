@@ -134,8 +134,15 @@ class PublicFormRead(BaseModel):
     theme_config: dict
     outcome_screen: dict
     widget_settings: dict
+    form_token: str | None = None
+    turnstile_site_key: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PublicFormTokenResponse(BaseModel):
+    form_token: str
+    expires_in: int = 1800
 
 
 class FormDuplicateRequest(BaseModel):

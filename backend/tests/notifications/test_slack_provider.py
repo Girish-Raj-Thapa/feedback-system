@@ -9,7 +9,6 @@ import httpx
 import pytest
 
 from app.features.notifications.providers.registry import (
-    ProviderRegistry,
     provider_registry,
 )
 from app.features.notifications.providers.slack import (
@@ -137,6 +136,7 @@ async def test_dispatch_rate_limit_429_with_retry_after() -> None:
     assert result.status_code == 429
     assert result.is_transient is True
     assert result.retry_after_seconds == 45
+    assert result.error_message is not None
     assert "rate limit exceeded" in result.error_message.lower()
 
 
@@ -159,6 +159,7 @@ async def test_dispatch_server_error_503_transient() -> None:
     assert result.success is False
     assert result.status_code == 503
     assert result.is_transient is True
+    assert result.error_message is not None
     assert "Slack server error (HTTP 503)" in result.error_message
 
 
@@ -181,6 +182,7 @@ async def test_dispatch_channel_not_found_404_permanent() -> None:
     assert result.success is False
     assert result.status_code == 404
     assert result.is_transient is False  # Permanent!
+    assert result.error_message is not None
     assert "Slack rejected webhook" in result.error_message
 
 
@@ -197,5 +199,6 @@ async def test_dispatch_timeout_transient() -> None:
     assert result.success is False
     assert result.status_code is None
     assert result.is_transient is True
+    assert result.error_message is not None
     assert "Request timed out" in result.error_message
 

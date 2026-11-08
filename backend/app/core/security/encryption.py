@@ -5,12 +5,12 @@ cryptographically isolated keys derived per customer using HKDF-SHA256 anchored
 to the application master secret.
 """
 
-from contextlib import contextmanager
-from contextvars import ContextVar, Token
-from functools import lru_cache
 import base64
 import hashlib
 import logging
+from contextlib import contextmanager
+from contextvars import ContextVar, Token
+from functools import lru_cache
 from typing import Any
 from uuid import UUID
 
@@ -142,10 +142,10 @@ def encrypt_secret(plain_text: str | None, tenant_id: str | UUID | None = None) 
 def decrypt_secret(cipher_text: str | None, tenant_id: str | UUID | None = None) -> str | None:
     """
     Decrypt ciphertext back to plaintext string.
-    
+
     Validates cryptographic tenant isolation: if a specific tenant_id is passed,
     it verifies that the ciphertext was actually encrypted for that tenant.
-    
+
     Gracefully handles:
     - Tenant-isolated tokens (`enc:v1:<tenant_id>:<token>`)
     - Legacy un-isolated Fernet tokens (`gAAAAA...`)
@@ -161,7 +161,7 @@ def decrypt_secret(cipher_text: str | None, tenant_id: str | UUID | None = None)
             if len(parts) != 4:
                 logger.error("Malformed encrypted envelope format")
                 return cipher_text
-            
+
             _, _, stored_tenant_id, token = parts
 
             # Cross-tenant tampering guard: if caller specified tenant_id, enforce match

@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.errors import NotFoundError, ValidationError
+from app.core.errors import ValidationError
 from app.features.feedback.models.alert_rules import AlertRule
 from app.features.feedback.models.forms import Form
 from app.features.feedback.schemas.alert_rules import (

@@ -3,12 +3,12 @@ Unit tests for NotificationConnectionService and Slack Webhook URL masking.
 Verifies connection lifecycle, SSRF validation, test dispatching, and credential masking.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 
-from app.core.errors import NotFoundError, ValidationError
+from app.core.errors import ValidationError
 from app.features.notifications.models.connections import NotificationConnection
 from app.features.notifications.providers.base import ProviderResult
 from app.features.notifications.schemas import (

@@ -3,6 +3,7 @@ Taskiq background tasks for Feedback Submissions:
 Asynchronous alert evaluation and periodic reconciliation sweeper.
 """
 
+import re
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -21,6 +22,123 @@ from app.features.notifications.services.delivery_service import (
 from app.features.notifications.tasks import dispatch_outbound_delivery_task
 
 logger = get_logger("app.features.feedback.tasks")
+
+SPAM_PATTERNS = [
+    re.compile(r"\[url=", re.IGNORECASE),
+    re.compile(r"casino\s+(bonus|games|online)", re.IGNORECASE),
+    re.compile(r"crypto\s+(giveaway|airdrop)", re.IGNORECASE),
+    re.compile(r"buy\s+backlinks", re.IGNORECASE),
+    re.compile(r"(viagra|cialis)", re.IGNORECASE),
+]
+
+
+def evaluate_spam_heuristics(comment: str | None) -> tuple[bool, int, list[str]]:
+    """
+    Fast rule-based spam and abuse detection on text comments.
+    """
+    if not comment:
+        return False, 0, []
+
+    text = comment.strip()
+    reasons: list[str] = []
+
+    if "\u0000" in text:
+        reasons.append("null_byte_detected")
+
+    urls = re.findall(r"https?://\S+", text)
+    if len(urls) >= 4:
+        reasons.append("excessive_urls")
+
+    for pat in SPAM_PATTERNS:
+        if pat.search(text):
+            reasons.append(f"pattern_matched:{pat.pattern}")
+            break
+
+    if re.search(r"(.)\1{24,}", text):
+        reasons.append("repetitive_character_spam")
+
+    if reasons:
+        return True, 100, reasons
+    return False, 0, []
+
+
+@broker.task
+async def triage_submission_task(submission_id_str: str) -> bool:
+    """
+    Asynchronously triages incoming feedback submissions:
+    1. Evaluates spam heuristics (excessive URLs, gibberish, known patterns).
+    2. Respects lane C quarantine status.
+    3. If clean and verified, transitions triage_state='done' and enqueues evaluate_submission_alerts_task.
+    4. If spam or quarantined, sets triage_state='done' and suppresses alerts.
+    """
+    logger.info("feedback.triage.started", submission_id=submission_id_str)
+    try:
+        submission_id = UUID(submission_id_str)
+    except (ValueError, TypeError) as exc:
+        logger.error(
+            "feedback.triage.invalid_uuid",
+            submission_id=submission_id_str,
+            error=str(exc),
+        )
+        return False
+
+    async with async_session_factory() as session:
+        submission = await session.get(FeedbackSubmission, submission_id)
+        if not submission:
+            logger.warning(
+                "feedback.triage.not_found", submission_id=submission_id_str
+            )
+            return False
+
+        if submission.triage_state == "done":
+            logger.info(
+                "feedback.triage.already_done", submission_id=submission_id_str
+            )
+            return True
+
+        # Check if already quarantined (e.g. Lane C)
+        if submission.status == "quarantined":
+            submission.triage_state = "done"
+            await session.commit()
+            logger.info(
+                "feedback.triage.quarantined_skip_alerts",
+                submission_id=submission_id_str,
+            )
+            return True
+
+        # Run spam heuristics
+        is_spam, score, reasons = evaluate_spam_heuristics(submission.comment)
+        submission.spam_score = score
+        submission.spam_reasons = reasons
+        submission.triage_state = "done"
+
+        if is_spam:
+            submission.status = "spam"
+            await session.commit()
+            logger.info(
+                "feedback.triage.flagged_as_spam",
+                submission_id=submission_id_str,
+                reasons=reasons,
+            )
+            return True
+
+        # Clean submission!
+        await session.commit()
+
+    # Enqueue alerts ONLY for clean submissions
+    try:
+        await evaluate_submission_alerts_task.kiq(submission_id_str)
+        logger.info(
+            "feedback.triage.alerts_enqueued", submission_id=submission_id_str
+        )
+    except Exception as exc:
+        logger.warning(
+            "feedback.triage.alert_enqueue_failed",
+            submission_id=submission_id_str,
+            error=str(exc),
+        )
+
+    return True
 
 
 @broker.task
@@ -71,6 +189,17 @@ async def evaluate_submission_alerts_task(submission_id_str: str) -> bool:
                 "feedback.alerts.already_evaluated",
                 submission_id=submission_id_str,
             )
+            return True
+
+        # Spam & Quarantine guard: never notify on spam or unapproved quarantined submissions
+        if submission.status in ("spam", "quarantined"):
+            logger.info(
+                "feedback.alerts.skipped_unclean_status",
+                submission_id=submission_id_str,
+                status=submission.status,
+            )
+            submission.alert_evaluated_at = datetime.now(UTC)
+            await session.commit()
             return True
 
         submission.alert_evaluation_attempts += 1

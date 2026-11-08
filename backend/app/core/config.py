@@ -104,6 +104,14 @@ class Settings(BaseSettings):
     SLACK_CLIENT_SECRET: str = ""
     SLACK_REDIRECT_URI: str = "http://localhost:3000/integrations/slack/callback"
 
+    # -----------------------------------------------------------------------
+    # Cloudflare Turnstile Anti-Bot Verification
+    # -----------------------------------------------------------------------
+    TURNSTILE_SECRET_KEY: str | None = None
+    TURNSTILE_VERIFY_URL: str = (
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    )
+
     @property
     def SECRET_KEY(self) -> str:
         return self.JWT_SECRET_KEY

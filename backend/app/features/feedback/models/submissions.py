@@ -105,6 +105,59 @@ class FeedbackSubmission(Base):
         server_default=text("'new'"),
         nullable=False,
     )
+    token_jti: Mapped[str | None] = mapped_column(
+        String(64),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+    trust_level: Mapped[str] = mapped_column(
+        String(30),
+        default="anonymous",
+        server_default=text("'anonymous'"),
+        nullable=False,
+    )
+    lane: Mapped[str] = mapped_column(
+        String(30),
+        default="lane_a",
+        server_default=text("'lane_a'"),
+        nullable=False,
+    )
+    source: Mapped[str] = mapped_column(
+        String(30),
+        default="hosted",
+        server_default=text("'hosted'"),
+        nullable=False,
+    )
+    content_hash: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
+    challenge_result: Mapped[str] = mapped_column(
+        String(30),
+        default="skipped",
+        server_default=text("'skipped'"),
+        nullable=False,
+    )
+    spam_score: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        server_default=text("0"),
+        nullable=False,
+    )
+    spam_reasons: Mapped[list[str]] = mapped_column(
+        JSONB,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+        nullable=False,
+    )
+    triage_state: Mapped[str] = mapped_column(
+        String(30),
+        default="pending",
+        server_default=text("'pending'"),
+        nullable=False,
+    )
     sentiment: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,

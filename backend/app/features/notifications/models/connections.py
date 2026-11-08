@@ -28,7 +28,7 @@ from app.core.security.encryption import EncryptedString, set_current_tenant_id
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.features.auth.models import User, Workspace
+    from app.features.auth.models import Workspace
     from app.features.feedback.models.alert_rules import AlertRule
     from app.features.notifications.models.deliveries import OutboundDelivery
 

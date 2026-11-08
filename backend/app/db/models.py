@@ -26,11 +26,11 @@ from app.features.feedback.models.alert_rules import AlertRule
 from app.features.feedback.models.categories import FeedbackCategory
 from app.features.feedback.models.forms import Form
 from app.features.feedback.models.submissions import FeedbackSubmission
+from app.features.notifications.models.attempts import DeliveryAttempt
 
 # 3. Notification Feature Models
 from app.features.notifications.models.connections import NotificationConnection
 from app.features.notifications.models.deliveries import OutboundDelivery
-from app.features.notifications.models.attempts import DeliveryAttempt
 
 # Pre-compile and validate all relationship definitions across all registered models
 configure_mappers()

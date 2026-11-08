@@ -3,6 +3,7 @@ Service layer for Feedback Submissions.
 Validates public incoming feedback submissions against form rules and returns tailored outcome screens.
 """
 
+import hashlib
 import re
 from collections.abc import Sequence
 from uuid import UUID
@@ -11,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
+from app.core.redis import get_redis
 from app.features.auth.models import Workspace
 from app.features.feedback.models.forms import Form
 from app.features.feedback.models.submissions import FeedbackSubmission
@@ -25,6 +27,9 @@ from app.features.feedback.schemas.submissions import (
     FeedbackSubmissionResponse,
     FeedbackSubmissionUpdate,
 )
+from app.features.feedback.services.form_token import FormTokenService
+from app.features.feedback.services.turnstile import TurnstileService
+from app.features.feedback.utils import is_domain_allowed
 
 logger = get_logger("app.features.feedback.services.submissions")
 
@@ -40,11 +45,76 @@ class SubmissionService:
         self.form_repo = FormRepository(session)
         self.category_repo = FeedbackCategoryRepository(session)
 
+    def _build_outcome_response(
+        self,
+        form: Form,
+        rating: int | None,
+    ) -> FeedbackOutcomeResponse:
+        is_high_score = True
+        if rating is not None:
+            if form.rating_scale_type in ("5_star", "5_emoji"):
+                is_high_score = rating >= 4
+            elif form.rating_scale_type == "1_10_numeric":
+                is_high_score = rating >= 7
+
+        outcome_config = form.outcome_screen or {}
+        public_review_url = outcome_config.get(
+            "public_review_url"
+        ) or outcome_config.get("high_score_cta_url")
+        public_review_text = (
+            outcome_config.get("public_review_text")
+            or outcome_config.get("high_score_cta_text")
+            or "Share public review"
+        )
+
+        if is_high_score:
+            outcome_title = (
+                outcome_config.get("high_score_title") or "Thank you for your feedback!"
+            )
+            outcome_message = (
+                outcome_config.get("high_score_message")
+                or "We truly appreciate you taking the time to share your experience."
+            )
+            cta_text = outcome_config.get("high_score_cta_text") or "Share Your Review"
+            cta_url = outcome_config.get("high_score_cta_url") or public_review_url
+            support_text = None
+            support_url = None
+        else:
+            outcome_title = (
+                outcome_config.get("low_score_title")
+                or "We're sorry we missed the mark"
+            )
+            outcome_message = (
+                outcome_config.get("low_score_message")
+                or "Our team takes this seriously and is here to make things right."
+            )
+            cta_text = None
+            cta_url = None
+            support_text = (
+                outcome_config.get("low_score_support_text")
+                or "Contact Support / Get Help"
+            )
+            support_url = outcome_config.get("low_score_support_url")
+
+        return FeedbackOutcomeResponse(
+            title=outcome_title,
+            message=outcome_message,
+            is_high_score=is_high_score,
+            cta_text=cta_text,
+            cta_url=cta_url,
+            support_text=support_text if support_url else None,
+            support_url=support_url,
+            public_review_text=public_review_text if public_review_url else None,
+            public_review_url=public_review_url,
+        )
+
     async def submit_feedback(
         self,
         workspace_slug: str,
         form_slug: str,
         payload: FeedbackSubmissionCreate,
+        origin_or_referer: str | None = None,
+        client_ip: str | None = None,
     ) -> FeedbackSubmissionResponse:
         """
         Public submission of feedback from a hosted page or embedded widget.
@@ -56,6 +126,66 @@ class SubmissionService:
                 detail="Form not found or is currently inactive",
             )
         form, ws = row
+
+        # 0. Validate Allowed Domains (if configured)
+        if form.allowed_domains and not is_domain_allowed(
+            form.allowed_domains, origin_or_referer
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Domain is not authorized to submit feedback to this form",
+            )
+
+        # 0b. Validate Cryptographic HMAC Form Token & Replay Nonce
+        jti: str | None = None
+        redis = get_redis()
+        if payload.form_token:
+            claims = FormTokenService.verify_form_token(payload.form_token, form.id)
+            jti = str(claims["jti"])
+
+            # Idempotency check: client double-click or network retry
+            existing_sub_id = await FormTokenService.get_idempotent_submission_id(
+                redis, jti
+            )
+            if existing_sub_id:
+                existing_sub = await self.submission_repo.get_by_id(
+                    UUID(existing_sub_id)
+                )
+                if existing_sub:
+                    outcome = self._build_outcome_response(form, existing_sub.rating)
+                    return FeedbackSubmissionResponse(
+                        id=existing_sub.id,
+                        workspace_slug=ws.slug,
+                        form_slug=form.slug,
+                        rating=existing_sub.rating,
+                        rating_scale_type=existing_sub.rating_scale_type,
+                        category_pill_label=existing_sub.category_pill_label,
+                        category_id=existing_sub.category_id,
+                        status=existing_sub.status,
+                        sentiment=existing_sub.sentiment,
+                        created_at=existing_sub.created_at,
+                        outcome=outcome,
+                    )
+
+            # Atomic single-use claim
+            claimed = await FormTokenService.claim_nonce_atomic(redis, jti)
+            if not claimed:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Form token has already been consumed or replay detected.",
+                )
+
+        # 0c. Cloudflare Turnstile Anti-Bot Verification & Lane Classification
+        challenge_result, trust_level = await TurnstileService.verify_challenge(
+            payload.turnstile_token,
+            client_ip=client_ip,
+        )
+        if trust_level == "unverified" or challenge_result in ("failed", "unavailable"):
+            initial_status = "quarantined"
+            lane = "lane_c"
+        else:
+            initial_status = "new"
+            lane = "lane_a"
 
         # 1. Validate Rating
         if form.rating_required and payload.rating is None:
@@ -155,58 +285,7 @@ class SubmissionService:
                         )
 
         # 5. Tailored Outcome Screen calculation
-        is_high_score = True
-        if payload.rating is not None:
-            if form.rating_scale_type in ("5_star", "5_emoji"):
-                is_high_score = payload.rating >= 4
-            elif form.rating_scale_type == "1_10_numeric":
-                is_high_score = payload.rating >= 7
-
-        outcome_config = form.outcome_screen or {}
-        public_review_url = outcome_config.get("public_review_url") or outcome_config.get("high_score_cta_url")
-        public_review_text = (
-            outcome_config.get("public_review_text")
-            or outcome_config.get("high_score_cta_text")
-            or "Share public review"
-        )
-
-        if is_high_score:
-            outcome_title = (
-                outcome_config.get("high_score_title") or "Thank you for your feedback!"
-            )
-            outcome_message = (
-                outcome_config.get("high_score_message")
-                or "We truly appreciate you taking the time to share your experience."
-            )
-            cta_text = outcome_config.get("high_score_cta_text") or "Share Your Review"
-            cta_url = outcome_config.get("high_score_cta_url") or public_review_url
-            support_text = None
-            support_url = None
-        else:
-            outcome_title = (
-                outcome_config.get("low_score_title")
-                or "We're sorry we missed the mark"
-            )
-            outcome_message = (
-                outcome_config.get("low_score_message")
-                or "Our team takes this seriously and is here to make things right."
-            )
-            cta_text = None
-            cta_url = None
-            support_text = outcome_config.get("low_score_support_text") or "Contact Support / Get Help"
-            support_url = outcome_config.get("low_score_support_url")
-
-        outcome = FeedbackOutcomeResponse(
-            title=outcome_title,
-            message=outcome_message,
-            is_high_score=is_high_score,
-            cta_text=cta_text,
-            cta_url=cta_url,
-            support_text=support_text if support_url else None,
-            support_url=support_url,
-            public_review_text=public_review_text if public_review_url else None,
-            public_review_url=public_review_url,
-        )
+        outcome = self._build_outcome_response(form, payload.rating)
 
         # 5b. Rule-based / Deterministic Sentiment Tagging ($0 LLM-free)
         sentiment: str | None = None
@@ -266,6 +345,9 @@ class SubmissionService:
                 sentiment = "neutral"
 
         # 6. Save Submission Record
+        raw_content = f"{payload.rating}:{payload.comment or ''}:{payload.customer_email or ''}"
+        content_hash = hashlib.sha256(raw_content.encode("utf-8")).hexdigest()
+
         submission = FeedbackSubmission(
             workspace_id=ws.id,
             form_id=form.id,
@@ -284,25 +366,34 @@ class SubmissionService:
                 payload.customer_name.strip() if payload.customer_name else None
             ),
             customer_metadata=payload.customer_metadata,
-            status="new",
+            status=initial_status,
             sentiment=sentiment,
+            token_jti=jti,
+            trust_level=trust_level,
+            lane=lane,
+            source=str(payload.customer_metadata.get("source", "hosted")),
+            content_hash=content_hash,
+            challenge_result=challenge_result,
+            spam_score=0,
+            spam_reasons=[],
+            triage_state="pending",
         )
 
         await self.submission_repo.create(submission)
         await self.session.commit()
         await self.session.refresh(submission)
 
-        # 7. Asynchronously Enqueue Alert Evaluation to Background Worker
-        try:
-            from app.features.feedback.tasks import (
-                evaluate_submission_alerts_task,
+        if jti:
+            await FormTokenService.record_submission_idempotency(
+                redis, jti, submission.id
             )
 
-            await evaluate_submission_alerts_task.kiq(str(submission.id))
+        # 7. Asynchronously Enqueue Triage Task to Background Worker
+        try:
+            from app.features.feedback.tasks import triage_submission_task
+
+            await triage_submission_task.kiq(str(submission.id))
         except Exception as exc:
-            # If Redis or broker is temporarily down, the submission is safely
-            # committed with alert_evaluated_at = NULL. The reconciliation sweeper
-            # will automatically pick it up when the broker recovers.
             logger.warning(
                 "feedback.submission.taskiq_enqueue_warning",
                 submission_id=str(submission.id),
