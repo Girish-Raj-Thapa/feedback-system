@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   AlertCircle,
@@ -49,6 +49,64 @@ export default function PublicFormPage() {
     useState<FeedbackOutcomeResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+
+  // Turnstile widget loader
+  useEffect(() => {
+    if (!form?.turnstile_site_key || typeof window === "undefined") return;
+    const siteKey = form.turnstile_site_key;
+
+    const renderTurnstile = () => {
+      const win = window as unknown as {
+        turnstile?: {
+          render: (
+            container: HTMLElement,
+            options: {
+              sitekey: string;
+              callback: (token: string) => void;
+              "error-callback"?: () => void;
+              "expired-callback"?: () => void;
+            }
+          ) => void;
+        };
+      };
+      if (win.turnstile && turnstileContainerRef.current) {
+        try {
+          turnstileContainerRef.current.innerHTML = "";
+          win.turnstile.render(turnstileContainerRef.current, {
+            sitekey: siteKey,
+            callback: (token: string) => setTurnstileToken(token),
+            "error-callback": () => setTurnstileToken(null),
+            "expired-callback": () => setTurnstileToken(null),
+          });
+        } catch (e) {
+          console.warn("Turnstile render error:", e);
+        }
+      }
+    };
+
+    const win = window as unknown as { turnstile?: unknown };
+    if (win.turnstile) {
+      renderTurnstile();
+    } else {
+      const existingScript = document.querySelector(
+        'script[src*="challenges.cloudflare.com/turnstile"]'
+      );
+      if (!existingScript) {
+        const script = document.createElement("script");
+        script.src =
+          "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.defer = true;
+        script.onload = () => renderTurnstile();
+        document.head.appendChild(script);
+      } else {
+        existingScript.addEventListener("load", renderTurnstile);
+      }
+    }
+  }, [form?.turnstile_site_key]);
 
   useEffect(() => {
     async function fetchForm() {
@@ -162,6 +220,8 @@ export default function PublicFormPage() {
           user_agent:
             typeof navigator !== "undefined" ? navigator.userAgent : null,
         },
+        form_token: form?.form_token || null,
+        turnstile_token: turnstileToken || null,
       };
 
       const res = await feedbackRepository.submitFeedback(
@@ -612,6 +672,14 @@ export default function PublicFormPage() {
               <div className="rounded-[10px] bg-red-50 p-3 text-[13px] text-red-600 dark:bg-red-950/40 dark:text-red-400">
                 {submitError}
               </div>
+            )}
+
+            {/* Turnstile Verification */}
+            {form.turnstile_site_key && (
+              <div
+                ref={turnstileContainerRef}
+                className="my-2 flex justify-center"
+              />
             )}
 
             {/* Submit Button */}

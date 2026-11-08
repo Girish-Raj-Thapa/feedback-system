@@ -163,6 +163,8 @@ export interface PublicFeedbackForm {
   theme_config: ThemeConfig;
   outcome_screen: OutcomeScreenConfig;
   widget_settings: WidgetSettingsConfig;
+  form_token?: string | null;
+  turnstile_site_key?: string | null;
 }
 
 export interface CustomerMetadata {
@@ -182,6 +184,8 @@ export interface FeedbackSubmissionCreate {
   customer_email?: string | null;
   customer_name?: string | null;
   customer_metadata?: CustomerMetadata;
+  form_token?: string | null;
+  turnstile_token?: string | null;
 }
 
 export interface FeedbackOutcomeResponse {

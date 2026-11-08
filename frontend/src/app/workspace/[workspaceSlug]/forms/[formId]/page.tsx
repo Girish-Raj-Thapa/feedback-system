@@ -107,6 +107,8 @@ export default function FormStudioPage() {
     "bottom_right" | "bottom_left" | "custom_trigger"
   >("bottom_right");
   const [widgetButtonText, setWidgetButtonText] = useState("Feedback");
+  const [widgetDelaySeconds, setWidgetDelaySeconds] = useState<number>(0);
+  const [allowedDomainsInput, setAllowedDomainsInput] = useState<string>("");
 
   // Live Preview Device Mode
   const [previewDevice, setPreviewDevice] = useState<"widget" | "mobile" | "standalone">(
@@ -199,6 +201,8 @@ export default function FormStudioPage() {
         const widget = formData.widget_settings || {};
         setWidgetPosition(widget.position || "bottom_right");
         setWidgetButtonText(widget.button_text || "Feedback");
+        setWidgetDelaySeconds(widget.delay_seconds ?? 0);
+        setAllowedDomainsInput((formData.allowed_domains || []).join(", "));
 
         setIsLoading(false);
       } catch (err: unknown) {
@@ -254,8 +258,12 @@ export default function FormStudioPage() {
         widget_settings: {
           position: widgetPosition,
           button_text: widgetButtonText.trim(),
-          delay_seconds: 0,
+          delay_seconds: Number(widgetDelaySeconds) || 0,
         },
+        allowed_domains: allowedDomainsInput
+          .split(",")
+          .map((d) => d.trim())
+          .filter(Boolean),
       };
 
       const updated = await feedbackRepository.updateForm(
@@ -271,6 +279,34 @@ export default function FormStudioPage() {
       toast.error(msg);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Launch live interactive widget for testing
+  const handleTestLiveWidget = () => {
+    if (!form || !workspace) return;
+    if (typeof window === "undefined") return;
+
+    const win = window as any;
+    if (!win.FeedbackSDK) {
+      const script = document.createElement("script");
+      script.src = "/widget.js";
+      script.onload = () => {
+        win.FeedbackSDK?.init({
+          workspace: workspace.slug,
+          form: form.slug,
+          apiUrl: "/api/v1/public",
+        });
+        win.FeedbackSDK?.open();
+      };
+      document.body.appendChild(script);
+    } else {
+      win.FeedbackSDK.init({
+        workspace: workspace.slug,
+        form: form.slug,
+        apiUrl: "/api/v1/public",
+      });
+      win.FeedbackSDK.open();
     }
   };
 
@@ -366,6 +402,15 @@ export default function FormStudioPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleTestLiveWidget}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-[10px] border border-[#E1E5EB] bg-white px-3.5 py-1.5 text-[13px] font-medium text-[#161C26] hover:bg-[#F3F5F9] dark:border-white/15 dark:bg-[#2C2C2E] dark:text-white dark:hover:bg-white/10"
+            title="Launch interactive widget overlay in this browser"
+          >
+            <Sparkles className="size-4 text-[#4249C9] dark:text-[#7B82F6]" />
+            <span>Test Live Widget</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsShareModalOpen(true)}
@@ -1000,6 +1045,40 @@ export default function FormStudioPage() {
                     onChange={(e) => setWidgetButtonText(e.target.value)}
                     className="h-10 w-full rounded-[10px] border border-[#E1E5EB] px-3.5 text-[14px] dark:border-white/15 dark:bg-[#2C2C2E]"
                   />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-medium text-[#161C26] dark:text-white">
+                    Launcher Display Delay (Seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="120"
+                    value={widgetDelaySeconds}
+                    onChange={(e) => setWidgetDelaySeconds(Number(e.target.value))}
+                    placeholder="0"
+                    className="h-10 w-full rounded-[10px] border border-[#E1E5EB] px-3.5 text-[14px] dark:border-white/15 dark:bg-[#2C2C2E]"
+                  />
+                  <p className="mt-1 text-[12px] text-[#556070] dark:text-[#8E8E93]">
+                    Wait N seconds before showing the floating launcher on page load (0 for immediate).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-medium text-[#161C26] dark:text-white">
+                    Allowed Host Domains (Security Whitelist)
+                  </label>
+                  <input
+                    type="text"
+                    value={allowedDomainsInput}
+                    onChange={(e) => setAllowedDomainsInput(e.target.value)}
+                    placeholder="e.g. acme.com, *.partner.org"
+                    className="h-10 w-full rounded-[10px] border border-[#E1E5EB] px-3.5 font-mono text-[13px] dark:border-white/15 dark:bg-[#2C2C2E]"
+                  />
+                  <p className="mt-1 text-[12px] text-[#556070] dark:text-[#8E8E93]">
+                    Comma-separated domains permitted to embed this widget. Leave empty to allow any website.
+                  </p>
                 </div>
               </div>
             )}

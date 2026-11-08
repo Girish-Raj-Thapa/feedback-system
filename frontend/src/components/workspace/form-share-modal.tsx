@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Code, Copy, ExternalLink, Globe, QrCode, X } from "lucide-react";
+import { Check, Code, Copy, ExternalLink, Globe, QrCode, Sparkles, UserCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface FormShareModalProps {
@@ -20,6 +20,7 @@ export function FormShareModal({
   formName,
 }: FormShareModalProps) {
   const [activeTab, setActiveTab] = useState<"embed" | "link" | "qr">("link");
+  const [embedMode, setEmbedMode] = useState<"standard" | "identity" | "trigger">("standard");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -31,13 +32,54 @@ export function FormShareModal({
       : "https://feedback-system.com";
   const hostedUrl = `${origin}/f/${workspaceSlug}/${formSlug}`;
 
-  const embedSnippet = `<!-- Feedback System Widget -->
+  const standardSnippet = `<!-- Feedback System Widget -->
 <script
   src="${origin}/widget.js"
   data-workspace="${workspaceSlug}"
   data-form="${formSlug}"
   defer>
 </script>`;
+
+  const identitySnippet = `<!-- Feedback System Widget (Identified User) -->
+<script
+  src="${origin}/widget.js"
+  data-workspace="${workspaceSlug}"
+  data-form="${formSlug}"
+  data-user-email="user@example.com"
+  data-user-name="Jane Doe"
+  data-plan-tier="pro"
+  defer>
+</script>
+
+<!-- Or identify dynamically in your SPA: -->
+<script>
+  window.FeedbackSDK && window.FeedbackSDK.identify({
+    email: currentUser.email,
+    name: currentUser.name,
+    plan_tier: "enterprise"
+  });
+</script>`;
+
+  const triggerSnippet = `<!-- 1. Custom Trigger Button on your page -->
+<button data-feedback-trigger class="btn-feedback">
+  Give Feedback
+</button>
+
+<!-- 2. Feedback System Widget (custom_trigger mode) -->
+<script
+  src="${origin}/widget.js"
+  data-workspace="${workspaceSlug}"
+  data-form="${formSlug}"
+  data-position="custom_trigger"
+  defer>
+</script>`;
+
+  const currentSnippet =
+    embedMode === "identity"
+      ? identitySnippet
+      : embedMode === "trigger"
+      ? triggerSnippet
+      : standardSnippet;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(hostedUrl);
@@ -47,20 +89,19 @@ export function FormShareModal({
   };
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(embedSnippet);
+    navigator.clipboard.writeText(currentSnippet);
     setCopiedCode(true);
     toast.success("Widget embed snippet copied to clipboard");
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  // SVG QR Code generator representation
   const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
     hostedUrl
   )}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(16,24,40,0.45)] p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-[520px] rounded-[20px] border border-[#E1E5EB] bg-white p-6 shadow-[0_24px_48px_-12px_rgba(16,24,40,0.25)] dark:border-white/15 dark:bg-[#2C2C2E]">
+      <div className="w-full max-w-[560px] rounded-[20px] border border-[#E1E5EB] bg-white p-6 shadow-[0_24px_48px_-12px_rgba(16,24,40,0.25)] dark:border-white/15 dark:bg-[#2C2C2E]">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
@@ -177,6 +218,43 @@ export function FormShareModal({
         {/* Tab 2: Embed Widget */}
         {activeTab === "embed" && (
           <div className="mt-5 space-y-4">
+            {/* Embed Sub-mode selector */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEmbedMode("standard")}
+                className={`flex-1 rounded-[8px] border px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
+                  embedMode === "standard"
+                    ? "border-[#4249C9] bg-[#4249C9]/10 text-[#4249C9] dark:border-[#7B82F6] dark:text-[#7B82F6]"
+                    : "border-[#E1E5EB] bg-transparent text-[#556070] hover:bg-[#F3F5F9] dark:border-white/10 dark:text-[#8E8E93]"
+                }`}
+              >
+                Floating Launcher
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmbedMode("identity")}
+                className={`flex-1 rounded-[8px] border px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
+                  embedMode === "identity"
+                    ? "border-[#4249C9] bg-[#4249C9]/10 text-[#4249C9] dark:border-[#7B82F6] dark:text-[#7B82F6]"
+                    : "border-[#E1E5EB] bg-transparent text-[#556070] hover:bg-[#F3F5F9] dark:border-white/10 dark:text-[#8E8E93]"
+                }`}
+              >
+                User Identity SDK
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmbedMode("trigger")}
+                className={`flex-1 rounded-[8px] border px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
+                  embedMode === "trigger"
+                    ? "border-[#4249C9] bg-[#4249C9]/10 text-[#4249C9] dark:border-[#7B82F6] dark:text-[#7B82F6]"
+                    : "border-[#E1E5EB] bg-transparent text-[#556070] hover:bg-[#F3F5F9] dark:border-white/10 dark:text-[#8E8E93]"
+                }`}
+              >
+                Custom Button Trigger
+              </button>
+            </div>
+
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[#161C26] dark:text-white">
                 HTML Embed Code
@@ -188,12 +266,19 @@ export function FormShareModal({
                 </code>{" "}
                 tag of your website.
               </p>
-              <pre className="overflow-x-auto rounded-[10px] border border-[#E1E5EB] bg-[#161C26] p-3.5 font-mono text-[12px] leading-relaxed text-slate-200 dark:border-white/10">
-                {embedSnippet}
+              <pre className="max-h-[220px] overflow-x-auto rounded-[10px] border border-[#E1E5EB] bg-[#161C26] p-3.5 font-mono text-[12px] leading-relaxed text-slate-200 dark:border-white/10">
+                {currentSnippet}
               </pre>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-[#556070] dark:text-[#8E8E93]">
+                {embedMode === "identity"
+                  ? "✨ Pre-identifies users and hides redundant email fields"
+                  : embedMode === "trigger"
+                  ? "✨ Opens the feedback modal when your button is clicked"
+                  : "✨ Renders floating button with zero CSS conflicts"}
+              </span>
               <button
                 type="button"
                 onClick={handleCopyCode}
@@ -246,4 +331,3 @@ export function FormShareModal({
     </div>
   );
 }
-
