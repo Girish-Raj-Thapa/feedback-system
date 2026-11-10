@@ -591,6 +591,8 @@ export default function WorkspaceDashboardPage() {
 
       {activeView === "insights" ? (
         <WorkspaceInsightsTab
+          workspaceId={workspace?.id}
+          workspaceCategories={categories}
           insights={insights}
           isLoading={isLoadingInsights}
           selectedDays={selectedDays}

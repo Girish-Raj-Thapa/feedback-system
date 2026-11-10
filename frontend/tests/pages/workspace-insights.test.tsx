@@ -23,6 +23,10 @@ vi.mock("@/repositories/feedback.repository", () => ({
     listForms: vi.fn(),
     loadSampleData: vi.fn(),
     clearSampleData: vi.fn(),
+    listDecisionLogs: vi.fn(),
+    createDecisionLog: vi.fn(),
+    updateDecisionLog: vi.fn(),
+    deleteDecisionLog: vi.fn(),
   },
 }));
 
@@ -140,6 +144,12 @@ describe("WorkspaceDashboardPage (Insights & Score Drivers)", () => {
     (authRepository.getWorkspace as any).mockResolvedValue(mockWorkspaceDetails);
     (feedbackRepository.listCategories as any).mockResolvedValue([]);
     (feedbackRepository.listForms as any).mockResolvedValue([]);
+    (feedbackRepository.listDecisionLogs as any).mockResolvedValue({
+      items: [],
+      total: 0,
+      limit: 50,
+      offset: 0,
+    });
     (feedbackRepository.loadSampleData as any).mockResolvedValue({
       message: "Sample feedback loaded",
       count: 6,

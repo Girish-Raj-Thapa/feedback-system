@@ -354,5 +354,84 @@ describe("feedbackRepository", () => {
       }
     );
   });
+
+  it("listDecisionLogs calls GET with workspaceId and params", async () => {
+    const mockPage = {
+      items: [{ id: "dl-1", title: "Milestone 1", decision_date: "2026-11-01" }],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    };
+    (apiClient as any).mockResolvedValue(mockPage);
+
+    const result = await feedbackRepository.listDecisionLogs(workspaceId, {
+      limit: 10,
+      offset: 0,
+    });
+    expect(result).toEqual(mockPage);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/decision-logs?limit=10&offset=0`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
+
+  it("createDecisionLog calls POST with payload", async () => {
+    const payload = {
+      title: "New Checkout UI",
+      decision_date: "2026-11-01",
+    };
+    const mockCreated = { id: "dl-new", ...payload };
+    (apiClient as any).mockResolvedValue(mockCreated);
+
+    const result = await feedbackRepository.createDecisionLog(workspaceId, payload);
+    expect(result).toEqual(mockCreated);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/decision-logs`,
+      {
+        method: "POST",
+        workspaceId,
+        body: payload,
+      }
+    );
+  });
+
+  it("updateDecisionLog calls PATCH with decisionId and payload", async () => {
+    const decisionId = "dl-1";
+    const payload = { title: "Updated Milestone" };
+    const mockUpdated = { id: decisionId, title: "Updated Milestone" };
+    (apiClient as any).mockResolvedValue(mockUpdated);
+
+    const result = await feedbackRepository.updateDecisionLog(
+      workspaceId,
+      decisionId,
+      payload
+    );
+    expect(result).toEqual(mockUpdated);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/decision-logs/${decisionId}`,
+      {
+        method: "PATCH",
+        workspaceId,
+        body: payload,
+      }
+    );
+  });
+
+  it("deleteDecisionLog calls DELETE with decisionId", async () => {
+    const decisionId = "dl-1";
+    (apiClient as any).mockResolvedValue(undefined);
+
+    await feedbackRepository.deleteDecisionLog(workspaceId, decisionId);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/decision-logs/${decisionId}`,
+      {
+        method: "DELETE",
+        workspaceId,
+      }
+    );
+  });
 });
 

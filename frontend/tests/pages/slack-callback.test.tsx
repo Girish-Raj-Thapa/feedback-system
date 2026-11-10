@@ -70,10 +70,22 @@ describe("SlackOAuthCallbackPage", () => {
     mockSearchParams.set("state", "valid-state");
 
     vi.mocked(notificationsRepository.completeSlackOAuth).mockResolvedValue({
-      connection_id: "conn-123",
-      channel_name: "feedback-alerts",
-      team_name: "Acme Corp",
+      success: true,
       workspace_slug: "acme-hq",
+      channel_name: "feedback-alerts",
+      connection: {
+        id: "conn-123",
+        workspace_id: "ws-1",
+        name: "Slack #feedback-alerts",
+        provider_type: "slack_webhook",
+        connection_method: "oauth",
+        destination_url_masked: "https://hooks.slack.com/...",
+        is_active: true,
+        health_status: "healthy",
+        consecutive_failures: 0,
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+      },
     });
 
     render(<SlackOAuthCallbackPage />);

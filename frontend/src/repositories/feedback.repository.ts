@@ -1,6 +1,9 @@
 import { apiClient } from "@/repositories/client";
 import type {
   CustomerHistoryRead,
+  DecisionLogCreate,
+  DecisionLogRead,
+  DecisionLogUpdate,
   FeedbackCategory,
   FeedbackCategoryCreate,
   FeedbackCategoryReorderItem,
@@ -382,6 +385,99 @@ export const feedbackRepository = {
   async clearSampleData(workspaceId: string): Promise<SampleDataResponse> {
     return apiClient<SampleDataResponse>(
       `/workspaces/${workspaceId}/feedback/submissions/sample-data`,
+      {
+        method: "DELETE",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * List decision logs for a workspace with Before vs. After impact metrics.
+   */
+  async listDecisionLogs(
+    workspaceId: string,
+    params?: {
+      category_id?: string | null;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<Page<DecisionLogRead>> {
+    const query = new URLSearchParams();
+    if (params?.category_id) query.set("category_id", params.category_id);
+    if (params?.limit !== undefined) query.set("limit", String(params.limit));
+    if (params?.offset !== undefined) query.set("offset", String(params.offset));
+    const qs = query.toString() ? `?${query.toString()}` : "";
+
+    return apiClient<Page<DecisionLogRead>>(
+      `/workspaces/${workspaceId}/feedback/decision-logs${qs}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Get single decision log with full impact metrics.
+   */
+  async getDecisionLog(
+    workspaceId: string,
+    decisionId: string
+  ): Promise<DecisionLogRead> {
+    return apiClient<DecisionLogRead>(
+      `/workspaces/${workspaceId}/feedback/decision-logs/${decisionId}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Record a new decision log milestone.
+   */
+  async createDecisionLog(
+    workspaceId: string,
+    payload: DecisionLogCreate
+  ): Promise<DecisionLogRead> {
+    return apiClient<DecisionLogRead>(
+      `/workspaces/${workspaceId}/feedback/decision-logs`,
+      {
+        method: "POST",
+        workspaceId,
+        body: payload,
+      }
+    );
+  },
+
+  /**
+   * Update an existing decision log milestone.
+   */
+  async updateDecisionLog(
+    workspaceId: string,
+    decisionId: string,
+    payload: DecisionLogUpdate
+  ): Promise<DecisionLogRead> {
+    return apiClient<DecisionLogRead>(
+      `/workspaces/${workspaceId}/feedback/decision-logs/${decisionId}`,
+      {
+        method: "PATCH",
+        workspaceId,
+        body: payload,
+      }
+    );
+  },
+
+  /**
+   * Delete a decision log milestone.
+   */
+  async deleteDecisionLog(
+    workspaceId: string,
+    decisionId: string
+  ): Promise<void> {
+    return apiClient<void>(
+      `/workspaces/${workspaceId}/feedback/decision-logs/${decisionId}`,
       {
         method: "DELETE",
         workspaceId,

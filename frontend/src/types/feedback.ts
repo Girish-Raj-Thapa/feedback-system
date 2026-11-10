@@ -46,6 +46,7 @@ export interface FeedbackCategoryReorderItem {
 export interface CategoryPillItem {
   id: string;
   label: string;
+  emoji?: string | null;
   category_id?: string | null;
 }
 
@@ -306,4 +307,55 @@ export interface FeedbackInsightsResponse {
   summary: InsightSummary;
   categories: CategoryInsightItem[];
 }
+
+export interface DecisionWindowMetrics {
+  start_date: string;
+  end_date: string;
+  total_submissions: number;
+  average_rating: number | null;
+  negative_count: number;
+  negative_percentage: number | null;
+}
+
+export interface DecisionImpactMetrics {
+  before: DecisionWindowMetrics;
+  after: DecisionWindowMetrics;
+  score_delta: number | null;
+  complaint_share_delta: number | null;
+  status:
+    | "positive_impact"
+    | "negative_impact"
+    | "neutral_impact"
+    | "insufficient_data";
+}
+
+export interface DecisionLogRead {
+  id: string;
+  workspace_id: string;
+  category_id: string | null;
+  category_name: string | null;
+  category_color: string | null;
+  title: string;
+  description: string | null;
+  decision_date: string;
+  created_by_user_id: string | null;
+  impact: DecisionImpactMetrics | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DecisionLogCreate {
+  title: string;
+  description?: string | null;
+  category_id?: string | null;
+  decision_date: string;
+}
+
+export interface DecisionLogUpdate {
+  title?: string;
+  description?: string | null;
+  category_id?: string | null;
+  decision_date?: string;
+}
+
 

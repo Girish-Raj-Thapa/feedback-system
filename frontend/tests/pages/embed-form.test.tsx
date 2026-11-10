@@ -99,7 +99,7 @@ describe("EmbedFormPage", () => {
     });
 
     postMessageSpy = vi.fn();
-    window.parent.postMessage = postMessageSpy;
+    window.parent.postMessage = postMessageSpy as any;
   });
 
   it("renders embed form, notifies parent of height via postMessage, and handles close", async () => {
