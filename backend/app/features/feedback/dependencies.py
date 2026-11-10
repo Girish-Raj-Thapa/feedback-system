@@ -8,9 +8,11 @@ from fastapi import Depends
 
 from app.core.dependencies import DBSession
 from app.features.feedback.repositories.categories import FeedbackCategoryRepository
+from app.features.feedback.repositories.decision_logs import DecisionLogRepository
 from app.features.feedback.repositories.submissions import SubmissionRepository
 from app.features.feedback.services import (
     AlertRuleService,
+    DecisionLogService,
     FeedbackService,
     FormService,
     InsightsService,
@@ -42,8 +44,17 @@ def get_alert_rule_service(session: DBSession) -> AlertRuleService:
     return AlertRuleService(session)
 
 
+def get_decision_log_service(session: DBSession) -> DecisionLogService:
+    return DecisionLogService(
+        session=session,
+        repo=DecisionLogRepository(session),
+        category_repo=FeedbackCategoryRepository(session),
+    )
+
+
 FeedbackServiceDep = Annotated[FeedbackService, Depends(get_feedback_service)]
 AlertRuleServiceDep = Annotated[AlertRuleService, Depends(get_alert_rule_service)]
+DecisionLogServiceDep = Annotated[DecisionLogService, Depends(get_decision_log_service)]
 FormServiceDep = Annotated[FormService, Depends(get_form_service)]
 SubmissionServiceDep = Annotated[SubmissionService, Depends(get_submission_service)]
 InsightsServiceDep = Annotated[InsightsService, Depends(get_insights_service)]

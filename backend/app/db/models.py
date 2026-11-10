@@ -24,6 +24,7 @@ from app.features.auth.models import (
 # 2. Feedback Feature Models
 from app.features.feedback.models.alert_rules import AlertRule
 from app.features.feedback.models.categories import FeedbackCategory
+from app.features.feedback.models.decision_logs import DecisionLog
 from app.features.feedback.models.forms import Form
 from app.features.feedback.models.submissions import FeedbackSubmission
 from app.features.notifications.models.attempts import DeliveryAttempt
@@ -38,6 +39,7 @@ configure_mappers()
 __all__ = [
     "AlertRule",
     "AuditLog",
+    "DecisionLog",
     "DeliveryAttempt",
     "FeedbackCategory",
     "FeedbackSubmission",

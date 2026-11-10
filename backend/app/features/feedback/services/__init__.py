@@ -8,6 +8,7 @@ from app.features.feedback.services.categories import (
     FeedbackCategoryService,
     slugify,
 )
+from app.features.feedback.services.decision_logs import DecisionLogService
 from app.features.feedback.services.forms import FormService
 from app.features.feedback.services.insights import InsightsService
 from app.features.feedback.services.submissions import SubmissionService
@@ -18,6 +19,7 @@ FeedbackService = FeedbackCategoryService
 __all__ = [
     "AlertEvaluatorService",
     "AlertRuleService",
+    "DecisionLogService",
     "FeedbackCategoryService",
     "FeedbackService",
     "FormService",

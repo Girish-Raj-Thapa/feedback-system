@@ -15,6 +15,13 @@ from app.features.feedback.schemas.categories import (
     FeedbackCategorySeedRequest,
     FeedbackCategoryUpdate,
 )
+from app.features.feedback.schemas.decision_logs import (
+    DecisionImpactMetrics,
+    DecisionLogCreate,
+    DecisionLogRead,
+    DecisionLogUpdate,
+    DecisionWindowMetrics,
+)
 from app.features.feedback.schemas.forms import (
     FormCreate,
     FormDuplicateRequest,
@@ -49,6 +56,11 @@ __all__ = [
     "FeedbackCategoryReorderRequest",
     "FeedbackCategorySeedRequest",
     "FeedbackCategoryUpdate",
+    "DecisionImpactMetrics",
+    "DecisionLogCreate",
+    "DecisionLogRead",
+    "DecisionLogUpdate",
+    "DecisionWindowMetrics",
     "FormCreate",
     "FormDuplicateRequest",
     "FormRead",
