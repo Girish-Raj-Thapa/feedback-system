@@ -4,7 +4,7 @@ import DashboardPage from "@/app/dashboard/page";
 import WorkspaceDashboardSubPage from "@/app/workspace/[workspaceSlug]/dashboard/page";
 import { ThemeProvider } from "@/components/theme-provider";
 import { authRepository } from "@/repositories/auth.repository";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
@@ -77,9 +77,21 @@ describe("RootHomePage and Dashboard Pages", () => {
       expect(screen.getByRole("heading", { name: "Welcome to dashboard" })).toBeInTheDocument();
     });
 
-    it("renders WorkspaceDashboardSubPage", () => {
+    it("redirects WorkspaceDashboardSubPage to /workspace/[workspaceSlug]", async () => {
+      (useParams as any).mockReturnValue({ workspaceSlug: "acme" });
       render(<WorkspaceDashboardSubPage />);
-      expect(screen.getByRole("heading", { name: "Welcome to dashboard" })).toBeInTheDocument();
+      expect(screen.getByText("Redirecting to workspace insights…")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith("/workspace/acme");
+      });
+    });
+
+    it("redirects WorkspaceDashboardSubPage to /dashboard when workspaceSlug is missing", async () => {
+      (useParams as any).mockReturnValue({});
+      render(<WorkspaceDashboardSubPage />);
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith("/dashboard");
+      });
     });
   });
 });

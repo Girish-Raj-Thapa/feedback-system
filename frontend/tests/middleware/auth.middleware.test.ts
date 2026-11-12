@@ -26,6 +26,12 @@ describe("handleAuthRouting middleware", () => {
     expect(res).toBeNull();
   });
 
+  it("allows public embeddable widget routes (/embed/...) without authentication", () => {
+    const req = createMockRequest("http://localhost:3000/embed/acme/survey");
+    const res = handleAuthRouting(req);
+    expect(res).toBeNull();
+  });
+
   it("redirects unauthenticated user accessing protected route to login with redirect param", () => {
     const req = createMockRequest("http://localhost:3000/dashboard/workspaces");
     const res = handleAuthRouting(req);

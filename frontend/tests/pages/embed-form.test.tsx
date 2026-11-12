@@ -244,4 +244,52 @@ describe("EmbedFormPage", () => {
       "*"
     );
   });
+
+  it("renders both support CTA and unbiased public review link on low-score outcome (FTC compliance)", async () => {
+    const lowOutcomeSubmission: FeedbackSubmissionResponse = {
+      ...mockSuccessSubmission,
+      rating: 2,
+      outcome: {
+        title: "We will make it right",
+        message: "Our support team has been notified.",
+        is_high_score: false,
+        cta_text: null,
+        cta_url: null,
+        support_text: "Contact Support",
+        support_url: "mailto:support@acme.com",
+        public_review_text: "Rate on Google",
+        public_review_url: "https://google.com/review",
+      },
+    };
+
+    (feedbackRepository.getPublicForm as any).mockResolvedValue(mockPublicForm);
+    (feedbackRepository.submitFeedback as any).mockResolvedValue(lowOutcomeSubmission);
+
+    render(<EmbedFormPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Give us your thoughts")).toBeInTheDocument();
+    });
+
+    const starButtons = screen
+      .getAllByRole("button")
+      .filter((btn) => btn.querySelector("svg polygon"));
+    fireEvent.click(starButtons[1]);
+    fireEvent.click(screen.getByLabelText("Chrome"));
+    fireEvent.change(screen.getByPlaceholderText("name@example.com"), {
+      target: { value: "unhappy@example.com" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Submit Feedback/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("We will make it right")).toBeInTheDocument();
+    });
+
+    const supportLink = screen.getByRole("link", { name: /Contact Support/i });
+    expect(supportLink).toHaveAttribute("href", "mailto:support@acme.com");
+
+    const reviewLink = screen.getByRole("link", { name: /Rate on Google/i });
+    expect(reviewLink).toHaveAttribute("href", "https://google.com/review");
+  });
 });

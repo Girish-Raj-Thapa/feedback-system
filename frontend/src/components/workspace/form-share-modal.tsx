@@ -95,8 +95,9 @@ export function FormShareModal({
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  const qrTargetUrl = `${hostedUrl}?ref=qr`;
   const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-    hostedUrl
+    qrTargetUrl
   )}`;
 
   return (

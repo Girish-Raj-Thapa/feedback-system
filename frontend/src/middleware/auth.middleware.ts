@@ -53,7 +53,8 @@ export function handleAuthRouting(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl;
 
   // Allow public hosted feedback forms (/f/[workspaceSlug]/[formSlug])
-  if (pathname.startsWith("/f/")) {
+  // and public embeddable widget routes (/embed/[workspaceSlug]/[formSlug])
+  if (pathname.startsWith("/f/") || pathname.startsWith("/embed/")) {
     return null;
   }
 

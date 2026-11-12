@@ -1,44 +1,61 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "@/app/dashboard/layout";
-import { ThemeProvider } from "@/components/theme-provider";
 import { authRepository } from "@/repositories/auth.repository";
 import { useAuthStore } from "@/store/auth.store";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
 vi.mock("@/repositories/auth.repository", () => ({
   authRepository: {
     getMe: vi.fn(),
     getWorkspaces: vi.fn(),
-    logout: vi.fn(),
   },
 }));
 
-describe("DashboardLayout", () => {
+describe("DashboardLayout (retired multi-shell wrapper)", () => {
   const mockReplace = vi.fn();
 
   const mockUser = {
-    id: "u-1",
-    email: "user@example.com",
+    id: "u1",
+    email: "test@example.com",
     full_name: "John Doe",
     is_active: true,
     is_verified: true,
     is_superuser: false,
-    workspaces: [],
-    created_at: "2024-01-01T00:00:00Z",
+    created_at: "2026-01-01T00:00:00Z",
+    workspaces: [
+      {
+        workspace_id: "ws-1",
+        workspace_name: "Test Studio",
+        workspace_slug: "test-studio",
+        role_id: "role-1",
+        role_name: "Owner",
+        role_slug: "owner",
+        effective_permissions: ["*"],
+      },
+    ],
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useRouter as any).mockReturnValue({
+    useAuthStore.getState().clear();
+    (useRouter as ReturnType<typeof vi.fn>).mockReturnValue({
+      push: vi.fn(),
       replace: mockReplace,
+      refresh: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      prefetch: vi.fn(),
     });
-    useAuthStore.getState().setUser(mockUser);
-    (authRepository.getMe as any).mockResolvedValue(mockUser);
-    (authRepository.getWorkspaces as any).mockResolvedValue([]);
+
+    (authRepository.getMe as ReturnType<typeof vi.fn>).mockResolvedValue(mockUser);
+    (authRepository.getWorkspaces as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser.workspaces
+    );
   });
 
-  it("renders layout with navigation and children", async () => {
+  it("verifies session and renders children without legacy sidebar chrome", async () => {
     render(
       <ThemeProvider>
         <DashboardLayout>
@@ -49,48 +66,22 @@ describe("DashboardLayout", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("dashboard-child")).toBeInTheDocument();
-      expect(screen.getByText("Feedback System")).toBeInTheDocument();
-      expect(screen.getByText("John Doe")).toBeInTheDocument();
     });
+
+    expect(authRepository.getMe).toHaveBeenCalledTimes(1);
+    expect(authRepository.getWorkspaces).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Feedback System")).not.toBeInTheDocument();
   });
 
-  it("handles logout from account menu", async () => {
-    (authRepository.logout as any).mockResolvedValue({ message: "Logged out" });
-
-    render(
-      <ThemeProvider>
-        <DashboardLayout>
-          <div>Content</div>
-        </DashboardLayout>
-      </ThemeProvider>
+  it("redirects to /login if session verification fails", async () => {
+    (authRepository.getMe as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("Unauthorized")
     );
 
-    await waitFor(() => {
-      expect(screen.getByText("John Doe")).toBeInTheDocument();
-    });
-
-    const accountBtn = screen.getByRole("button", { name: /john doe/i });
-    fireEvent.click(accountBtn);
-
-    expect(screen.getByText("Account settings")).toBeInTheDocument();
-    const logoutBtn = screen.getByRole("button", { name: /log out/i });
-    fireEvent.click(logoutBtn);
-
-    await waitFor(() => {
-      expect(authRepository.logout).toHaveBeenCalled();
-      expect(toast.success).toHaveBeenCalledWith("Logged out successfully");
-      expect(mockReplace).toHaveBeenCalledWith("/login");
-    });
-  });
-
-  it("redirects to /login if user fetch fails", async () => {
-    useAuthStore.getState().clear();
-    (authRepository.getMe as any).mockRejectedValue(new Error("Unauthorized"));
-
     render(
       <ThemeProvider>
         <DashboardLayout>
-          <div>Content</div>
+          <div data-testid="dashboard-child">Dashboard Child Content</div>
         </DashboardLayout>
       </ThemeProvider>
     );
@@ -100,4 +91,3 @@ describe("DashboardLayout", () => {
     });
   });
 });
-

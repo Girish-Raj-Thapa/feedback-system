@@ -18,10 +18,51 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-export async function apiClient<T>(
+async function parseResponseData(response: Response): Promise<unknown> {
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+  return response.text();
+}
+
+function extractApiErrorMessage(data: unknown): string {
+  if (data && typeof data === "object") {
+    const errorObj = data as Record<string, unknown>;
+    if (typeof errorObj.error === "string") {
+      return errorObj.error;
+    }
+    if (typeof errorObj.detail === "string") {
+      return errorObj.detail;
+    }
+    if (Array.isArray(errorObj.detail)) {
+      return errorObj.detail
+        .map((item) => {
+          if (item && typeof item === "object") {
+            const obj = item as Record<string, unknown>;
+            return String(obj.msg || obj.message || JSON.stringify(obj));
+          }
+          return String(item);
+        })
+        .join(", ");
+    }
+    if (typeof errorObj.message === "string") {
+      return errorObj.message;
+    }
+  } else if (typeof data === "string" && data.length > 0) {
+    return data;
+  }
+  return "An unexpected error occurred";
+}
+
+async function requestRaw(
   endpoint: string,
   options: RequestOptions = {}
-): Promise<T> {
+): Promise<Response> {
   const { workspaceId, body, headers: customHeaders, ...rest } = options;
 
   const headers = new Headers(customHeaders);
@@ -45,50 +86,32 @@ export async function apiClient<T>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
+  if (!response.ok) {
+    const data = await parseResponseData(response);
+    throw new ApiClientError(extractApiErrorMessage(data), response.status, data);
+  }
+
+  return response;
+}
+
+export async function apiClient<T>(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<T> {
+  const response = await requestRaw(endpoint, options);
+
   // Handle 204 No Content
   if (response.status === 204) {
     return {} as T;
   }
 
-  let data: unknown;
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
-    try {
-      data = await response.json();
-    } catch {
-      data = null;
-    }
-  } else {
-    data = await response.text();
-  }
+  return (await parseResponseData(response)) as T;
+}
 
-  if (!response.ok) {
-    let errorMessage = "An unexpected error occurred";
-    if (data && typeof data === "object") {
-      const errorObj = data as Record<string, unknown>;
-      if (typeof errorObj.error === "string") {
-        errorMessage = errorObj.error;
-      } else if (typeof errorObj.detail === "string") {
-        errorMessage = errorObj.detail;
-      } else if (Array.isArray(errorObj.detail)) {
-        errorMessage = errorObj.detail
-          .map((item) => {
-            if (item && typeof item === "object") {
-              const obj = item as Record<string, unknown>;
-              return String(obj.msg || obj.message || JSON.stringify(obj));
-            }
-            return String(item);
-          })
-          .join(", ");
-      } else if (typeof errorObj.message === "string") {
-        errorMessage = errorObj.message;
-      }
-    } else if (typeof data === "string" && data.length > 0) {
-      errorMessage = data;
-    }
-
-    throw new ApiClientError(errorMessage, response.status, data);
-  }
-
-  return data as T;
+export async function apiBlobClient(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<Blob> {
+  const response = await requestRaw(endpoint, options);
+  return response.blob();
 }

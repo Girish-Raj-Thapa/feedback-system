@@ -64,13 +64,15 @@ describe("FormShareModal", () => {
     expect(toast.success).toHaveBeenCalledWith("Widget embed snippet copied to clipboard");
   });
 
-  it("switches to QR Code tab", () => {
+  it("switches to QR Code tab with ref=qr attribution", () => {
     render(<FormShareModal {...props} />);
     const qrTabBtn = screen.getByRole("button", { name: /QR Code/i });
     fireEvent.click(qrTabBtn);
 
     expect(screen.getByText(/Scan to instantly open the mobile-optimized/i)).toBeInTheDocument();
-    expect(screen.getByAltText(/QR Code to Form/i)).toBeInTheDocument();
+    const qrImg = screen.getByAltText(/QR Code to Form/i) as HTMLImageElement;
+    expect(qrImg).toBeInTheDocument();
+    expect(qrImg.src).toContain(encodeURIComponent("/f/acme-corp/saas-feedback?ref=qr"));
   });
 
   it("calls onClose when clicking close button", () => {

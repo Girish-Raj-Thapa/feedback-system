@@ -1,4 +1,4 @@
-import { apiClient, ApiClientError } from "@/repositories/client";
+import { apiBlobClient, apiClient, ApiClientError } from "@/repositories/client";
 
 describe("apiClient", () => {
   const originalFetch = global.fetch;
@@ -101,6 +101,43 @@ describe("apiClient", () => {
     });
 
     await expect(apiClient("/validation-error")).rejects.toThrow("Invalid email address");
+  });
+
+  it("should return a Blob from apiBlobClient when request succeeds", async () => {
+    const csvBlob = new Blob(["id,comment\n1,Great"], { type: "text/csv" });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "text/csv" }),
+      blob: async () => csvBlob,
+    });
+
+    const result = await apiBlobClient("/workspaces/ws-1/feedback/submissions/export", {
+      workspaceId: "ws-1",
+    });
+
+    expect(result).toBe(csvBlob);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/workspaces/ws-1/feedback/submissions/export"),
+      expect.objectContaining({
+        credentials: "include",
+      })
+    );
+    const [, requestInit] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect((requestInit.headers as Headers).get("X-Workspace-Id")).toBe("ws-1");
+  });
+
+  it("should throw ApiClientError from apiBlobClient on error response", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({ detail: "Forbidden workspace export" }),
+    });
+
+    await expect(
+      apiBlobClient("/workspaces/ws-1/feedback/submissions/export")
+    ).rejects.toThrow("Forbidden workspace export");
   });
 });
 

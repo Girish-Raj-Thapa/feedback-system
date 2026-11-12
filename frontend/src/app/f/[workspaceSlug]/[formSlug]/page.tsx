@@ -206,6 +206,10 @@ export default function PublicFormPage() {
 
     try {
       const pillLabel = selectedPills.length > 0 ? selectedPills[0] : null;
+      const refParam =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("ref")?.trim() || null
+          : null;
 
       const submissionPayload: FeedbackSubmissionCreate = {
         rating: rating,
@@ -219,6 +223,7 @@ export default function PublicFormPage() {
           referrer: typeof document !== "undefined" ? document.referrer : null,
           user_agent:
             typeof navigator !== "undefined" ? navigator.userAgent : null,
+          source: refParam || "hosted",
         },
         form_token: form?.form_token || null,
         turnstile_token: turnstileToken || null,

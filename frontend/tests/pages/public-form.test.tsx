@@ -306,4 +306,34 @@ describe("PublicFormPage", () => {
     expect(await screen.findByText("Talk to Founder")).toBeInTheDocument();
     expect(screen.getByText("Share on G2")).toBeInTheDocument();
   });
+
+  it("propagates ?ref=qr query parameter into submission customer_metadata.source", async () => {
+    window.history.pushState({}, "", "/f/acme-corp/website-feedback?ref=qr");
+    (feedbackRepository.getPublicForm as any).mockResolvedValue(mockPublicForm);
+    (feedbackRepository.submitFeedback as any).mockResolvedValue(mockSuccessSubmission);
+
+    render(<PublicFormPage />);
+    await screen.findByText("How was your experience today?");
+
+    fireEvent.click(screen.getByLabelText("5 stars"));
+    fireEvent.click(screen.getByRole("radio", { name: "Chrome" }));
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "qr@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send Feedback" }));
+
+    await waitFor(() => {
+      expect(feedbackRepository.submitFeedback).toHaveBeenCalledWith(
+        wsSlug,
+        formSlug,
+        expect.objectContaining({
+          customer_metadata: expect.objectContaining({
+            source: "qr",
+          }),
+        })
+      );
+    });
+
+    window.history.pushState({}, "", "/");
+  });
 });

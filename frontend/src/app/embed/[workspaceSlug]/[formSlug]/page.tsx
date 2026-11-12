@@ -300,6 +300,13 @@ export default function EmbedFormPage() {
 
   const primaryColor = form?.theme_config?.primary_color || "#4249C9";
   const borderRadius = `${form?.theme_config?.border_radius ?? 12}px`;
+  const publicReviewUrl =
+    submissionOutcome?.public_review_url ||
+    form?.outcome_screen?.public_review_url;
+  const publicReviewText =
+    submissionOutcome?.public_review_text ||
+    form?.outcome_screen?.public_review_text ||
+    "Share public review";
 
   return (
     <div
@@ -654,6 +661,20 @@ export default function EmbedFormPage() {
                 <span>{submissionOutcome.support_text}</span>
                 <ExternalLink className="size-4" />
               </a>
+            )}
+
+            {submissionOutcome.is_high_score === false && publicReviewUrl && (
+              <p className="pt-1 text-[12px] text-[#556070] dark:text-[#8E8E93]">
+                You are also welcome to leave a public review:{" "}
+                <a
+                  href={publicReviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium underline hover:text-[#161C26] dark:hover:text-white"
+                >
+                  {publicReviewText}
+                </a>
+              </p>
             )}
 
             <button
