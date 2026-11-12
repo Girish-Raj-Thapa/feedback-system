@@ -33,6 +33,7 @@ async def test_get_insights_zero_submissions():
 
     sub_repo = AsyncMock()
     sub_repo.list_for_insights.return_value = []
+    sub_repo.list_segment_options.return_value = ([], [], [])
 
     cat_repo = AsyncMock()
     cat_repo.list_active.return_value = []
@@ -115,6 +116,7 @@ async def test_get_insights_score_drivers_calculation():
 
     sub_repo = AsyncMock()
     sub_repo.list_for_insights.return_value = [s1, s2, s3, s4]
+    sub_repo.list_segment_options.return_value = ([], [], [])
 
     cat_repo = AsyncMock()
     cat_repo.list_active.return_value = [cat1, cat2]
@@ -147,4 +149,52 @@ async def test_get_insights_score_drivers_calculation():
     assert res.summary.top_positive_driver.category_name == "Design & Speed"
     assert res.summary.top_positive_driver.average_rating == 5.0
     assert res.summary.top_positive_driver.score_impact == 1.75
+
+
+@pytest.mark.asyncio
+async def test_get_insights_forwards_segment_filters_and_returns_available_segments():
+    workspace_id = uuid4()
+    form_id = uuid4()
+    mock_ws = MagicMock(spec=Workspace)
+    mock_ws.deleted_at = None
+
+    session = AsyncMock()
+    session.get.return_value = mock_ws
+
+    sub_repo = AsyncMock()
+    sub_repo.list_for_insights.return_value = []
+    sub_repo.list_segment_options.return_value = (
+        ["csv_import", "widget"],
+        ["https://app.example.com/pricing"],
+        ["enterprise", "pro"],
+    )
+
+    cat_repo = AsyncMock()
+    cat_repo.list_active.return_value = []
+
+    service = InsightsService(session, sub_repo, cat_repo)
+    res = await service.get_insights(
+        workspace_id=workspace_id,
+        days=0,
+        form_id=form_id,
+        source="widget",
+        page_url="https://app.example.com/pricing",
+        plan_tier="pro",
+    )
+
+    sub_repo.list_for_insights.assert_awaited_once_with(
+        workspace_id=workspace_id,
+        since=None,
+        form_id=form_id,
+        source="widget",
+        page_url="https://app.example.com/pricing",
+        plan_tier="pro",
+    )
+    sub_repo.list_segment_options.assert_awaited_once_with(
+        workspace_id=workspace_id,
+        since=None,
+    )
+    assert res.available_segments.sources == ["csv_import", "widget"]
+    assert res.available_segments.page_urls == ["https://app.example.com/pricing"]
+    assert res.available_segments.plan_tiers == ["enterprise", "pro"]
 

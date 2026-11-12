@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
+  Download,
   Filter,
   Inbox,
   Loader2,
@@ -13,6 +14,7 @@ import {
   Star,
   Tag,
   Trash2,
+  Upload,
   User,
   X,
 } from "lucide-react";
@@ -25,12 +27,14 @@ import {
   getSentimentBadge,
   getStatusBadge,
 } from "@/components/workspace/feedback-detail-drawer";
+import { ImportFeedbackModal } from "@/components/workspace/import-feedback-modal";
 import { WorkspaceInsightsTab } from "@/components/workspace/workspace-insights-tab";
 import { WorkspaceOnboardingChecklist } from "@/components/workspace/workspace-onboarding-checklist";
 import { useWorkspaceStore } from "@/store/workspace.store";
 import type { WorkspaceRead } from "@/types/auth";
 import type {
   FeedbackCategory,
+  FeedbackForm,
   FeedbackInsightsResponse,
   FeedbackSubmissionRead,
   FeedbackSubmissionUpdate,
@@ -43,6 +47,8 @@ const STATUS_TABS = [
   { id: "in_progress", label: "In Progress" },
   { id: "resolved", label: "Resolved" },
   { id: "archived", label: "Archived" },
+  { id: "quarantined", label: "Quarantined" },
+  { id: "spam", label: "Spam" },
 ];
 
 const TIMEFRAME_OPTIONS = [
@@ -123,19 +129,26 @@ export default function WorkspaceDashboardPage() {
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [workspace, setWorkspace] = useState<WorkspaceRead | null>(null);
   const [categories, setCategories] = useState<FeedbackCategory[]>([]);
+  const [forms, setForms] = useState<FeedbackForm[]>([]);
   const [submissions, setSubmissions] = useState<FeedbackSubmissionRead[]>([]);
   const [totalSubmissions, setTotalSubmissions] = useState(0);
-  const [formsCount, setFormsCount] = useState(0);
+  const formsCount = forms.length;
   const [isLoadingSampleData, setIsLoadingSampleData] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] =
     useState<FeedbackSubmissionRead | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sentimentFilter, setSentimentFilter] = useState("all");
+  const [formFilter, setFormFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [planTierFilter, setPlanTierFilter] = useState("");
+  const [pageUrlFilter, setPageUrlFilter] = useState("");
 
   const isInitialLoaded = useRef(false);
 
@@ -145,12 +158,56 @@ export default function WorkspaceDashboardPage() {
     setActiveView(tabParam === "inbox" || Boolean(idParam) ? "inbox" : "insights");
   }
 
+  const hasSegmentFilters = Boolean(
+    formFilter !== "all" ||
+      sourceFilter ||
+      planTierFilter ||
+      pageUrlFilter
+  );
+
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
       statusFilter !== "all" ||
       categoryFilter !== "all" ||
-      sentimentFilter !== "all"
+      sentimentFilter !== "all" ||
+      hasSegmentFilters
   );
+
+  const buildSegmentQuery = useCallback(
+    (overrides?: {
+      formId?: string;
+      source?: string;
+      planTier?: string;
+      pageUrl?: string;
+    }) => {
+      const fId = overrides?.formId ?? formFilter;
+      const src = overrides?.source ?? sourceFilter;
+      const tier = overrides?.planTier ?? planTierFilter;
+      const url = overrides?.pageUrl ?? pageUrlFilter;
+      return {
+        ...(fId && fId !== "all" ? { form_id: fId } : {}),
+        ...(src ? { source: src } : {}),
+        ...(tier ? { plan_tier: tier } : {}),
+        ...(url ? { page_url: url } : {}),
+      };
+    },
+    [formFilter, sourceFilter, planTierFilter, pageUrlFilter]
+  );
+
+  const resetSegmentFiltersState = useCallback(() => {
+    setFormFilter("all");
+    setSourceFilter("");
+    setPlanTierFilter("");
+    setPageUrlFilter("");
+  }, []);
+
+  const handleResetAllInboxFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setSentimentFilter("all");
+    resetSegmentFiltersState();
+  };
 
   const handleUpdateSubmission = async (
     submissionId: string,
@@ -177,6 +234,8 @@ export default function WorkspaceDashboardPage() {
           archived: "archived",
           new: "reopened",
           reviewed: "marked as reviewed",
+          spam: "marked as spam",
+          quarantined: "quarantined",
         };
         toast.success(`Submission ${labelMap[payload.status] || "updated"}`);
       } else if (payload.category_id !== undefined) {
@@ -204,13 +263,48 @@ export default function WorkspaceDashboardPage() {
     await handleUpdateSubmission(submissionId, { status: newStatus });
   };
 
+  const handleExportCsv = async () => {
+    if (!workspace) return;
+    try {
+      setIsExportingCsv(true);
+      const blob = await feedbackRepository.exportSubmissionsCsv(workspace.id, {
+        query: searchQuery.trim() || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        category_id: categoryFilter !== "all" ? categoryFilter : undefined,
+        sentiment: sentimentFilter !== "all" ? sentimentFilter : undefined,
+        ...buildSegmentQuery(),
+      });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `feedback-${workspace.slug}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast.success("Feedback exported to CSV");
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to export feedback CSV";
+      toast.error(msg);
+    } finally {
+      setIsExportingCsv(false);
+    }
+  };
+
   const fetchSubmissions = useCallback(
     async (
       wsId: string,
       query: string,
       status: string,
       categoryId: string,
-      sentiment: string
+      sentiment: string,
+      segmentQuery: {
+        form_id?: string;
+        source?: string;
+        plan_tier?: string;
+        page_url?: string;
+      }
     ) => {
       try {
         setIsFiltering(true);
@@ -221,6 +315,7 @@ export default function WorkspaceDashboardPage() {
           status: status !== "all" ? status : undefined,
           category_id: categoryId !== "all" ? categoryId : undefined,
           sentiment: sentiment !== "all" ? sentiment : undefined,
+          ...segmentQuery,
         });
         setSubmissions(res.items);
         setTotalSubmissions(res.total);
@@ -244,7 +339,8 @@ export default function WorkspaceDashboardPage() {
         searchQuery,
         statusFilter,
         categoryFilter,
-        sentimentFilter
+        sentimentFilter,
+        buildSegmentQuery()
       );
     }, 250);
     return () => clearTimeout(timer);
@@ -254,24 +350,108 @@ export default function WorkspaceDashboardPage() {
     statusFilter,
     categoryFilter,
     sentimentFilter,
+    buildSegmentQuery,
     fetchSubmissions,
   ]);
 
-  const handleDaysChange = async (daysVal: number | string) => {
-    setSelectedDays(daysVal);
-    if (!workspace) return;
+  const refreshInsights = async (
+    wsId: string,
+    opts?: {
+      days?: number | string;
+      formId?: string;
+      source?: string;
+      planTier?: string;
+      pageUrl?: string;
+    }
+  ) => {
+    if (typeof feedbackRepository.getInsights !== "function") return;
     try {
       setIsLoadingInsights(true);
-      if (typeof feedbackRepository.getInsights === "function") {
-        const res = await feedbackRepository.getInsights(workspace.id, {
-          days: daysVal === 0 ? undefined : daysVal,
-        });
-        setInsights(res);
-      }
+      const daysVal = opts?.days ?? selectedDays;
+      const res = await feedbackRepository.getInsights(wsId, {
+        days: daysVal === 0 ? undefined : daysVal,
+        ...buildSegmentQuery(opts),
+      });
+      setInsights(res);
     } catch {
       // Graceful fallback
     } finally {
       setIsLoadingInsights(false);
+    }
+  };
+
+  const handleDaysChange = async (daysVal: number | string) => {
+    setSelectedDays(daysVal);
+    if (!workspace) return;
+    await refreshInsights(workspace.id, { days: daysVal });
+  };
+
+  const handleFormFilterChange = async (formIdVal: string) => {
+    setFormFilter(formIdVal);
+    if (!workspace) return;
+    await refreshInsights(workspace.id, { formId: formIdVal });
+  };
+
+  const handleSourceFilterChange = async (sourceVal: string) => {
+    setSourceFilter(sourceVal);
+    if (!workspace) return;
+    await refreshInsights(workspace.id, { source: sourceVal });
+  };
+
+  const handlePlanTierFilterChange = async (tierVal: string) => {
+    setPlanTierFilter(tierVal);
+    if (!workspace) return;
+    await refreshInsights(workspace.id, { planTier: tierVal });
+  };
+
+  const handlePageUrlFilterChange = async (urlVal: string) => {
+    setPageUrlFilter(urlVal);
+    if (!workspace) return;
+    await refreshInsights(workspace.id, { pageUrl: urlVal });
+  };
+
+  const handleResetSegmentFilters = async () => {
+    resetSegmentFiltersState();
+    if (!workspace) return;
+    await refreshInsights(workspace.id, {
+      formId: "all",
+      source: "",
+      planTier: "",
+      pageUrl: "",
+    });
+  };
+
+  const handleImportSuccess = async () => {
+    if (!workspace) return;
+    try {
+      const [submissionsPage, insightsData, formsList] = await Promise.all([
+        feedbackRepository.listSubmissions(workspace.id, {
+          limit: 50,
+          offset: 0,
+          query: searchQuery.trim() || undefined,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          category_id: categoryFilter !== "all" ? categoryFilter : undefined,
+          sentiment: sentimentFilter !== "all" ? sentimentFilter : undefined,
+          ...buildSegmentQuery(),
+        }),
+        typeof feedbackRepository.getInsights === "function"
+          ? feedbackRepository
+              .getInsights(workspace.id, {
+                days: selectedDays === 0 ? undefined : selectedDays,
+                ...buildSegmentQuery(),
+              })
+              .catch(() => insights)
+          : Promise.resolve(insights),
+        typeof feedbackRepository.listForms === "function"
+          ? feedbackRepository.listForms(workspace.id).catch(() => forms)
+          : Promise.resolve(forms),
+      ]);
+      setSubmissions(submissionsPage.items);
+      setTotalSubmissions(submissionsPage.total);
+      setInsights(insightsData);
+      setForms(formsList || []);
+    } catch {
+      // Non-fatal post-import refresh failure
     }
   };
 
@@ -309,7 +489,7 @@ export default function WorkspaceDashboardPage() {
       setSubmissions(submissionsPage.items);
       setTotalSubmissions(submissionsPage.total);
       setInsights(insightsData);
-      setFormsCount(formsList?.length || 0);
+      setForms(formsList || []);
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Failed to load sample data";
@@ -387,7 +567,7 @@ export default function WorkspaceDashboardPage() {
             typeof feedbackRepository.getInsights === "function"
               ? feedbackRepository
                   .getInsights(membership.workspace_id, {
-                    days: selectedDays === 0 ? undefined : selectedDays,
+                    days: 30,
                   })
                   .catch(() => null)
               : Promise.resolve(null),
@@ -404,7 +584,7 @@ export default function WorkspaceDashboardPage() {
         setSubmissions(submissionsPage.items);
         setTotalSubmissions(submissionsPage.total);
         setInsights(insightsData);
-        setFormsCount(formsList?.length || 0);
+        setForms(formsList || []);
 
         // Auto-open deep linked submission if idParam is present in URL
         if (idParam) {
@@ -445,7 +625,7 @@ export default function WorkspaceDashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [workspaceSlug, workspaces, router, setWorkspaces, selectedDays, idParam]);
+  }, [workspaceSlug, workspaces, router, setWorkspaces, idParam]);
 
   // Respond to dynamic URL param changes for deep-linked triage drawer
   useEffect(() => {
@@ -587,21 +767,33 @@ export default function WorkspaceDashboardPage() {
         isLoadingSampleData={isLoadingSampleData}
         onLoadSampleData={handleLoadSampleData}
         onClearSampleData={handleClearSampleData}
+        onOpenImport={() => setIsImportModalOpen(true)}
       />
 
       {activeView === "insights" ? (
         <WorkspaceInsightsTab
           workspaceId={workspace?.id}
           workspaceCategories={categories}
+          forms={forms}
           insights={insights}
           isLoading={isLoadingInsights}
           selectedDays={selectedDays}
           onDaysChange={handleDaysChange}
+          selectedFormId={formFilter}
+          onFormFilterChange={handleFormFilterChange}
+          selectedSource={sourceFilter}
+          onSourceFilterChange={handleSourceFilterChange}
+          selectedPlanTier={planTierFilter}
+          onPlanTierFilterChange={handlePlanTierFilterChange}
+          selectedPageUrl={pageUrlFilter}
+          onPageUrlFilterChange={handlePageUrlFilterChange}
+          onResetSegmentFilters={handleResetSegmentFilters}
           onDrillDownCategory={handleDrillDownCategory}
           onDrillDownAtRisk={handleDrillDownAtRisk}
           onLoadSampleData={handleLoadSampleData}
           onClearSampleData={handleClearSampleData}
           isLoadingSampleData={isLoadingSampleData}
+          onOpenImport={() => setIsImportModalOpen(true)}
           recentSubmissions={submissions}
           onSelectSubmission={setSelectedSubmission}
         />
@@ -697,17 +889,37 @@ export default function WorkspaceDashboardPage() {
             {hasActiveFilters && (
               <button
                 type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                  setCategoryFilter("all");
-                  setSentimentFilter("all");
-                }}
+                onClick={handleResetAllInboxFilters}
                 className="rounded-[8px] px-2.5 py-1.5 text-[12px] font-medium text-[#4249C9] hover:bg-[#F0F2FE] dark:text-[#7B82F6] dark:hover:bg-[#4249C9]/20"
               >
                 Reset Filters
               </button>
             )}
+
+            {/* Import Feedback Button */}
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#E1E5EB] bg-[#F7F9FC] px-2.5 py-1.5 text-[12px] font-medium text-[#161C26] transition-colors hover:bg-[#EDF0F5] dark:border-white/10 dark:bg-[#2C2C2E] dark:text-white dark:hover:bg-white/10"
+            >
+              <Upload className="size-3.5" />
+              <span>Import</span>
+            </button>
+
+            {/* Export CSV Button */}
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={isExportingCsv}
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#E1E5EB] bg-[#F7F9FC] px-2.5 py-1.5 text-[12px] font-medium text-[#161C26] transition-colors hover:bg-[#EDF0F5] disabled:opacity-50 dark:border-white/10 dark:bg-[#2C2C2E] dark:text-white dark:hover:bg-white/10"
+            >
+              {isExportingCsv ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Download className="size-3.5" />
+              )}
+              <span>Export CSV</span>
+            </button>
           </div>
         </div>
 
@@ -747,12 +959,7 @@ export default function WorkspaceDashboardPage() {
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                  setCategoryFilter("all");
-                  setSentimentFilter("all");
-                }}
+                onClick={handleResetAllInboxFilters}
                 className="mt-4 inline-flex items-center gap-1.5 rounded-[10px] bg-[#4249C9] px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#363BA6]"
               >
                 <span>Reset Filters</span>
@@ -783,6 +990,14 @@ export default function WorkspaceDashboardPage() {
                     <Sparkles className="size-3.5" />
                   )}
                   <span>Load Sample Feedback</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#E1E5EB] bg-white px-4 py-2 text-[13px] font-medium text-[#161C26] shadow-2xs transition-colors hover:bg-[#F3F5F9] dark:border-white/10 dark:bg-[#232326] dark:text-white"
+                >
+                  <Upload className="size-3.5" />
+                  <span>Import CSV / Paste</span>
                 </button>
                 <Link
                   href={`/workspace/${workspaceSlug}/forms`}
@@ -930,6 +1145,18 @@ export default function WorkspaceDashboardPage() {
         onUpdateSubmission={handleUpdateSubmission}
         isUpdatingStatus={isUpdatingStatus}
       />
+
+      {/* Import Feedback Modal */}
+      {isImportModalOpen && workspace && (
+        <ImportFeedbackModal
+          isOpen={isImportModalOpen}
+          workspaceId={workspace.id}
+          forms={forms}
+          categories={categories}
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={handleImportSuccess}
+        />
+      )}
     </div>
   );
 }

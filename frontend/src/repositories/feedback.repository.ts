@@ -1,4 +1,4 @@
-import { apiClient } from "@/repositories/client";
+import { apiBlobClient, apiClient } from "@/repositories/client";
 import type {
   CustomerHistoryRead,
   DecisionLogCreate,
@@ -12,6 +12,8 @@ import type {
   FeedbackForm,
   FeedbackFormCreate,
   FeedbackFormUpdate,
+  FeedbackImportRequest,
+  FeedbackImportResponse,
   FeedbackInsightsResponse,
   FeedbackSubmissionCreate,
   FeedbackSubmissionRead,
@@ -21,6 +23,44 @@ import type {
   PublicFeedbackForm,
   SampleDataResponse,
 } from "@/types/feedback";
+
+export interface FeedbackSegmentParams {
+  form_id?: string;
+  source?: string;
+  page_url?: string;
+  plan_tier?: string;
+}
+
+type SubmissionListParams = FeedbackSegmentParams & {
+  limit?: number;
+  offset?: number;
+  status?: string;
+  category_id?: string;
+  sentiment?: string;
+  query?: string;
+};
+
+function appendSegmentParams(
+  query: URLSearchParams,
+  params?: FeedbackSegmentParams
+): void {
+  if (params?.form_id) query.set("form_id", params.form_id);
+  if (params?.source) query.set("source", params.source);
+  if (params?.page_url) query.set("page_url", params.page_url);
+  if (params?.plan_tier) query.set("plan_tier", params.plan_tier);
+}
+
+function buildSubmissionQueryString(params?: SubmissionListParams): string {
+  const query = new URLSearchParams();
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  if (params?.status) query.set("status", params.status);
+  if (params?.category_id) query.set("category_id", params.category_id);
+  if (params?.sentiment) query.set("sentiment", params.sentiment);
+  if (params?.query) query.set("query", params.query);
+  appendSegmentParams(query, params);
+  return query.toString() ? `?${query.toString()}` : "";
+}
 
 export const feedbackRepository = {
   /**
@@ -269,26 +309,30 @@ export const feedbackRepository = {
    */
   async listSubmissions(
     workspaceId: string,
-    params?: {
-      limit?: number;
-      offset?: number;
-      status?: string;
-      category_id?: string;
-      sentiment?: string;
-      query?: string;
-    }
+    params?: SubmissionListParams
   ): Promise<Page<FeedbackSubmissionRead>> {
-    const query = new URLSearchParams();
-    if (params?.limit !== undefined) query.set("limit", String(params.limit));
-    if (params?.offset !== undefined) query.set("offset", String(params.offset));
-    if (params?.status) query.set("status", params.status);
-    if (params?.category_id) query.set("category_id", params.category_id);
-    if (params?.sentiment) query.set("sentiment", params.sentiment);
-    if (params?.query) query.set("query", params.query);
-    const qs = query.toString() ? `?${query.toString()}` : "";
+    const qs = buildSubmissionQueryString(params);
 
     return apiClient<Page<FeedbackSubmissionRead>>(
       `/workspaces/${workspaceId}/feedback/submissions${qs}`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Export filtered feedback submissions as a CSV Blob.
+   */
+  async exportSubmissionsCsv(
+    workspaceId: string,
+    params?: Omit<SubmissionListParams, "limit" | "offset">
+  ): Promise<Blob> {
+    const qs = buildSubmissionQueryString(params);
+
+    return apiBlobClient(
+      `/workspaces/${workspaceId}/feedback/submissions/export${qs}`,
       {
         method: "GET",
         workspaceId,
@@ -350,17 +394,34 @@ export const feedbackRepository = {
    */
   async getInsights(
     workspaceId: string,
-    params?: { days?: number | string; form_id?: string }
+    params?: FeedbackSegmentParams & { days?: number | string }
   ): Promise<FeedbackInsightsResponse> {
     const query = new URLSearchParams();
     if (params?.days !== undefined) query.set("days", String(params.days));
-    if (params?.form_id) query.set("form_id", params.form_id);
+    appendSegmentParams(query, params);
     const qs = query.toString() ? `?${query.toString()}` : "";
 
     return apiClient<FeedbackInsightsResponse>(
       `/workspaces/${workspaceId}/feedback/insights${qs}`,
       {
         method: "GET",
+        workspaceId,
+      }
+    );
+  },
+
+  /**
+   * Batch-import feedback rows from CSV text, pasted lines, or structured objects.
+   */
+  async importSubmissions(
+    workspaceId: string,
+    payload: FeedbackImportRequest
+  ): Promise<FeedbackImportResponse> {
+    return apiClient<FeedbackImportResponse>(
+      `/workspaces/${workspaceId}/feedback/submissions/import`,
+      {
+        method: "POST",
+        body: payload,
         workspaceId,
       }
     );

@@ -606,3 +606,463 @@ async def test_public_forms_cors_preflight(
     assert get_res.status_code == 200
     assert get_res.headers.get("access-control-allow-origin") == "https://external-client.com"
 
+
+@pytest.mark.asyncio
+async def test_spam_and_quarantined_isolation_and_triage(
+    client: AsyncClient,
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+    db_session,
+) -> None:
+    """
+    Spam and quarantined submissions are hidden from the default Inbox ('all') view and Insights,
+    surfaced when filtering explicitly by status=spam / status=quarantined, and can be restored via PATCH.
+    """
+    from app.features.feedback.models.submissions import FeedbackSubmission
+
+    form_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/forms",
+        json={"name": "Quarantine Inbox Form", "slug": "quarantine-inbox"},
+    )
+    assert form_res.status_code == 201
+    form_id = form_res.json()["id"]
+
+    # Clean submission via public endpoint
+    clean_res = await client.post(
+        f"/api/v1/public/forms/{test_workspace.slug}/quarantine-inbox/submit",
+        json={"rating": 5, "comment": "Clean feedback response"},
+    )
+    assert clean_res.status_code == 201
+
+    # Seed one spam and one quarantined submission directly
+    import uuid
+
+    spam_sub = FeedbackSubmission(
+        workspace_id=test_workspace.id,
+        form_id=uuid.UUID(form_id),
+        rating=1,
+        rating_scale_type="5_star",
+        comment="Buy backlinks casino bonus",
+        status="spam",
+        sentiment="negative",
+        spam_score=100,
+        spam_reasons=["pattern_matched:casino"],
+    )
+    quarantined_sub = FeedbackSubmission(
+        workspace_id=test_workspace.id,
+        form_id=uuid.UUID(form_id),
+        rating=2,
+        rating_scale_type="5_star",
+        comment="Needs verification check",
+        status="quarantined",
+        sentiment="negative",
+    )
+    db_session.add_all([spam_sub, quarantined_sub])
+    await db_session.commit()
+    await db_session.refresh(spam_sub)
+    await db_session.refresh(quarantined_sub)
+
+    # Default inbox list excludes spam and quarantined
+    default_list = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions"
+    )
+    assert default_list.status_code == 200
+    default_ids = {item["id"] for item in default_list.json()["items"]}
+    assert clean_res.json()["id"] in default_ids
+    assert str(spam_sub.id) not in default_ids
+    assert str(quarantined_sub.id) not in default_ids
+
+    # Insights excludes spam & quarantined
+    insights_res = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/insights?days=30"
+    )
+    assert insights_res.status_code == 200
+    assert insights_res.json()["summary"]["average_rating"] == 5.0
+    assert insights_res.json()["summary"]["total_submissions"] == 1
+
+    # Explicit status=spam & status=quarantined return held submissions + spam_reasons
+    spam_list = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions?status=spam"
+    )
+    assert spam_list.status_code == 200
+    spam_items = spam_list.json()["items"]
+    assert any(item["id"] == str(spam_sub.id) for item in spam_items)
+    matched_spam = next(i for i in spam_items if i["id"] == str(spam_sub.id))
+    assert matched_spam["spam_reasons"] == ["pattern_matched:casino"]
+
+    quarantine_list = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions?status=quarantined"
+    )
+    assert quarantine_list.status_code == 200
+    assert any(
+        item["id"] == str(quarantined_sub.id)
+        for item in quarantine_list.json()["items"]
+    )
+
+    # Restore quarantined submission to 'new' and mark clean submission as 'spam'
+    restore_res = await auth_client.patch(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/{quarantined_sub.id}",
+        json={"status": "new"},
+    )
+    assert restore_res.status_code == 200
+    assert restore_res.json()["status"] == "new"
+
+    mark_spam_res = await auth_client.patch(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/{clean_res.json()['id']}",
+        json={"status": "spam"},
+    )
+    assert mark_spam_res.status_code == 200
+    assert mark_spam_res.json()["status"] == "spam"
+
+
+@pytest.mark.asyncio
+async def test_export_submissions_csv_filtered_and_sanitized(
+    client: AsyncClient,
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+) -> None:
+    """
+    GET /api/v1/workspaces/{workspace_id}/feedback/submissions/export
+    Exports matching submissions as formula-safe UTF-8 CSV and enforces auth/filters.
+    """
+    import csv
+    import io
+
+    cat_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/categories",
+        json={
+            "name": "Billing & Pricing",
+            "description": "Billing questions",
+            "color": "#3B82F6",
+            "keywords": ["invoice"],
+        },
+    )
+    assert cat_res.status_code == 201
+    cat_id = cat_res.json()["id"]
+
+    await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/forms",
+        json={"name": "Export Form", "slug": "export-form"},
+    )
+
+    # 1. Submission matching query & formula injection test
+    await client.post(
+        f"/api/v1/public/forms/{test_workspace.slug}/export-form/submit",
+        json={
+            "rating": 2,
+            "category_pill_label": "Billing & Pricing",
+            "comment": "=CMD('calc') invoice issue",
+            "customer_name": "+Malicious Name",
+            "customer_email": "billing@example.com",
+            "customer_metadata": {"source": "qr", "page_url": "https://app.test/billing"},
+        },
+    )
+    # 2. Second submission filtered out by sentiment/category
+    res_pos = await client.post(
+        f"/api/v1/public/forms/{test_workspace.slug}/export-form/submit",
+        json={
+            "rating": 5,
+            "comment": "Fast dashboard!",
+            "customer_email": "happy@example.com",
+        },
+    )
+    await auth_client.patch(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/{res_pos.json()['id']}",
+        json={"status": "spam"},
+    )
+
+    # Unauthenticated request rejected
+    unauth_res = await client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/export"
+    )
+    assert unauth_res.status_code == 401
+
+    # Filtered CSV export excludes spam and matches category/query
+    export_res = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/export?category_id={cat_id}&query=invoice"
+    )
+    assert export_res.status_code == 200
+    assert export_res.headers["content-type"].startswith("text/csv")
+    assert "feedback-submissions.csv" in export_res.headers.get(
+        "content-disposition", ""
+    )
+
+    rows = list(csv.reader(io.StringIO(export_res.text)))
+    assert len(rows) == 2
+    header, row = rows[0], rows[1]
+    assert header == [
+        "id",
+        "created_at",
+        "status",
+        "rating",
+        "rating_scale_type",
+        "sentiment",
+        "category",
+        "comment",
+        "customer_name",
+        "customer_email",
+        "source",
+        "page_url",
+        "referrer",
+        "custom_answers",
+    ]
+    assert row[2] == "new"
+    assert row[3] == "2"
+    assert row[6] == "Billing & Pricing"
+    assert row[7] == "'=CMD('calc') invoice issue"
+    assert row[8] == "'+Malicious Name"
+    assert row[9] == "billing@example.com"
+    assert row[10] == "qr"
+
+    # Explicit status=spam exports spam submissions
+    spam_export = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/export?status=spam"
+    )
+    assert spam_export.status_code == 200
+    spam_rows = list(csv.reader(io.StringIO(spam_export.text)))
+    assert len(spam_rows) == 2
+    assert spam_rows[1][2] == "spam"
+    assert spam_rows[1][9] == "happy@example.com"
+
+
+@pytest.mark.asyncio
+async def test_import_submissions_csv_partial_success_and_historical_flags(
+    client: AsyncClient,
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+    db_session,
+) -> None:
+    """
+    POST /api/v1/workspaces/{workspace_id}/feedback/submissions/import
+    Parses UTF-8 BOM CSV with header aliases, auto-categorizes deterministically,
+    reports row-level validation errors with partial success, and marks alert_evaluated_at.
+    """
+    from sqlalchemy import select
+
+    from app.features.feedback.models.submissions import FeedbackSubmission
+
+    cat_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/categories",
+        json={
+            "name": "Pricing & Plans",
+            "description": "Billing and plan questions",
+            "color": "#3B82F6",
+            "keywords": ["invoice", "billing"],
+        },
+    )
+    assert cat_res.status_code == 201
+    pricing_cat_id = cat_res.json()["id"]
+
+    # Unauthenticated request rejected
+    unauth_res = await client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/import",
+        json={"paste_lines": ["Great product!"]},
+    )
+    assert unauth_res.status_code == 401
+
+    csv_payload = "\ufeff" + "\n".join(
+        [
+            "feedback,stars,email,name,channel,tier,page_url,date",
+            "\"Billing invoice failed on renewal\",2,Alice@Example.com,Alice,intercom,Enterprise,https://app.test/billing,2026-08-01T10:00:00Z",
+            "\"Invalid rating row\",abc,bob@example.com,Bob,csv_import,Pro,,",
+            "\"Bad email row\",4,not-an-email,Carol,csv_import,Pro,,",
+            "\"Great communication overall!\",,dave@example.com,Dave,typeform,Starter,https://app.test/dashboard,2026-08-02",
+        ]
+    )
+
+    import_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/import",
+        json={
+            "default_source": "csv_import",
+            "csv_text": csv_payload,
+        },
+    )
+    assert import_res.status_code == 201
+    data = import_res.json()
+    assert data["imported_count"] == 2
+    assert data["skipped_count"] == 2
+    assert data["categorized_count"] == 1
+    assert len(data["errors"]) == 2
+    assert data["errors"][0]["row_number"] == 3
+    assert data["errors"][1]["row_number"] == 4
+
+    stmt = (
+        select(FeedbackSubmission)
+        .where(FeedbackSubmission.workspace_id == test_workspace.id)
+        .order_by(FeedbackSubmission.created_at.asc())
+    )
+    rows = (await db_session.execute(stmt)).scalars().all()
+    assert len(rows) == 2
+
+    first, second = rows
+    assert first.comment == "Billing invoice failed on renewal"
+    assert first.rating == 2
+    assert first.sentiment == "negative"
+    assert str(first.category_id) == pricing_cat_id
+    assert first.customer_email == "alice@example.com"
+    assert first.source == "intercom"
+    assert first.customer_metadata["plan_tier"] == "Enterprise"
+    assert first.customer_metadata["page_url"] == "https://app.test/billing"
+    assert first.triage_state == "done"
+    assert first.alert_evaluated_at is not None
+    assert first.created_at.year == 2026
+    assert first.created_at.month == 8
+
+    assert second.comment == "Great communication overall!"
+    assert second.sentiment == "positive"
+    assert second.source == "typeform"
+    assert second.triage_state == "done"
+    assert second.alert_evaluated_at is not None
+
+
+@pytest.mark.asyncio
+async def test_import_submissions_paste_lines_and_empty_error(
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+) -> None:
+    """
+    POST /api/v1/workspaces/{workspace_id}/feedback/submissions/import
+    Supports pasted lines with default rating and rejects empty payloads with 422.
+    """
+    empty_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/import",
+        json={"csv_text": "   "},
+    )
+    assert empty_res.status_code == 422
+
+    paste_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/import",
+        json={
+            "default_source": "manual_paste",
+            "default_rating": 4,
+            "paste_lines": [
+                "Search filters are really fast.",
+                "   ",
+                "Would love keyboard shortcuts for triage.",
+            ],
+        },
+    )
+    assert paste_res.status_code == 201
+    body = paste_res.json()
+    assert body["imported_count"] == 2
+    assert body["skipped_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_insights_and_submissions_segment_filters(
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+) -> None:
+    """
+    GET /feedback/insights, /feedback/submissions, and /feedback/submissions/export
+    Support filtering by form_id, source, page_url, and plan_tier, while exposing available_segments.
+    """
+    form_a_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/forms",
+        json={"name": "Web App", "slug": "web-app"},
+    )
+    assert form_a_res.status_code == 201
+    form_a_id = form_a_res.json()["id"]
+
+    form_b_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/forms",
+        json={"name": "Billing Portal", "slug": "billing-portal"},
+    )
+    assert form_b_res.status_code == 201
+    form_b_id = form_b_res.json()["id"]
+
+    imp_a = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/import",
+        json={
+            "form_id": form_a_id,
+            "rows": [
+                {
+                    "comment": "Great onboarding flow",
+                    "rating": 5,
+                    "source": "widget",
+                    "plan_tier": "Pro",
+                    "page_url": "https://app.test/onboarding",
+                },
+                {
+                    "comment": "Dark mode works well",
+                    "rating": 4,
+                    "source": "widget",
+                    "plan_tier": "Starter",
+                    "page_url": "https://app.test/settings",
+                },
+            ],
+        },
+    )
+    assert imp_a.status_code == 201
+
+    imp_b = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/import",
+        json={
+            "form_id": form_b_id,
+            "rows": [
+                {
+                    "comment": "Checkout coupon field broken",
+                    "rating": 2,
+                    "source": "intercom",
+                    "plan_tier": "Enterprise",
+                    "page_url": "https://app.test/checkout",
+                }
+            ],
+        },
+    )
+    assert imp_b.status_code == 201
+
+    # Unfiltered insights expose all distinct segment options
+    all_insights = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/insights?days=30"
+    )
+    assert all_insights.status_code == 200
+    all_data = all_insights.json()
+    assert all_data["summary"]["total_submissions"] == 3
+    assert set(all_data["available_segments"]["sources"]) == {"intercom", "widget"}
+    assert set(all_data["available_segments"]["plan_tiers"]) == {
+        "Enterprise",
+        "Pro",
+        "Starter",
+    }
+    assert set(all_data["available_segments"]["page_urls"]) == {
+        "https://app.test/checkout",
+        "https://app.test/onboarding",
+        "https://app.test/settings",
+    }
+
+    # Filter insights by source + plan_tier (case-insensitive)
+    filtered_insights = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/insights?days=30&source=widget&plan_tier=pro"
+    )
+    assert filtered_insights.status_code == 200
+    filtered_data = filtered_insights.json()
+    assert filtered_data["summary"]["total_submissions"] == 1
+    assert filtered_data["summary"]["average_rating"] == 5.0
+    # Available segments stay populated across the workspace timeframe
+    assert "intercom" in filtered_data["available_segments"]["sources"]
+
+    # Filter insights by form_id + page_url
+    checkout_insights = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/insights?days=30&form_id={form_b_id}&page_url=https://app.test/checkout"
+    )
+    assert checkout_insights.status_code == 200
+    assert checkout_insights.json()["summary"]["total_submissions"] == 1
+    assert checkout_insights.json()["summary"]["average_rating"] == 2.0
+
+    # List submissions & CSV export respect the same segment query params
+    sub_list = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions?plan_tier=enterprise&source=intercom"
+    )
+    assert sub_list.status_code == 200
+    assert sub_list.json()["total"] == 1
+    assert sub_list.json()["items"][0]["comment"] == "Checkout coupon field broken"
+
+    csv_export = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/submissions/export?plan_tier=enterprise"
+    )
+    assert csv_export.status_code == 200
+    export_lines = csv_export.text.strip().splitlines()
+    assert len(export_lines) == 2
+    assert "Checkout coupon field broken" in export_lines[1]
+

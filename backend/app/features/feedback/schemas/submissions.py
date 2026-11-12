@@ -9,7 +9,13 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 SubmissionStatus = Literal[
-    "new", "in_progress", "resolved", "archived", "reviewed"
+    "new",
+    "in_progress",
+    "resolved",
+    "archived",
+    "reviewed",
+    "spam",
+    "quarantined",
 ]
 
 
@@ -20,7 +26,7 @@ class FeedbackSubmissionUpdate(BaseModel):
 
     status: SubmissionStatus | None = Field(
         default=None,
-        description="Updated submission status (new, in_progress, resolved, archived, reviewed)",
+        description="Updated submission status (new, in_progress, resolved, archived, reviewed, spam, quarantined)",
     )
     category_id: UUID | None = Field(
         default=None,
@@ -133,6 +139,8 @@ class FeedbackSubmissionRead(BaseModel):
     customer_metadata: dict[str, Any]
     status: str
     sentiment: str | None
+    spam_score: int = 0
+    spam_reasons: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -158,3 +166,52 @@ class SampleDataResponse(BaseModel):
 
     message: str
     count: int = 0
+
+
+class FeedbackImportRow(BaseModel):
+    """Single feedback entry to import via CSV upload, pasted text, or structured JSON."""
+
+    comment: str | None = Field(default=None, max_length=10000)
+    rating: int | None = Field(default=None, ge=1, le=10)
+    rating_scale_type: Literal["5_star", "5_emoji", "1_10_numeric"] = "5_star"
+    category_name: str | None = Field(default=None, max_length=100)
+    sentiment: Literal["positive", "neutral", "negative"] | None = None
+    status: Literal["new", "in_progress", "resolved", "archived"] = "new"
+    customer_email: EmailStr | None = None
+    customer_name: str | None = Field(default=None, max_length=255)
+    source: str | None = Field(default=None, max_length=30)
+    page_url: str | None = Field(default=None, max_length=500)
+    plan_tier: str | None = Field(default=None, max_length=100)
+    created_at: datetime | None = None
+
+
+class FeedbackImportRequest(BaseModel):
+    """Batch request supporting CSV text upload, raw pasted lines, or structured rows."""
+
+    form_id: UUID | None = Field(
+        default=None,
+        description="Target form UUID; defaults to an existing active form or creates 'Imported Feedback'.",
+    )
+    default_source: Literal["csv_import", "manual_paste"] = "csv_import"
+    csv_text: str | None = Field(default=None, max_length=2_000_000)
+    paste_lines: list[str] | None = Field(default=None, max_length=500)
+    rows: list[FeedbackImportRow] | None = Field(default=None, max_length=500)
+    default_rating: int | None = Field(default=None, ge=1, le=10)
+    default_category_id: UUID | None = None
+
+
+class FeedbackImportErrorItem(BaseModel):
+    """Row-level validation error details recorded during feedback import."""
+
+    row_number: int
+    reason: str
+
+
+class FeedbackImportResponse(BaseModel):
+    """Summary returned after importing historical or external feedback batches."""
+
+    imported_count: int
+    skipped_count: int = 0
+    categorized_count: int = 0
+    form_id: UUID
+    errors: list[FeedbackImportErrorItem] = Field(default_factory=list)

@@ -53,6 +53,14 @@ class InsightSummary(BaseModel):
     top_positive_driver: ScoreDriverItem | None = None
 
 
+class InsightSegments(BaseModel):
+    """Distinct segment filter values present in workspace submissions."""
+
+    sources: list[str] = Field(default_factory=list)
+    page_urls: list[str] = Field(default_factory=list)
+    plan_tiers: list[str] = Field(default_factory=list)
+
+
 class FeedbackInsightsResponse(BaseModel):
     """Complete insights report for a workspace."""
 
@@ -60,3 +68,4 @@ class FeedbackInsightsResponse(BaseModel):
 
     summary: InsightSummary
     categories: list[CategoryInsightItem] = Field(default_factory=list)
+    available_segments: InsightSegments = Field(default_factory=InsightSegments)

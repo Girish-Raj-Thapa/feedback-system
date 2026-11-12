@@ -7,13 +7,16 @@ import {
   Calendar,
   ChevronRight,
   Edit3,
+  Filter,
   Inbox,
   Loader2,
   Minus,
   Plus,
+  RotateCcw,
   Trash2,
   TrendingDown,
   TrendingUp,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,6 +25,7 @@ import { feedbackRepository } from "@/repositories/feedback.repository";
 import type {
   DecisionLogRead,
   FeedbackCategory,
+  FeedbackForm,
   FeedbackInsightsResponse,
   FeedbackSubmissionRead,
 } from "@/types/feedback";
@@ -29,15 +33,26 @@ import type {
 interface WorkspaceInsightsTabProps {
   workspaceId?: string;
   workspaceCategories?: FeedbackCategory[];
+  forms?: FeedbackForm[];
   insights: FeedbackInsightsResponse | null;
   isLoading: boolean;
   selectedDays: number | string;
   onDaysChange: (days: number | string) => void;
+  selectedFormId?: string;
+  onFormFilterChange?: (formId: string) => void;
+  selectedSource?: string;
+  onSourceFilterChange?: (source: string) => void;
+  selectedPlanTier?: string;
+  onPlanTierFilterChange?: (planTier: string) => void;
+  selectedPageUrl?: string;
+  onPageUrlFilterChange?: (pageUrl: string) => void;
+  onResetSegmentFilters?: () => void;
   onDrillDownCategory: (categoryId: string | null) => void;
   onDrillDownAtRisk: () => void;
   onLoadSampleData?: () => Promise<void>;
   onClearSampleData?: () => Promise<void>;
   isLoadingSampleData?: boolean;
+  onOpenImport?: () => void;
   recentSubmissions?: FeedbackSubmissionRead[];
   onSelectSubmission?: (sub: FeedbackSubmissionRead) => void;
 }
@@ -57,16 +72,47 @@ function formatDecisionDate(dateStr: string): string {
   }
 }
 
+function mergeSegmentOptions(
+  values: string[] | undefined,
+  activeValue: string | undefined
+): string[] {
+  const merged = new Set(values ?? []);
+  if (activeValue && activeValue.trim()) {
+    merged.add(activeValue.trim());
+  }
+  return Array.from(merged);
+}
+
+function formatPageUrlLabel(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.host}${parsed.pathname}${parsed.search}`.slice(0, 48);
+  } catch {
+    return url.slice(0, 48);
+  }
+}
+
 export function WorkspaceInsightsTab({
   workspaceId,
   workspaceCategories = [],
+  forms = [],
   insights,
   isLoading,
+  selectedFormId = "all",
+  onFormFilterChange,
+  selectedSource = "",
+  onSourceFilterChange,
+  selectedPlanTier = "",
+  onPlanTierFilterChange,
+  selectedPageUrl = "",
+  onPageUrlFilterChange,
+  onResetSegmentFilters,
   onDrillDownCategory,
   onDrillDownAtRisk,
   onLoadSampleData,
   onClearSampleData,
   isLoadingSampleData,
+  onOpenImport,
   recentSubmissions = [],
   onSelectSubmission,
 }: WorkspaceInsightsTabProps) {
@@ -143,6 +189,30 @@ export function WorkspaceInsightsTab({
   const summary = insights?.summary;
   const categories = insights?.categories || [];
   const totalCount = summary?.total_submissions || 0;
+  const segments = insights?.available_segments;
+
+  const sourceOptions = mergeSegmentOptions(segments?.sources, selectedSource);
+  const planTierOptions = mergeSegmentOptions(segments?.plan_tiers, selectedPlanTier);
+  const pageUrlOptions = mergeSegmentOptions(segments?.page_urls, selectedPageUrl);
+
+  const hasActiveSegmentFilters = Boolean(
+    (selectedFormId && selectedFormId !== "all") ||
+      selectedSource ||
+      selectedPlanTier ||
+      selectedPageUrl
+  );
+
+  const showSegmentBar = Boolean(
+    (onFormFilterChange ||
+      onSourceFilterChange ||
+      onPlanTierFilterChange ||
+      onPageUrlFilterChange) &&
+      (forms.length > 0 ||
+        sourceOptions.length > 0 ||
+        planTierOptions.length > 0 ||
+        pageUrlOptions.length > 0 ||
+        hasActiveSegmentFilters)
+  );
 
   // Sort categories by absolute score impact descending
   const sortedCategories = [...categories].sort(
@@ -163,7 +233,102 @@ export function WorkspaceInsightsTab({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
+      {/* Segment Filter Bar */}
+      {showSegmentBar && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-border bg-surface px-4 py-2.5 shadow-card">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted">
+              <Filter className="size-3.5" />
+              <span>Segments</span>
+            </span>
+
+            {onFormFilterChange && forms.length > 0 && (
+              <select
+                aria-label="Filter insights by form"
+                value={selectedFormId}
+                onChange={(e) => onFormFilterChange(e.target.value)}
+                className="h-8 rounded-[8px] border border-border bg-canvas px-2.5 text-[12px] font-medium text-text outline-hidden transition-colors focus:border-action"
+              >
+                <option value="all">All forms</option>
+                {forms.map((form) => (
+                  <option key={form.id} value={form.id}>
+                    {form.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {onSourceFilterChange && sourceOptions.length > 0 && (
+              <select
+                aria-label="Filter insights by source"
+                value={selectedSource}
+                onChange={(e) => onSourceFilterChange(e.target.value)}
+                className="h-8 rounded-[8px] border border-border bg-canvas px-2.5 text-[12px] font-medium text-text outline-hidden transition-colors focus:border-action"
+              >
+                <option value="">All sources</option>
+                {sourceOptions.map((src) => (
+                  <option key={src} value={src}>
+                    {src}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {onPlanTierFilterChange && planTierOptions.length > 0 && (
+              <select
+                aria-label="Filter insights by plan tier"
+                value={selectedPlanTier}
+                onChange={(e) => onPlanTierFilterChange(e.target.value)}
+                className="h-8 rounded-[8px] border border-border bg-canvas px-2.5 text-[12px] font-medium text-text outline-hidden transition-colors focus:border-action"
+              >
+                <option value="">All plans</option>
+                {planTierOptions.map((tier) => (
+                  <option key={tier} value={tier}>
+                    {tier}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {onPageUrlFilterChange && pageUrlOptions.length > 0 && (
+              <select
+                aria-label="Filter insights by page URL"
+                value={selectedPageUrl}
+                onChange={(e) => onPageUrlFilterChange(e.target.value)}
+                className="h-8 max-w-[220px] rounded-[8px] border border-border bg-canvas px-2.5 text-[12px] font-medium text-text outline-hidden transition-colors focus:border-action"
+              >
+                <option value="">All pages</option>
+                {pageUrlOptions.map((url) => (
+                  <option key={url} value={url}>
+                    {formatPageUrlLabel(url)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isLoading && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
+                <Loader2 className="size-3 animate-spin" />
+                <span>Updating…</span>
+              </span>
+            )}
+            {hasActiveSegmentFilters && onResetSegmentFilters && (
+              <button
+                type="button"
+                onClick={onResetSegmentFilters}
+                className="inline-flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12px] font-medium text-action transition-colors hover:bg-action-subtle"
+              >
+                <RotateCcw className="size-3" />
+                <span>Reset filters</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Sample Data Active Banner */}
       {summary?.has_sample_data && (
         <div className="flex flex-col gap-3 rounded-[12px] border border-border bg-action-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -200,23 +365,54 @@ export function WorkspaceInsightsTab({
             <Inbox className="size-6" />
           </div>
           <h3 className="mt-4 text-[16px] font-semibold text-text">
-            No feedback collected in this timeframe
+            {hasActiveSegmentFilters
+              ? "No feedback matching selected segments"
+              : "No feedback collected in this timeframe"}
           </h3>
           <p className="mt-1 max-w-md text-[13px] text-text-muted">
-            As customers submit feedback via your embedded widgets and links, score driver cards and category impact analytics will populate automatically.
+            {hasActiveSegmentFilters
+              ? "Try broadening or resetting your form, source, plan tier, or page filters to inspect all feedback."
+              : "As customers submit feedback via your embedded widgets and links, score driver cards and category impact analytics will populate automatically."}
           </p>
-          {onLoadSampleData && (
+          {hasActiveSegmentFilters && onResetSegmentFilters ? (
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={onLoadSampleData}
-                disabled={isLoadingSampleData}
-                className="inline-flex items-center gap-1.5 rounded-[8px] bg-action px-4 py-2 text-[13px] font-medium text-white shadow-xs transition-colors hover:bg-action-hover active:scale-[0.98] disabled:opacity-50"
+                onClick={onResetSegmentFilters}
+                className="inline-flex items-center gap-1.5 rounded-[8px] bg-action px-4 py-2 text-[13px] font-medium text-white shadow-xs transition-colors hover:bg-action-hover active:scale-[0.98]"
               >
-                {isLoadingSampleData && <Loader2 className="size-3.5 animate-spin" />}
-                <span>Load Sample Feedback</span>
+                <RotateCcw className="size-3.5" />
+                <span>Reset filters</span>
               </button>
             </div>
+          ) : (
+            (onLoadSampleData || onOpenImport) && (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                {onOpenImport && (
+                  <button
+                    type="button"
+                    onClick={onOpenImport}
+                    className="inline-flex items-center gap-1.5 rounded-[8px] border border-border bg-surface px-4 py-2 text-[13px] font-medium text-text shadow-2xs transition-colors hover:bg-hover active:scale-[0.98]"
+                  >
+                    <Upload className="size-3.5" />
+                    <span>Import CSV / Paste</span>
+                  </button>
+                )}
+                {onLoadSampleData && (
+                  <button
+                    type="button"
+                    onClick={onLoadSampleData}
+                    disabled={isLoadingSampleData}
+                    className="inline-flex items-center gap-1.5 rounded-[8px] bg-action px-4 py-2 text-[13px] font-medium text-white shadow-xs transition-colors hover:bg-action-hover active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {isLoadingSampleData && (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    )}
+                    <span>Load Sample Feedback</span>
+                  </button>
+                )}
+              </div>
+            )
           )}
         </div>
       ) : (

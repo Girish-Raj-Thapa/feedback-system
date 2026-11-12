@@ -28,6 +28,9 @@ async def get_feedback_insights(
     service: InsightsServiceDep,
     days: int | None = Query(default=30, description="Filter timeframe in days; 0 or None for all-time"),
     form_id: UUID | None = Query(default=None, description="Optional form UUID filter"),
+    source: str | None = Query(default=None, description="Optional source or ref segment filter"),
+    page_url: str | None = Query(default=None, description="Optional page URL segment filter"),
+    plan_tier: str | None = Query(default=None, description="Optional plan tier segment filter"),
 ) -> FeedbackInsightsResponse:
     """
     Get aggregated satisfaction metrics, sentiment distribution, and net score drivers for a workspace.
@@ -37,5 +40,8 @@ async def get_feedback_insights(
         workspace_id=workspace_id,
         days=days,
         form_id=form_id,
+        source=source,
+        page_url=page_url,
+        plan_tier=plan_tier,
     )
 

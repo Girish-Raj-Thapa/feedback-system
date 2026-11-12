@@ -172,6 +172,9 @@ export interface CustomerMetadata {
   page_url?: string | null;
   referrer?: string | null;
   user_agent?: string | null;
+  source?: string | null;
+  ref?: string | null;
+  plan_tier?: string | null;
   [key: string]: unknown;
 }
 
@@ -219,7 +222,9 @@ export type SubmissionStatus =
   | "in_progress"
   | "resolved"
   | "archived"
-  | "reviewed";
+  | "reviewed"
+  | "spam"
+  | "quarantined";
 
 export interface FeedbackSubmissionUpdate {
   status?: SubmissionStatus;
@@ -242,6 +247,8 @@ export interface FeedbackSubmissionRead {
   customer_metadata: CustomerMetadata;
   status: SubmissionStatus | string;
   sentiment: string | null;
+  spam_score?: number;
+  spam_reasons?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -303,9 +310,54 @@ export interface SampleDataResponse {
   count: number;
 }
 
+export interface InsightSegments {
+  sources: string[];
+  page_urls: string[];
+  plan_tiers: string[];
+}
+
 export interface FeedbackInsightsResponse {
   summary: InsightSummary;
   categories: CategoryInsightItem[];
+  available_segments?: InsightSegments;
+}
+
+export interface FeedbackImportRow {
+  comment?: string | null;
+  rating?: number | null;
+  rating_scale_type?: "5_star" | "5_emoji" | "1_10_numeric";
+  category_name?: string | null;
+  sentiment?: "positive" | "neutral" | "negative" | null;
+  status?: "new" | "in_progress" | "resolved" | "archived";
+  customer_email?: string | null;
+  customer_name?: string | null;
+  source?: string | null;
+  page_url?: string | null;
+  plan_tier?: string | null;
+  created_at?: string | null;
+}
+
+export interface FeedbackImportRequest {
+  form_id?: string | null;
+  default_source?: "csv_import" | "manual_paste";
+  csv_text?: string | null;
+  paste_lines?: string[] | null;
+  rows?: FeedbackImportRow[] | null;
+  default_rating?: number | null;
+  default_category_id?: string | null;
+}
+
+export interface FeedbackImportErrorItem {
+  row_number: number;
+  reason: string;
+}
+
+export interface FeedbackImportResponse {
+  imported_count: number;
+  skipped_count: number;
+  categorized_count: number;
+  form_id: string;
+  errors: FeedbackImportErrorItem[];
 }
 
 export interface DecisionWindowMetrics {

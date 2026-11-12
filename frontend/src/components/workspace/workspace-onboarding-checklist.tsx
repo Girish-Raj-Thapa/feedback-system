@@ -10,6 +10,7 @@ import {
   Loader2,
   Tag,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ interface WorkspaceOnboardingChecklistProps {
   isLoadingSampleData: boolean;
   onLoadSampleData: () => Promise<void>;
   onClearSampleData: () => Promise<void>;
+  onOpenImport?: () => void;
 }
 
 export function WorkspaceOnboardingChecklist({
@@ -33,6 +35,7 @@ export function WorkspaceOnboardingChecklist({
   isLoadingSampleData,
   onLoadSampleData,
   onClearSampleData,
+  onOpenImport,
 }: WorkspaceOnboardingChecklistProps) {
   const [isLocallyDismissed, setIsLocallyDismissed] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -253,6 +256,16 @@ export function WorkspaceOnboardingChecklist({
           </div>
 
           <div className="mt-2.5 flex items-center gap-2">
+            {onOpenImport && (
+              <button
+                type="button"
+                onClick={onOpenImport}
+                className="inline-flex items-center gap-1 rounded-[6px] border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-text transition-colors hover:bg-hover"
+              >
+                <Upload className="size-3" />
+                <span>Import CSV</span>
+              </button>
+            )}
             {hasSampleData ? (
               <button
                 type="button"

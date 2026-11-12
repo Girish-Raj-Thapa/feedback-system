@@ -137,6 +137,7 @@ async def test_insights_detects_has_sample_data():
     sub.customer_metadata = {"is_sample": True}
 
     sub_repo.list_for_insights.return_value = [sub]
+    sub_repo.list_segment_options.return_value = ([], [], [])
 
     insights_service = InsightsService(session, sub_repo, cat_repo)
     res = await insights_service.get_insights(workspace_id=workspace_id, days=30)

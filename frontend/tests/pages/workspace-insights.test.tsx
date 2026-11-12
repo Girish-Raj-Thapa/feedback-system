@@ -23,6 +23,7 @@ vi.mock("@/repositories/feedback.repository", () => ({
     listForms: vi.fn(),
     loadSampleData: vi.fn(),
     clearSampleData: vi.fn(),
+    importSubmissions: vi.fn(),
     listDecisionLogs: vi.fn(),
     createDecisionLog: vi.fn(),
     updateDecisionLog: vi.fn(),
@@ -329,5 +330,132 @@ describe("WorkspaceDashboardPage (Insights & Score Drivers)", () => {
     await waitFor(() => {
       expect(feedbackRepository.loadSampleData).toHaveBeenCalledWith(wsId);
     });
+  });
+
+  it("renders segment filter bar, forwards selected segment filters to getInsights, and resets cleanly", async () => {
+    (feedbackRepository.listForms as any).mockResolvedValue([
+      {
+        id: "form-1",
+        workspace_id: wsId,
+        name: "Checkout Feedback",
+        slug: "checkout-feedback",
+      },
+    ]);
+    (feedbackRepository.getInsights as any).mockResolvedValue({
+      ...mockInsights,
+      available_segments: {
+        sources: ["widget", "intercom"],
+        page_urls: ["https://app.test/checkout"],
+        plan_tiers: ["Pro", "Enterprise"],
+      },
+    });
+
+    render(<WorkspaceDashboardPage />);
+
+    const sourceSelect = await screen.findByLabelText("Filter insights by source");
+    const planSelect = screen.getByLabelText("Filter insights by plan tier");
+    const formSelect = screen.getByLabelText("Filter insights by form");
+
+    fireEvent.change(sourceSelect, { target: { value: "widget" } });
+    await waitFor(() => {
+      expect(feedbackRepository.getInsights).toHaveBeenCalledWith(
+        wsId,
+        expect.objectContaining({ source: "widget", days: 30 })
+      );
+    });
+
+    fireEvent.change(planSelect, { target: { value: "Pro" } });
+    await waitFor(() => {
+      expect(feedbackRepository.getInsights).toHaveBeenCalledWith(
+        wsId,
+        expect.objectContaining({ source: "widget", plan_tier: "Pro", days: 30 })
+      );
+    });
+
+    fireEvent.change(formSelect, { target: { value: "form-1" } });
+    await waitFor(() => {
+      expect(feedbackRepository.getInsights).toHaveBeenCalledWith(
+        wsId,
+        expect.objectContaining({
+          form_id: "form-1",
+          source: "widget",
+          plan_tier: "Pro",
+          days: 30,
+        })
+      );
+    });
+
+    // Simulate zero matching results for selected segment
+    (feedbackRepository.getInsights as any).mockResolvedValueOnce({
+      summary: {
+        total_submissions: 0,
+        rated_submissions_count: 0,
+        average_rating: null,
+        sentiment_breakdown: { positive: 0, neutral: 0, negative: 0 },
+        at_risk_count: 0,
+        has_sample_data: false,
+        top_negative_driver: null,
+        top_positive_driver: null,
+      },
+      categories: [],
+      available_segments: {
+        sources: ["widget", "intercom"],
+        page_urls: ["https://app.test/checkout"],
+        plan_tiers: ["Pro", "Enterprise"],
+      },
+    });
+
+    fireEvent.change(screen.getByLabelText("Filter insights by page URL"), {
+      target: { value: "https://app.test/checkout" },
+    });
+
+    expect(
+      await screen.findByText("No feedback matching selected segments")
+    ).toBeInTheDocument();
+
+    (feedbackRepository.getInsights as any).mockResolvedValueOnce({
+      ...mockInsights,
+      available_segments: {
+        sources: ["widget", "intercom"],
+        page_urls: ["https://app.test/checkout"],
+        plan_tiers: ["Pro", "Enterprise"],
+      },
+    });
+
+    const resetBtns = screen.getAllByRole("button", { name: "Reset filters" });
+    fireEvent.click(resetBtns[0]);
+
+    await waitFor(() => {
+      expect(feedbackRepository.getInsights).toHaveBeenLastCalledWith(wsId, {
+        days: 30,
+      });
+    });
+  });
+
+  it("opens ImportFeedbackModal when 'Import CSV / Paste' is clicked in empty Insights state", async () => {
+    (feedbackRepository.getInsights as any).mockResolvedValue({
+      summary: {
+        total_submissions: 0,
+        rated_submissions_count: 0,
+        average_rating: null,
+        sentiment_breakdown: { positive: 0, neutral: 0, negative: 0 },
+        at_risk_count: 0,
+        has_sample_data: false,
+        top_negative_driver: null,
+        top_positive_driver: null,
+      },
+      categories: [],
+    });
+
+    render(<WorkspaceDashboardPage />);
+
+    const importBtn = await screen.findByRole("button", {
+      name: /Import CSV \/ Paste/i,
+    });
+    fireEvent.click(importBtn);
+
+    expect(
+      await screen.findByRole("dialog", { name: "Import customer feedback" })
+    ).toBeInTheDocument();
   });
 });

@@ -1,8 +1,9 @@
 import { feedbackRepository } from "@/repositories/feedback.repository";
-import { apiClient } from "@/repositories/client";
+import { apiBlobClient, apiClient } from "@/repositories/client";
 
 vi.mock("@/repositories/client", () => ({
   apiClient: vi.fn(),
+  apiBlobClient: vi.fn(),
 }));
 
 describe("feedbackRepository", () => {
@@ -429,6 +430,119 @@ describe("feedbackRepository", () => {
       `/workspaces/${workspaceId}/feedback/decision-logs/${decisionId}`,
       {
         method: "DELETE",
+        workspaceId,
+      }
+    );
+  });
+
+  it("exportSubmissionsCsv calls apiBlobClient with filtered export URL", async () => {
+    const csvBlob = new Blob(["id,status\n"], { type: "text/csv" });
+    (apiBlobClient as any).mockResolvedValue(csvBlob);
+
+    const res = await feedbackRepository.exportSubmissionsCsv(workspaceId, {
+      status: "quarantined",
+      category_id: "cat-1",
+      sentiment: "negative",
+      query: "billing",
+    });
+
+    expect(apiBlobClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/submissions/export?status=quarantined&category_id=cat-1&sentiment=negative&query=billing`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+    expect(res).toBe(csvBlob);
+  });
+
+  it("exportSubmissionsCsv calls export URL without query string when unfiltered", async () => {
+    const csvBlob = new Blob(["id,status\n"], { type: "text/csv" });
+    (apiBlobClient as any).mockResolvedValue(csvBlob);
+
+    await feedbackRepository.exportSubmissionsCsv(workspaceId);
+
+    expect(apiBlobClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/submissions/export`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
+
+  it("getInsights forwards timeframe and segment query params", async () => {
+    const mockInsights = {
+      summary: { total_submissions: 3 },
+      categories: [],
+      available_segments: {
+        sources: ["widget"],
+        page_urls: ["https://app.test/pricing"],
+        plan_tiers: ["Pro"],
+      },
+    };
+    (apiClient as any).mockResolvedValue(mockInsights);
+
+    const res = await feedbackRepository.getInsights(workspaceId, {
+      days: 30,
+      form_id: "form-1",
+      source: "widget",
+      plan_tier: "Pro",
+      page_url: "https://app.test/pricing",
+    });
+
+    expect(res).toEqual(mockInsights);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/insights?days=30&form_id=form-1&source=widget&page_url=https%3A%2F%2Fapp.test%2Fpricing&plan_tier=Pro`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
+
+  it("listSubmissions forwards segment query params alongside pagination and triage filters", async () => {
+    (apiClient as any).mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+
+    await feedbackRepository.listSubmissions(workspaceId, {
+      limit: 20,
+      status: "new",
+      source: "intercom",
+      plan_tier: "Enterprise",
+    });
+
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/submissions?limit=20&status=new&source=intercom&plan_tier=Enterprise`,
+      {
+        method: "GET",
+        workspaceId,
+      }
+    );
+  });
+
+  it("importSubmissions calls POST with import payload", async () => {
+    const payload = {
+      default_source: "manual_paste" as const,
+      paste_lines: ["Fast onboarding experience!", "Needs billing CSV export."],
+      default_rating: 4,
+    };
+    const mockResponse = {
+      imported_count: 2,
+      skipped_count: 0,
+      categorized_count: 1,
+      form_id: "form-9",
+      errors: [],
+    };
+    (apiClient as any).mockResolvedValue(mockResponse);
+
+    const res = await feedbackRepository.importSubmissions(workspaceId, payload);
+
+    expect(res).toEqual(mockResponse);
+    expect(apiClient).toHaveBeenCalledWith(
+      `/workspaces/${workspaceId}/feedback/submissions/import`,
+      {
+        method: "POST",
+        body: payload,
         workspaceId,
       }
     );

@@ -15,6 +15,7 @@ from app.features.feedback.repositories.submissions import SubmissionRepository
 from app.features.feedback.schemas.insights import (
     CategoryInsightItem,
     FeedbackInsightsResponse,
+    InsightSegments,
     InsightSummary,
     ScoreDriverItem,
     SentimentBreakdown,
@@ -51,6 +52,9 @@ class InsightsService:
         workspace_id: UUID,
         days: int | None = 30,
         form_id: UUID | None = None,
+        source: str | None = None,
+        page_url: str | None = None,
+        plan_tier: str | None = None,
     ) -> FeedbackInsightsResponse:
         """
         Aggregate satisfaction metrics, sentiment distribution, and score drivers for a workspace.
@@ -70,6 +74,15 @@ class InsightsService:
             workspace_id=workspace_id,
             since=since,
             form_id=form_id,
+            source=source,
+            page_url=page_url,
+            plan_tier=plan_tier,
+        )
+        sources, page_urls, plan_tiers = (
+            await self.submission_repo.list_segment_options(
+                workspace_id=workspace_id,
+                since=since,
+            )
         )
         categories = await self.category_repo.list_active(workspace_id)
 
@@ -228,4 +241,9 @@ class InsightsService:
         return FeedbackInsightsResponse(
             summary=summary,
             categories=cat_items,
+            available_segments=InsightSegments(
+                sources=sources,
+                page_urls=page_urls,
+                plan_tiers=plan_tiers,
+            ),
         )

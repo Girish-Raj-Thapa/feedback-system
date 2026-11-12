@@ -5,7 +5,7 @@ Workspace-scoped and protected by RBAC permissions.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.core.dependencies import PaginationDep
 from app.core.responses import Page
@@ -13,6 +13,8 @@ from app.features.auth.dependencies import require_permission
 from app.features.feedback.dependencies import SubmissionServiceDep
 from app.features.feedback.schemas.submissions import (
     CustomerHistoryRead,
+    FeedbackImportRequest,
+    FeedbackImportResponse,
     FeedbackSubmissionRead,
     FeedbackSubmissionUpdate,
     SampleDataResponse,
@@ -38,6 +40,10 @@ async def list_submissions(
     category_id: UUID | None = Query(default=None),
     sentiment: str | None = Query(default=None),
     query: str | None = Query(default=None),
+    form_id: UUID | None = Query(default=None),
+    source: str | None = Query(default=None),
+    page_url: str | None = Query(default=None),
+    plan_tier: str | None = Query(default=None),
 ) -> Page[FeedbackSubmissionRead]:
     """
     List feedback submissions for the workspace with pagination and filters.
@@ -51,12 +57,78 @@ async def list_submissions(
         category_id=category_id,
         sentiment=sentiment,
         query=query,
+        form_id=form_id,
+        source=source,
+        page_url=page_url,
+        plan_tier=plan_tier,
     )
     return Page(
         items=[FeedbackSubmissionRead.model_validate(item) for item in items],
         total=total,
         limit=pagination.limit,
         offset=pagination.offset,
+    )
+
+
+@router.get(
+    "/export",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_permission("forms:read"))],
+)
+async def export_submissions_csv(
+    workspace_id: UUID,
+    service: SubmissionServiceDep,
+    status_filter: str | None = Query(default=None, alias="status"),
+    category_id: UUID | None = Query(default=None),
+    sentiment: str | None = Query(default=None),
+    query: str | None = Query(default=None),
+    form_id: UUID | None = Query(default=None),
+    source: str | None = Query(default=None),
+    page_url: str | None = Query(default=None),
+    plan_tier: str | None = Query(default=None),
+) -> Response:
+    """
+    Export matching workspace feedback submissions as CSV.
+    Protected by forms:read permission.
+    """
+    csv_content = await service.export_submissions_csv(
+        workspace_id=workspace_id,
+        status_filter=status_filter,
+        category_id=category_id,
+        sentiment=sentiment,
+        query=query,
+        form_id=form_id,
+        source=source,
+        page_url=page_url,
+        plan_tier=plan_tier,
+    )
+    return Response(
+        content=csv_content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="feedback-submissions.csv"'
+        },
+    )
+
+
+@router.post(
+    "/import",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("submissions:triage"))],
+    response_model=FeedbackImportResponse,
+)
+async def import_submissions(
+    workspace_id: UUID,
+    payload: FeedbackImportRequest,
+    service: SubmissionServiceDep,
+) -> FeedbackImportResponse:
+    """
+    Batch-import historical or external feedback via CSV text, pasted lines, or structured rows.
+    Protected by submissions:triage permission.
+    """
+    return await service.import_submissions(
+        workspace_id=workspace_id,
+        payload=payload,
     )
 
 

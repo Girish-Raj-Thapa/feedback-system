@@ -14,6 +14,7 @@ import {
   Loader2,
   Mail,
   RotateCcw,
+  ShieldAlert,
   Star,
   Tag,
   User,
@@ -70,6 +71,22 @@ export function getStatusBadge(statusStr: string) {
       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-400">
         <Archive className="size-3 text-slate-500 dark:text-slate-400" />
         <span>Archived</span>
+      </span>
+    );
+  }
+  if (s === "spam") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
+        <ShieldAlert className="size-3 text-rose-600 dark:text-rose-400" />
+        <span>Spam</span>
+      </span>
+    );
+  }
+  if (s === "quarantined") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-semibold text-orange-700 dark:bg-orange-950/40 dark:text-orange-400">
+        <ShieldAlert className="size-3 text-orange-600 dark:text-orange-400" />
+        <span>Quarantined</span>
       </span>
     );
   }
@@ -325,6 +342,27 @@ export function FeedbackDetailDrawer({
               {getStatusBadge(submission.status || "new")}
             </div>
           </div>
+
+          {(submission.status === "spam" || submission.status === "quarantined") && (
+            <div className="rounded-[12px] border border-rose-200 bg-rose-50/70 p-3.5 text-[12px] text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
+              <div className="flex items-center gap-1.5 font-semibold">
+                <ShieldAlert className="size-3.5 shrink-0" />
+                <span>
+                  {submission.status === "spam"
+                    ? "Held as Spam"
+                    : "Held in Quarantine"}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] opacity-90">
+                Excluded from Insights and the main Inbox feed. Click Reopen below to restore it.
+              </p>
+              {submission.spam_reasons && submission.spam_reasons.length > 0 && (
+                <p className="mt-1.5 font-mono text-[11px] opacity-85">
+                  Signals: {submission.spam_reasons.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Customer History & Journey */}
           {submission.customer_email && (
@@ -599,7 +637,7 @@ export function FeedbackDetailDrawer({
         </div>
 
         {/* Footer with Triage Actions */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-t border-[#E1E5EB] bg-[#F7F9FC] px-6 dark:border-white/10 dark:bg-white/5">
+        <div className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[#E1E5EB] bg-[#F7F9FC] px-6 py-3 dark:border-white/10 dark:bg-white/5">
           <div className="flex flex-wrap items-center gap-2">
             {submission.status !== "resolved" && (
               <button
@@ -650,6 +688,22 @@ export function FeedbackDetailDrawer({
               >
                 <Archive className="size-3.5" />
                 <span>Archive</span>
+              </button>
+            )}
+
+            {submission.status !== "spam" && (
+              <button
+                type="button"
+                disabled={isUpdatingStatus}
+                onClick={() =>
+                  onStatusChange
+                    ? onStatusChange(submission.id, "spam")
+                    : onUpdateSubmission?.(submission.id, { status: "spam" })
+                }
+                className="inline-flex items-center gap-1.5 rounded-[10px] border border-rose-200 bg-rose-50 px-3 py-2 text-[13px] font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50 dark:border-rose-800/40 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50"
+              >
+                <ShieldAlert className="size-3.5" />
+                <span>Mark Spam</span>
               </button>
             )}
 
