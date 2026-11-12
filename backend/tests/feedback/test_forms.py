@@ -5,6 +5,7 @@ Integration and unit tests for Feedback Forms & Widget Studio.
 import pytest
 from httpx import AsyncClient
 
+from app.core.config import settings
 from app.features.auth.models import Workspace
 
 
@@ -205,3 +206,28 @@ async def test_public_form_endpoint(
         f"/api/v1/public/forms/{test_workspace.slug}/non-existent-form"
     )
     assert missing_res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_public_form_exposes_turnstile_site_key_when_configured(
+    client: AsyncClient,
+    auth_client: AsyncClient,
+    test_workspace: Workspace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Configured TURNSTILE_SITE_KEY on Settings should be exposed in public form responses.
+    """
+    monkeypatch.setattr(settings, "TURNSTILE_SITE_KEY", "1x00000000000000000000AA")
+
+    create_res = await auth_client.post(
+        f"/api/v1/workspaces/{test_workspace.id}/feedback/forms",
+        json={"name": "Turnstile Form", "slug": "turnstile-form"},
+    )
+    assert create_res.status_code == 201
+
+    pub_res = await client.get(
+        f"/api/v1/public/forms/{test_workspace.slug}/turnstile-form"
+    )
+    assert pub_res.status_code == 200
+    assert pub_res.json()["turnstile_site_key"] == "1x00000000000000000000AA"

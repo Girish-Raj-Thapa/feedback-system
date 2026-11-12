@@ -42,6 +42,25 @@ services:
       redis:
         condition: service_healthy
 
+  # Taskiq cron scheduler
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: feedback_scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app:ro
+      - ./.env:/app/.env:ro
+    command: taskiq scheduler app.core.tasks:scheduler --fs-discover
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   # PostgreSQL database
   db:
     image: postgres:16-alpine

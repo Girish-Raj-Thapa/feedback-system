@@ -107,6 +107,7 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------------
     # Cloudflare Turnstile Anti-Bot Verification
     # -----------------------------------------------------------------------
+    TURNSTILE_SITE_KEY: str | None = None
     TURNSTILE_SECRET_KEY: str | None = None
     TURNSTILE_VERIFY_URL: str = (
         "https://challenges.cloudflare.com/turnstile/v0/siteverify"

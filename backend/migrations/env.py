@@ -21,6 +21,7 @@ from app.features.auth.models import (  # noqa: F401
 )
 from app.features.feedback.models import (  # noqa: F401
     AlertRule,
+    DecisionLog,
     FeedbackCategory,
     FeedbackSubmission,
     Form,

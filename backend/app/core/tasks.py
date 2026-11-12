@@ -2,6 +2,8 @@
 Taskiq broker initialization.
 """
 
+from taskiq import TaskiqScheduler
+from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListQueueBroker
 
 import app.db.models  # noqa: F401 - Register all models and compile mappers for background workers
@@ -15,4 +17,10 @@ broker = ListQueueBroker(
     socket_timeout=None,
     socket_connect_timeout=5,
     socket_keepalive=True,
+)
+
+# Cron scheduler reading `schedule=[...]` labels from @broker.task definitions.
+scheduler = TaskiqScheduler(
+    broker=broker,
+    sources=[LabelScheduleSource(broker)],
 )

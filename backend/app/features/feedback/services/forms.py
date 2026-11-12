@@ -131,7 +131,7 @@ class FormService:
             outcome_screen=form.outcome_screen,
             widget_settings=form.widget_settings,
             form_token=token,
-            turnstile_site_key=getattr(settings, "TURNSTILE_SITE_KEY", None),
+            turnstile_site_key=settings.TURNSTILE_SITE_KEY,
         )
 
     async def get_public_form_token(
