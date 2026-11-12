@@ -366,3 +366,82 @@ async def test_process_delivery_paused_when_rate_limited() -> None:
     mock_provider.dispatch.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_prune_old_attempts_deletes_expired_rows_in_db(
+    db_session,
+    test_workspace,
+) -> None:
+    """Verify prune_old_attempts deletes DeliveryAttempt rows older than 30 days and keeps recent rows."""
+    from sqlalchemy import select
+
+    from app.features.notifications.models.attempts import DeliveryAttempt
+
+    conn = NotificationConnection(
+        workspace_id=test_workspace.id,
+        provider_type="slack_webhook",
+        name="Prune Test Channel",
+        destination_url="https://hooks.slack.com/services/T1/B1/prune",
+    )
+    db_session.add(conn)
+    await db_session.flush()
+
+    delivery = OutboundDelivery(
+        workspace_id=test_workspace.id,
+        connection_id=conn.id,
+        idempotency_key=f"prune_test_{uuid4()}",
+        status="delivered",
+        attempts_count=2,
+        payload_snapshot={"text": "prune"},
+    )
+    db_session.add(delivery)
+    await db_session.flush()
+
+    now = datetime.now(UTC)
+    old_attempt = DeliveryAttempt(
+        delivery_id=delivery.id,
+        attempt_number=1,
+        http_status_code=500,
+        attempted_at=now - timedelta(days=31),
+    )
+    recent_attempt = DeliveryAttempt(
+        delivery_id=delivery.id,
+        attempt_number=2,
+        http_status_code=200,
+        attempted_at=now - timedelta(days=5),
+    )
+    db_session.add_all([old_attempt, recent_attempt])
+    await db_session.commit()
+
+    service = NotificationDeliveryService(db_session)
+    pruned = await service.prune_old_attempts(days=30)
+    assert pruned == 1
+
+    remaining_res = await db_session.execute(
+        select(DeliveryAttempt).where(DeliveryAttempt.delivery_id == delivery.id)
+    )
+    remaining = remaining_res.scalars().all()
+    assert len(remaining) == 1
+    assert remaining[0].id == recent_attempt.id
+
+
+@pytest.mark.asyncio
+async def test_scheduler_discovers_notification_cron_tasks() -> None:
+    """Verify TaskiqScheduler LabelScheduleSource registers notification sweeper and pruning cron schedules."""
+    import app.features.notifications.tasks  # noqa: F401
+    from app.core.tasks import scheduler
+
+    source = scheduler.sources[0]
+    await source.startup()
+    schedules = await source.get_schedules()
+    by_task = {s.task_name: s.cron for s in schedules}
+
+    assert any(
+        "sweep_stuck_and_due_deliveries_task" in name and cron == "*/1 * * * *"
+        for name, cron in by_task.items()
+    )
+    assert any(
+        "prune_old_delivery_attempts_task" in name and cron == "0 3 * * *"
+        for name, cron in by_task.items()
+    )
+
+

@@ -42,7 +42,7 @@ async def dispatch_outbound_delivery_task(delivery_id_str: str) -> bool:
         return success
 
 
-@broker.task
+@broker.task(schedule=[{"cron": "*/1 * * * *"}])
 async def sweep_stuck_and_due_deliveries_task() -> int:
     """
     Reaper and sweeper cron task:
@@ -86,4 +86,14 @@ async def sweep_stuck_and_due_deliveries_task() -> int:
         reconciled_submissions=reconciled_submissions,
     )
     return reclaimed
+
+
+@broker.task(schedule=[{"cron": "0 3 * * *"}])
+async def prune_old_delivery_attempts_task(days: int = 30) -> int:
+    """
+    Scheduled maintenance task pruning DeliveryAttempt logs older than 30 days.
+    """
+    async with async_session_factory() as session:
+        service = NotificationDeliveryService(session)
+        return await service.prune_old_attempts(days=days)
 

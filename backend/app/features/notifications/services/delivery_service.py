@@ -264,3 +264,15 @@ class NotificationDeliveryService:
             )
         return reclaimed_count
 
+    async def prune_old_attempts(self, days: int = 30) -> int:
+        """Delete delivery attempt audit rows older than the retention window."""
+        pruned_count = await self.delivery_repo.prune_attempts_older_than(days=days)
+        if pruned_count > 0:
+            await self.session.commit()
+            logger.info(
+                "notifications.delivery.attempts_pruned",
+                days=days,
+                count=pruned_count,
+            )
+        return pruned_count
+

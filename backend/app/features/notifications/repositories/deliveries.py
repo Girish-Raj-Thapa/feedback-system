@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -147,4 +147,13 @@ class OutboundDeliveryRepository:
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def prune_attempts_older_than(self, days: int = 30) -> int:
+        """
+        Delete DeliveryAttempt audit rows older than `days` days to prevent table bloat.
+        """
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        stmt = delete(DeliveryAttempt).where(DeliveryAttempt.attempted_at < cutoff)
+        result = await self.session.execute(stmt)
+        return int(getattr(result, "rowcount", 0) or 0)
 
