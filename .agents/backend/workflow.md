@@ -1,12 +1,12 @@
 # Backend Workflow
 
 Scope: `backend/`. Everything runs in Docker Compose. Run commands from `backend/` (where `docker-compose.yml` lives).
-Compose service names (use these in commands): `api`, `worker`, `db`, `redis`. Container names: `feedback_api`, `feedback_worker`, `feedback_db`, `feedback_redis` (use only with plain `docker` commands).
+Compose service names (use these in commands): `api`, `worker`, `scheduler`, `db`, `redis`. Container names: `feedback_api`, `feedback_worker`, `feedback_scheduler`, `feedback_db`, `feedback_redis` (use only with plain `docker` commands).
 
 ## Setup
 - Env: copy `.env.example` to `.env`. Never commit `.env` or print its values.
 - Start everything: `docker compose up -d --build`
-- Status/logs: `docker compose ps`, `docker compose logs -f api worker`
+- Status/logs: `docker compose ps`, `docker compose logs -f api worker scheduler`
 - Docs: `/docs` on the API port when running.
 
 ## Running commands
@@ -14,7 +14,7 @@ Run all project tools inside the API container, never on the host:
 `docker compose exec api <command>`
 Tools are on PATH in the image.
 
-- Code changes: the API reloads automatically via the bind mount. The worker does not; restart it with `docker compose restart worker`.
+- Code changes: the API reloads automatically via the bind mount. The worker and scheduler do not; restart them with `docker compose restart worker scheduler`.
 - Dependency changes: `docker compose exec api uv add <pkg>` (or `uv remove`), then `docker compose up -d --build`. Why: the image bakes in dependencies, so a rebuild is required.
 - Dockerfile or compose changes: rebuild with `docker compose up -d --build`.
 

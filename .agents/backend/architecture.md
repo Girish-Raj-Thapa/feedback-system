@@ -12,11 +12,13 @@ Scope: `backend/`. Read before creating or changing backend code.
 ## Layout
 ```
 app/
-├── api/       # API router aggregating feature routers (app/api/v1/router.py)
-├── core/      # Domain-free infrastructure: config, security, logging, errors, redis, email
-├── db/        # Engine, session factory, declarative base
+├── api/            # API router aggregating feature routers (app/api/v1/router.py)
+├── core/           # Infrastructure: config, security (JWT, Argon2, Fernet encryption), logging, errors, redis, email, tasks
+├── db/             # Engine, session factory, declarative base, model registry (app/db/models.py)
 └── features/  # One folder per vertical domain slice; all business logic lives here
-    └── auth/  # Identity, Users, Workspaces, Roles, Permissions, Invites, Audit Logs
+    ├── auth/           # Identity, Users, Workspaces, Roles, Permissions, Invites, Audit Logs
+    ├── feedback/       # Categories, Forms, Public Forms, Submissions, Insights, Decision Logs, Alert Rules, Presets, Tasks
+    └── notifications/  # Outbound Connections, Providers (Slack), Durable Outbox, Deliveries, OAuth, Tasks
 migrations/    # Alembic database migrations
 tests/         # Automated pytest suite (mirrors app/)
 ```
@@ -85,11 +87,7 @@ class AuthService:
 ## Feature Roadmap & Status
 | Feature Slice | Scope | Status |
 |---|---|---|
-| `auth/` | Users, Workspaces, Roles, Permissions, Overrides, Invites, Audit Logs | **COMPLETE** |
-| `taxonomy/` | Locked Theme Buckets, Keywords, Suggested Topics, Hierarchy | Planned |
-| `forms/` | Feedback Forms, Embed Widgets, Questions, Pills, Outcomes, API Keys | Planned |
-| `submissions/` | Customer Profiles, Ingestion, Scoring, Triage, Customer Replies | Planned |
-| `analytics/` | Daily Bucket Rollups, Score Driver Impact Calculation | Planned |
-| `decisions/` | Decision Log, Milestones, Net Score Impact recalculation | Planned |
-| `webhooks/` | Outbound JSON Webhooks, Slack/Discord integrations, Delivery Logs | Planned |
-| `billing/` | Plan Tiers, Stripe/Paddle Customer, Quota Enforcement | Planned |
+| `auth/` | Users, Workspaces, Roles, Permissions, Overrides, Invites, Audit Logs | **Complete** (`api_keys` table & ingestion token auth Planned) |
+| `feedback/` (`categories`, `forms`, `public_forms`, `submissions`, `insights`, `decision_logs`, `alerts`) | Locked Theme Categories, Forms/Embed/Presets, HMAC Replay + Turnstile + Heuristics, Triage + `spam`/`quarantined` Isolation + Filtered CSV Export + CSV/Paste Import (`alert_evaluated_at` backfill-safe) + Sample Data, Segment-Filtered Insights (`form_id`, `source`, `page_url`, `plan_tier`) + Score Drivers, 30d Decision Logs, Alert Rules | **Core Complete** (LLM classification/topic discovery, `workspace_customers`, and daily rollup tables Planned) |
+| `notifications/` | `NotificationConnection` (encrypted URLs/tokens), `OutboundDelivery` + `DeliveryAttempt` (`FOR UPDATE SKIP LOCKED` outbox), Slack Webhooks + 1-Click OAuth v2, immediate 404/410 revocation, `TaskiqScheduler` cron sweeps & 30d attempt pruning | **Slack Complete** (Discord/Generic JSON webhooks and theme filtering Planned) |
+| `billing/` | Plan Tiers, Stripe/Paddle Customer, Quota Enforcement | Planned (fields exist on `Workspace`, Stripe env vars defined, checkout/enforcement not wired) |

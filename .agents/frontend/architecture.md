@@ -15,32 +15,35 @@ The frontend strictly uses a **layer-based architecture** under `src/`:
 
 ```
 src/
-├── app/            # Next.js App Router (pages, nested layouts, route handlers)
-│   ├── (auth)/     # Public authentication route group (login, register, verify, invite)
-│   ├── (dashboard)/# Authenticated workspace dashboard routes
+├── app/                   # Next.js App Router (pages, nested layouts, route handlers)
+│   ├── (auth)/            # Public authentication route group (login, register, verify-email, invite, forgot/reset password, create-workspace)
+│   ├── workspace/
 │   │   └── [workspaceSlug]/
-│   │       ├── overview/     # Score Driver metrics, Executive bar, Net Impact
-│   │       ├── submissions/  # Feedback triage, customer profiles, filters
-│   │       ├── taxonomy/     # Theme buckets, keyword manager, suggested topics
-│   │       ├── forms/        # Form builder, widget preview, API keys
-│   │       ├── decisions/    # Decision log & impact tracking
-│   │       └── settings/     # Workspace settings, members, roles, invites
-│   └── f/          # Public customer-facing hosted forms (f/[workspaceSlug]/[formSlug])
-├── components/     # UI presentation layer
-│   ├── ui/         # Reusable atomic primitives (Button, Input, Card, Badge, Dialog)
-│   ├── layout/     # App shell (Sidebar, Navbar, WorkspaceSwitcher, UserDropdown)
-│   └── auth/       # Shared Auth components (AuthLayout, AuthHeader, AuthFooter, AmbientBackground, showcases)
-├── middleware/     # Route guarding logic & auth interceptors (called by src/proxy.ts)
-├── plugins/        # Third-party SDK wrappers & external providers (Paddle, Analytics)
-├── repositories/   # Data-access layer: All HTTP API calls to FastAPI backend
-│   ├── client.ts   # Base fetch client (credentials: "include", x-workspace-id injection)
+│   │       ├── page.tsx          # Unified workspace shell: Insights (Score Drivers, Decision Logs) + Inbox tabs
+│   │       ├── forms/            # Form list, starter templates, and studio builder (forms/[formId]/page.tsx)
+│   │       ├── settings/         # Workspace general settings, members, invites, categories, integrations, account
+│   │       └── dashboard/        # Redirects into unified workspace view
+│   ├── dashboard/         # Redirect wrappers (/dashboard, /dashboard/workspaces, /dashboard/account -> unified /workspace/[slug] shell; DashboardSidebar retired)
+│   ├── f/                 # Public customer-facing hosted forms (f/[workspaceSlug]/[formSlug])
+│   ├── embed/             # Public lightweight iframe widget forms (embed/[workspaceSlug]/[formSlug])
+│   └── integrations/      # OAuth callback bridges (integrations/slack/callback)
+├── components/            # UI presentation layer
+│   ├── ui/                # Reusable atomic primitives (Button, Input, Card, Badge)
+│   ├── layout/            # App shell (WorkspaceSidebar with workspace switcher popover)
+│   ├── auth/              # Auth components (AuthLayout, AuthHeader, AuthFooter, AmbientBackground, showcases)
+│   ├── landing/           # Public marketing homepage components
+│   └── workspace/         # Workspace modals, drawers, tabs (Insights, Integrations, Categories, DecisionLogDialog, FormShareModal, FeedbackDetailDrawer, ImportFeedbackModal, OnboardingChecklist)
+├── middleware/            # Route guarding logic & auth interceptors (called by src/proxy.ts)
+├── repositories/          # Data-access layer: All HTTP API calls to FastAPI backend
+│   ├── client.ts          # Base fetch client (credentials: "include", x-workspace-id injection)
 │   ├── auth.repository.ts
-│   └── workspace.repository.ts
-├── store/          # Client-side global state (Zustand)
+│   ├── feedback.repository.ts
+│   └── notifications.repository.ts
+├── store/                 # Client-side global state (Zustand)
 │   ├── auth.store.ts      # Active user session and state
 │   └── workspace.store.ts # Active workspace, list of workspaces, permissions
-├── utils/          # Pure helper functions (cn, formatters, dates)
-└── types/          # TypeScript interfaces mirroring backend Pydantic schemas
+├── utils/                 # Pure helper functions (cn, theme presets/OKLCH brand scale utility)
+└── types/                 # TypeScript interfaces mirroring backend Pydantic schemas
 ```
 
 ## Layer Direction, Component Sizing & Locality of Behavior
@@ -74,6 +77,6 @@ src/
   - Buttons and sensitive actions are gated via `hasPermission("<id>")`.
 
 ## Public Hosted Forms & Embeddable Widget
-- Public feedback routes live at `/f/[workspaceSlug]/[formSlug]`.
+- Public feedback routes live at `/f/[workspaceSlug]/[formSlug]` (hosted form) and `/embed/[workspaceSlug]/[formSlug]` (iframe widget target), both bypassed by `handleAuthRouting` in `src/middleware/auth.middleware.ts`.
 - Minimal layout without authenticated dashboard navigation.
-- Embed script: Lightweight vanilla JavaScript bundle in `public/widget.js` that mounts an iframe or modal pointing to the hosted form URL.
+- Embed script: Lightweight vanilla JavaScript bundle in `public/widget.js` (Shadow DOM + iframe pointing to `/embed/[workspaceSlug]/[formSlug]`, supporting `bottom_right`, `bottom_left`, `custom_trigger`, and inline containers).
