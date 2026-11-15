@@ -5,21 +5,20 @@ import {
   AlertCircle,
   AlertTriangle,
   Bell,
-  Check,
-  CheckCircle2,
   Clock,
   Edit2,
   ExternalLink,
   Filter,
+  Globe,
   History,
-  Layers,
+  KeyRound,
   Loader2,
-  Mail,
+  MessageSquare,
   Plus,
-  RefreshCw,
   Send,
   ShieldAlert,
   Trash2,
+  Webhook,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,7 +36,75 @@ import type {
   NotificationConnectionCreate,
   NotificationConnectionUpdate,
   OutboundDelivery,
+  ProviderType,
 } from "@/types/notifications";
+
+const PROVIDER_CONFIG: Record<
+  ProviderType,
+  {
+    label: string;
+    shortLabel: string;
+    namePlaceholder: string;
+    urlLabel: string;
+    urlPlaceholder: string;
+    urlHint: string;
+    docsUrl: string | null;
+    docsLabel: string | null;
+  }
+> = {
+  slack_webhook: {
+    label: "Slack",
+    shortLabel: "Slack Webhook",
+    namePlaceholder: "e.g. #customer-feedback or #churn-alerts",
+    urlLabel: "Slack Incoming Webhook URL",
+    urlPlaceholder: "https://hooks.slack.com/services/T.../B.../...",
+    urlHint: "Must start with https://hooks.slack.com/services/.",
+    docsUrl: "https://api.slack.com/apps",
+    docsLabel: "Get webhook URL",
+  },
+  discord_webhook: {
+    label: "Discord",
+    shortLabel: "Discord Webhook",
+    namePlaceholder: "e.g. #product-feedback or #bug-reports",
+    urlLabel: "Discord Webhook URL",
+    urlPlaceholder: "https://discord.com/api/webhooks/123456789/...",
+    urlHint: "Must start with https://discord.com/api/webhooks/.",
+    docsUrl:
+      "https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks",
+    docsLabel: "Discord webhook guide",
+  },
+  generic_webhook: {
+    label: "Custom JSON",
+    shortLabel: "JSON Webhook",
+    namePlaceholder: "e.g. Zapier Lead Alerts or Linear Triage",
+    urlLabel: "HTTPS Endpoint URL",
+    urlPlaceholder: "https://hooks.zapier.com/hooks/catch/...",
+    urlHint:
+      "Must use HTTPS and resolve to a public internet address (Zapier, Make, n8n, or your API).",
+    docsUrl: null,
+    docsLabel: null,
+  },
+};
+
+function getProviderBadgeLabel(conn: NotificationConnection): string {
+  if (conn.provider_type === "discord_webhook") return "Discord Webhook";
+  if (conn.provider_type === "generic_webhook") return "JSON Webhook";
+  return conn.connection_method === "oauth" ? "OAuth ⚡" : "Manual Webhook";
+}
+
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (typeof err === "object" && err !== null) {
+    const maybeData = (err as { data?: { message?: unknown } }).data;
+    if (typeof maybeData?.message === "string" && maybeData.message) {
+      return maybeData.message;
+    }
+    const maybeMessage = (err as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage) {
+      return maybeMessage;
+    }
+  }
+  return fallback;
+}
 
 interface WorkspaceIntegrationsTabProps {
   workspaceId: string;
@@ -46,7 +113,6 @@ interface WorkspaceIntegrationsTabProps {
 
 export function WorkspaceIntegrationsTab({
   workspaceId,
-  isOwner = false,
 }: WorkspaceIntegrationsTabProps) {
   const [connections, setConnections] = useState<NotificationConnection[]>([]);
   const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
@@ -57,8 +123,11 @@ export function WorkspaceIntegrationsTab({
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [editingConnection, setEditingConnection] =
     useState<NotificationConnection | null>(null);
+  const [connProvider, setConnProvider] =
+    useState<ProviderType>("slack_webhook");
   const [connName, setConnName] = useState("");
   const [connUrl, setConnUrl] = useState("");
+  const [connSecret, setConnSecret] = useState("");
   const [isSubmittingConn, setIsSubmittingConn] = useState(false);
   const [isTestingUrl, setIsTestingUrl] = useState(false);
   const [isConnectingSlack, setIsConnectingSlack] = useState(false);
@@ -92,27 +161,33 @@ export function WorkspaceIntegrationsTab({
   } | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, [workspaceId]);
+    let active = true;
+    Promise.all([
+      notificationsRepository.listConnections(workspaceId),
+      notificationsRepository.listAlertRules(workspaceId),
+      feedbackRepository.listForms(workspaceId),
+    ])
+      .then(([fetchedConnections, fetchedRules, fetchedForms]) => {
+        if (!active) return;
+        setConnections(fetchedConnections);
+        setAlertRules(fetchedRules);
+        setForms(fetchedForms);
+      })
+      .catch(() => {
+        if (active) {
+          toast.error("Failed to load integrations and alert rules");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
 
-  async function loadData() {
-    setIsLoading(true);
-    try {
-      const [fetchedConnections, fetchedRules, fetchedForms] =
-        await Promise.all([
-          notificationsRepository.listConnections(workspaceId),
-          notificationsRepository.listAlertRules(workspaceId),
-          feedbackRepository.listForms(workspaceId),
-        ]);
-      setConnections(fetchedConnections);
-      setAlertRules(fetchedRules);
-      setForms(fetchedForms);
-    } catch {
-      toast.error("Failed to load integrations and alert rules");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    return () => {
+      active = false;
+    };
+  }, [workspaceId]);
 
   // Connection Handlers
   async function handleConnectSlackOAuth() {
@@ -120,36 +195,45 @@ export function WorkspaceIntegrationsTab({
     try {
       const res = await notificationsRepository.getSlackAuthorizeUrl(workspaceId);
       window.location.href = res.authorize_url;
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
-        err?.data?.message || err?.message || "Failed to initiate Slack authorization"
+        extractErrorMessage(err, "Failed to initiate Slack authorization")
       );
       setIsConnectingSlack(false);
     }
   }
 
-  function openAddConnection() {
+  function openAddConnection(defaultProvider: ProviderType = "slack_webhook") {
     setEditingConnection(null);
+    setConnProvider(defaultProvider);
     setConnName("");
     setConnUrl("");
+    setConnSecret("");
     setIsConnectionModalOpen(true);
   }
 
   function openEditConnection(conn: NotificationConnection) {
     setEditingConnection(conn);
+    setConnProvider(conn.provider_type || "slack_webhook");
     setConnName(conn.name);
     setConnUrl(""); // Don't prefill masked URL, operator can leave blank to keep unchanged
+    setConnSecret("");
     setIsConnectionModalOpen(true);
   }
 
   async function handleSaveConnection(e: React.FormEvent) {
     e.preventDefault();
+    const activeProvider = editingConnection
+      ? editingConnection.provider_type
+      : connProvider;
+    const providerMeta = PROVIDER_CONFIG[activeProvider] || PROVIDER_CONFIG.slack_webhook;
+
     if (!connName.trim()) {
       toast.error("Please enter a connection name");
       return;
     }
     if (!editingConnection && !connUrl.trim()) {
-      toast.error("Please enter a valid Slack incoming webhook URL");
+      toast.error(`Please enter a valid ${providerMeta.label} webhook URL`);
       return;
     }
 
@@ -162,6 +246,9 @@ export function WorkspaceIntegrationsTab({
         if (connUrl.trim()) {
           payload.destination_url = connUrl.trim();
         }
+        if (activeProvider === "generic_webhook" && connSecret.trim()) {
+          payload.secret_token = connSecret.trim();
+        }
         const updated = await notificationsRepository.updateConnection(
           workspaceId,
           editingConnection.id,
@@ -170,23 +257,28 @@ export function WorkspaceIntegrationsTab({
         setConnections((prev) =>
           prev.map((c) => (c.id === updated.id ? updated : c))
         );
-        toast.success("Slack connection updated");
+        toast.success(`${providerMeta.label} connection updated`);
       } else {
         const payload: NotificationConnectionCreate = {
           name: connName.trim(),
-          provider_type: "slack_webhook",
+          provider_type: activeProvider,
           destination_url: connUrl.trim(),
+          ...(activeProvider === "generic_webhook" && connSecret.trim()
+            ? { secret_token: connSecret.trim() }
+            : {}),
         };
         const created = await notificationsRepository.createConnection(
           workspaceId,
           payload
         );
         setConnections((prev) => [created, ...prev]);
-        toast.success("Slack incoming webhook connected!");
+        toast.success(`${providerMeta.shortLabel} connected!`);
       }
       setIsConnectionModalOpen(false);
-    } catch (err: any) {
-      toast.error(err?.data?.message || err.message || "Failed to save Slack connection");
+    } catch (err: unknown) {
+      toast.error(
+        extractErrorMessage(err, `Failed to save ${providerMeta.label} connection`)
+      );
     } finally {
       setIsSubmittingConn(false);
     }
@@ -197,19 +289,28 @@ export function WorkspaceIntegrationsTab({
       toast.error("Enter a webhook URL to test");
       return;
     }
+    const activeProvider = editingConnection
+      ? editingConnection.provider_type
+      : connProvider;
+    const providerMeta = PROVIDER_CONFIG[activeProvider] || PROVIDER_CONFIG.slack_webhook;
+
     setIsTestingUrl(true);
     try {
       const res = await notificationsRepository.testRawDestination(
         workspaceId,
-        connUrl.trim()
+        connUrl.trim(),
+        activeProvider,
+        activeProvider === "generic_webhook" && connSecret.trim()
+          ? connSecret.trim()
+          : undefined
       );
       if (res.success) {
-        toast.success("Test notification received by Slack! ✅");
+        toast.success(`Test notification received by ${providerMeta.label}! ✅`);
       } else {
-        toast.error(`Slack returned error: ${res.message}`);
+        toast.error(`${providerMeta.label} returned error: ${res.message}`);
       }
-    } catch (err: any) {
-      toast.error(err?.data?.message || err.message || "Webhook test failed");
+    } catch (err: unknown) {
+      toast.error(extractErrorMessage(err, "Webhook test failed"));
     } finally {
       setIsTestingUrl(false);
     }
@@ -217,13 +318,15 @@ export function WorkspaceIntegrationsTab({
 
   async function handleSendTestMessage(conn: NotificationConnection) {
     setTestingConnectionId(conn.id);
+    const providerMeta =
+      PROVIDER_CONFIG[conn.provider_type] || PROVIDER_CONFIG.slack_webhook;
     try {
       const res = await notificationsRepository.testConnection(
         workspaceId,
         conn.id
       );
       if (res.success) {
-        toast.success(`Test card sent to ${conn.name}! Check your Slack channel.`);
+        toast.success(`Test ping delivered to ${conn.name} (${providerMeta.label})!`);
         // Refresh connection health
         const updated = await notificationsRepository.getConnection(
           workspaceId,
@@ -233,10 +336,10 @@ export function WorkspaceIntegrationsTab({
           prev.map((c) => (c.id === updated.id ? updated : c))
         );
       } else {
-        toast.error(`Slack delivery failed: ${res.message}`);
+        toast.error(`${providerMeta.label} delivery failed: ${res.message}`);
       }
-    } catch (err: any) {
-      toast.error(err?.data?.message || err.message || "Failed to send test message");
+    } catch (err: unknown) {
+      toast.error(extractErrorMessage(err, "Failed to send test message"));
     } finally {
       setTestingConnectionId(null);
     }
@@ -363,8 +466,8 @@ export function WorkspaceIntegrationsTab({
         toast.success("Alert rule created!");
       }
       setIsRuleModalOpen(false);
-    } catch (err: any) {
-      toast.error(err?.data?.message || err.message || "Failed to save alert rule");
+    } catch (err: unknown) {
+      toast.error(extractErrorMessage(err, "Failed to save alert rule"));
     } finally {
       setIsSubmittingRule(false);
     }
@@ -403,7 +506,7 @@ export function WorkspaceIntegrationsTab({
         setAlertRules((prev) =>
           prev.filter((r) => r.connection_id !== deleteTarget.id)
         );
-        toast.success("Slack connection deleted");
+        toast.success("Integration connection deleted");
       } else {
         await notificationsRepository.deleteAlertRule(
           workspaceId,
@@ -466,8 +569,9 @@ export function WorkspaceIntegrationsTab({
             Outbound Integrations & Alert Rules
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Broadcast real-time customer feedback into Slack. Configure
-            instant detractor alerts and selective form routing.
+            Broadcast real-time customer feedback to Slack, Discord, or custom
+            JSON webhooks (Zapier, Make, n8n). Configure instant detractor
+            alerts and selective form routing.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -484,9 +588,9 @@ export function WorkspaceIntegrationsTab({
             Add to Slack
           </button>
           <button
-            onClick={openAddConnection}
+            onClick={() => openAddConnection("slack_webhook")}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition cursor-pointer"
-            title="Connect via manual webhook URL"
+            title="Connect Slack, Discord, or custom JSON webhook"
           >
             <Plus className="w-3.5 h-3.5" />
             Manual Webhook
@@ -512,19 +616,24 @@ export function WorkspaceIntegrationsTab({
                 <ShieldAlert className="w-5 h-5" />
               </div>
               <div>
-                <p className="font-semibold text-sm">Action Required: Slack Connection Revoked</p>
+                <p className="font-semibold text-sm">Action Required: Integration Connection Revoked</p>
                 <p className="text-xs text-rose-700 dark:text-rose-300">
-                  One or more channels were uninstalled or removed in Slack. Reconnect to restore instant feedback notifications.
+                  One or more webhook destinations were deleted or revoked. Reconnect or update the webhook URL to restore instant notifications.
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleConnectSlackOAuth}
-              disabled={isConnectingSlack}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm cursor-pointer"
-            >
-              Reconnect Channel
-            </button>
+            {connections.some(
+              (c) =>
+                c.health_status === "revoked" && c.provider_type === "slack_webhook"
+            ) && (
+              <button
+                onClick={handleConnectSlackOAuth}
+                disabled={isConnectingSlack}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm cursor-pointer"
+              >
+                Reconnect Channel
+              </button>
+            )}
           </div>
         )}
 
@@ -534,11 +643,11 @@ export function WorkspaceIntegrationsTab({
               Connected Channels & Webhooks
             </h3>
             <p className="text-xs text-muted-foreground">
-              Incoming webhooks securely authenticated with Slack. URLs are masked to protect channel credentials.
+              Slack, Discord, and custom JSON webhook endpoints. Destination URLs and signing secrets are masked and encrypted at rest.
             </p>
           </div>
           <span className="text-xs font-medium text-muted-foreground">
-            {connections.length} {connections.length === 1 ? "channel" : "channels"} configured
+            {connections.length} {connections.length === 1 ? "connection" : "connections"} configured
           </span>
         </div>
 
@@ -548,9 +657,9 @@ export function WorkspaceIntegrationsTab({
               <Bell className="w-6 h-6" />
             </div>
             <div>
-              <p className="font-medium text-foreground">No Slack channels connected</p>
-              <p className="text-xs text-muted-foreground max-w-sm mt-0.5">
-                Connect an incoming webhook from your Slack workspace to receive real-time VoC cards when customers submit feedback.
+              <p className="font-medium text-foreground">No channels or webhooks connected</p>
+              <p className="text-xs text-muted-foreground max-w-md mt-0.5">
+                Connect Slack, Discord, or a custom JSON webhook (Zapier, Make, n8n, Linear) to receive real-time VoC alerts when customers submit feedback.
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
@@ -567,10 +676,18 @@ export function WorkspaceIntegrationsTab({
                 1-Click Add to Slack
               </button>
               <button
-                onClick={openAddConnection}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer"
+                onClick={() => openAddConnection("discord_webhook")}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-[#5865F2] hover:bg-[#4752C4] text-white transition shadow-sm cursor-pointer"
               >
-                Manual Webhook
+                <MessageSquare className="w-3.5 h-3.5" />
+                Connect Discord
+              </button>
+              <button
+                onClick={() => openAddConnection("generic_webhook")}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition cursor-pointer"
+              >
+                <Webhook className="w-3.5 h-3.5" />
+                Custom JSON Webhook
               </button>
             </div>
           </div>
@@ -590,19 +707,34 @@ export function WorkspaceIntegrationsTab({
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-lg bg-[#4A154B]/10 dark:bg-[#4A154B]/20 text-[#4A154B] dark:text-[#E01E5A] flex items-center justify-center font-bold text-lg">
-                        #
-                      </div>
+                      {conn.provider_type === "discord_webhook" ? (
+                        <div className="w-9 h-9 rounded-lg bg-[#5865F2]/10 dark:bg-[#5865F2]/20 text-[#5865F2] flex items-center justify-center">
+                          <MessageSquare className="w-4 h-4" />
+                        </div>
+                      ) : conn.provider_type === "generic_webhook" ? (
+                        <div className="w-9 h-9 rounded-lg bg-slate-500/10 dark:bg-slate-400/15 text-slate-700 dark:text-slate-300 flex items-center justify-center">
+                          <Webhook className="w-4 h-4" />
+                        </div>
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg bg-[#4A154B]/10 dark:bg-[#4A154B]/20 text-[#4A154B] dark:text-[#E01E5A] flex items-center justify-center font-bold text-lg">
+                          #
+                        </div>
+                      )}
                       <div>
                         <h4 className="font-semibold text-sm text-foreground">
                           {conn.name}
                         </h4>
                         <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                          <span>
-                            {conn.connection_method === "oauth"
-                              ? "OAuth ⚡"
-                              : "Manual Webhook"}
-                          </span>
+                          <span>{getProviderBadgeLabel(conn)}</span>
+                          {conn.has_secret_token && (
+                            <>
+                              <span>•</span>
+                              <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                                <KeyRound className="w-2.5 h-2.5" />
+                                HMAC Signed
+                              </span>
+                            </>
+                          )}
                           {conn.provider_metadata?.team_name && (
                             <>
                               <span>•</span>
@@ -627,16 +759,25 @@ export function WorkspaceIntegrationsTab({
                       <div className="flex items-center gap-1.5 text-xs text-rose-700 dark:text-rose-400">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span className="truncate">
-                          {conn.failure_reason || "Webhook revoked in Slack"}
+                          {conn.failure_reason || "Webhook destination revoked or deleted"}
                         </span>
                       </div>
-                      <button
-                        onClick={handleConnectSlackOAuth}
-                        disabled={isConnectingSlack}
-                        className="px-2 py-1 text-[11px] font-semibold rounded bg-rose-600 hover:bg-rose-700 text-white transition shrink-0 cursor-pointer"
-                      >
-                        Reconnect
-                      </button>
+                      {conn.provider_type === "slack_webhook" ? (
+                        <button
+                          onClick={handleConnectSlackOAuth}
+                          disabled={isConnectingSlack}
+                          className="px-2 py-1 text-[11px] font-semibold rounded bg-rose-600 hover:bg-rose-700 text-white transition shrink-0 cursor-pointer"
+                        >
+                          Reconnect
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openEditConnection(conn)}
+                          className="px-2 py-1 text-[11px] font-semibold rounded bg-rose-600 hover:bg-rose-700 text-white transition shrink-0 cursor-pointer"
+                        >
+                          Update URL
+                        </button>
+                      )}
                     </div>
                   ) : conn.failure_reason ? (
                     <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 text-xs flex items-center gap-1.5 border border-rose-200 dark:border-rose-900/60">
@@ -661,7 +802,7 @@ export function WorkspaceIntegrationsTab({
                       onClick={() => handleSendTestMessage(conn)}
                       disabled={testingConnectionId === conn.id || !conn.is_active}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-secondary hover:bg-secondary/80 text-secondary-foreground transition disabled:opacity-50"
-                      title="Send verification card to Slack"
+                      title="Send verification test ping"
                     >
                       {testingConnectionId === conn.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -724,7 +865,8 @@ export function WorkspaceIntegrationsTab({
               Feedback Alert Routing Rules
             </h3>
             <p className="text-xs text-muted-foreground">
-              Define which customer ratings trigger outbound cards and route specific forms to dedicated Slack channels.
+              Define which customer ratings trigger outbound alerts and route
+              specific forms to Slack, Discord, or custom webhook endpoints.
             </p>
           </div>
           <button
@@ -742,7 +884,7 @@ export function WorkspaceIntegrationsTab({
             <Filter className="w-6 h-6 text-muted-foreground mx-auto" />
             <p className="text-sm font-medium text-foreground">No alert rules configured</p>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Create an alert rule to automatically broadcast negative detractor feedback or all incoming customer submissions into Slack.
+              Create an alert rule to automatically broadcast negative detractor feedback or all incoming customer submissions to your connected channels.
             </p>
           </div>
         ) : (
@@ -792,7 +934,25 @@ export function WorkspaceIntegrationsTab({
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-xs font-medium text-foreground">
-                        #{rule.connection_name || "Unknown"}
+                        {(() => {
+                          const targetConn = connections.find(
+                            (c) => c.id === rule.connection_id
+                          );
+                          const label =
+                            targetConn?.provider_type === "discord_webhook"
+                              ? "Discord"
+                              : targetConn?.provider_type === "generic_webhook"
+                              ? "Webhook"
+                              : "Slack";
+                          return (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                {label}
+                              </span>
+                              <span>{rule.connection_name || "Unknown"}</span>
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3.5 text-xs text-muted-foreground">
                         {rule.include_customer_email ? (
@@ -844,112 +1004,187 @@ export function WorkspaceIntegrationsTab({
         )}
       </div>
 
-      {/* MODAL: ADD / EDIT SLACK CONNECTION */}
-      {isConnectionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl space-y-5 animate-in fade-in-50 zoom-in-95">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">
-                  {editingConnection ? "Edit Slack Connection" : "Connect Slack Webhook"}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Send real-time Voice of Customer cards to a dedicated channel.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsConnectionModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* MODAL: ADD / EDIT OUTBOUND CONNECTION */}
+      {isConnectionModalOpen && (() => {
+        const activeProvider = editingConnection
+          ? editingConnection.provider_type
+          : connProvider;
+        const providerMeta =
+          PROVIDER_CONFIG[activeProvider] || PROVIDER_CONFIG.slack_webhook;
 
-            <form onSubmit={handleSaveConnection} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  Channel / Connection Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. #customer-feedback or #churn-alerts"
-                  value={connName}
-                  onChange={(e) => setConnName(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-foreground">
-                    Slack Incoming Webhook URL
-                  </label>
-                  <a
-                    href="https://api.slack.com/apps"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-primary hover:underline flex items-center gap-1"
-                  >
-                    Get webhook URL <ExternalLink className="w-3 h-3" />
-                  </a>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl space-y-5 animate-in fade-in-50 zoom-in-95">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {editingConnection
+                      ? `Edit ${providerMeta.label} Connection`
+                      : `Connect ${providerMeta.shortLabel}`}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Send real-time Voice of Customer alerts to your team channel or automation workflow.
+                  </p>
                 </div>
-                <input
-                  type="url"
-                  placeholder={
-                    editingConnection
-                      ? "Leave blank to keep existing webhook URL"
-                      : "https://hooks.slack.com/services/T.../B.../..."
-                  }
-                  value={connUrl}
-                  onChange={(e) => setConnUrl(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm font-mono rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required={!editingConnection}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Must start with <code className="font-mono">https://hooks.slack.com/services/</code>.
-                </p>
+                <button
+                  onClick={() => setIsConnectionModalOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {connUrl.trim() && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleTestModalUrl}
-                    disabled={isTestingUrl}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted text-foreground transition disabled:opacity-50"
-                  >
-                    {isTestingUrl ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Send className="w-3.5 h-3.5" />
-                    )}
-                    Test Webhook URL
-                  </button>
+              {!editingConnection && (
+                <div className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-muted/60 border border-border">
+                  {(
+                    ["slack_webhook", "discord_webhook", "generic_webhook"] as ProviderType[]
+                  ).map((ptype) => {
+                    const cfg = PROVIDER_CONFIG[ptype];
+                    const isSelected = connProvider === ptype;
+                    return (
+                      <button
+                        key={ptype}
+                        type="button"
+                        onClick={() => {
+                          setConnProvider(ptype);
+                          setConnUrl("");
+                          setConnSecret("");
+                        }}
+                        className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                          isSelected
+                            ? "bg-background text-foreground shadow-sm border border-border"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {ptype === "discord_webhook" ? (
+                          <MessageSquare className="w-3.5 h-3.5 text-[#5865F2]" />
+                        ) : ptype === "generic_webhook" ? (
+                          <Globe className="w-3.5 h-3.5 text-slate-500" />
+                        ) : (
+                          <span className="font-bold text-[#4A154B] dark:text-[#E01E5A]">
+                            #
+                          </span>
+                        )}
+                        <span>{cfg.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
-              <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsConnectionModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingConn}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-sm disabled:opacity-50"
-                >
-                  {isSubmittingConn && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  {editingConnection ? "Save Changes" : "Connect Channel"}
-                </button>
-              </div>
-            </form>
+              <form onSubmit={handleSaveConnection} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Channel / Connection Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={providerMeta.namePlaceholder}
+                    value={connName}
+                    onChange={(e) => setConnName(e.target.value)}
+                    className="w-full px-3.5 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-foreground">
+                      {providerMeta.urlLabel}
+                    </label>
+                    {providerMeta.docsUrl && (
+                      <a
+                        href={providerMeta.docsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                      >
+                        {providerMeta.docsLabel} <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    placeholder={
+                      editingConnection
+                        ? "Leave blank to keep existing webhook URL"
+                        : providerMeta.urlPlaceholder
+                    }
+                    value={connUrl}
+                    onChange={(e) => setConnUrl(e.target.value)}
+                    className="w-full px-3.5 py-2 text-sm font-mono rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    required={!editingConnection}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {providerMeta.urlHint}
+                  </p>
+                </div>
+
+                {activeProvider === "generic_webhook" && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-muted-foreground" />
+                      Signing Secret (Optional HMAC-SHA256)
+                    </label>
+                    <input
+                      type="password"
+                      placeholder={
+                        editingConnection?.has_secret_token
+                          ? "Leave blank to keep existing signing secret"
+                          : "e.g. whsec_... (sent in X-FeedbackFlow-Signature)"
+                      }
+                      value={connSecret}
+                      onChange={(e) => setConnSecret(e.target.value)}
+                      className="w-full px-3.5 py-2 text-sm font-mono rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      When provided, requests include an{" "}
+                      <code className="font-mono">X-FeedbackFlow-Signature: sha256=...</code>{" "}
+                      header so your server can verify authenticity.
+                    </p>
+                  </div>
+                )}
+
+                {connUrl.trim() && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleTestModalUrl}
+                      disabled={isTestingUrl}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted text-foreground transition disabled:opacity-50"
+                    >
+                      {isTestingUrl ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      Test Webhook URL
+                    </button>
+                  </div>
+                )}
+
+                <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsConnectionModalOpen(false)}
+                    className="px-4 py-2 text-xs font-medium rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingConn}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-sm disabled:opacity-50"
+                  >
+                    {isSubmittingConn && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {editingConnection ? "Save Changes" : "Connect Channel"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL: ADD / EDIT ALERT RULE */}
       {isRuleModalOpen && (
@@ -961,7 +1196,7 @@ export function WorkspaceIntegrationsTab({
                   {editingRule ? "Edit Alert Rule" : "Create Alert Rule"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Route customer feedback automatically to Slack.
+                  Route customer feedback automatically to Slack, Discord, or custom webhooks.
                 </p>
               </div>
               <button
@@ -989,7 +1224,7 @@ export function WorkspaceIntegrationsTab({
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">
-                  Destination Slack Channel
+                  Destination Channel / Webhook
                 </label>
                 <select
                   value={ruleConnId}
@@ -997,11 +1232,20 @@ export function WorkspaceIntegrationsTab({
                   className="w-full px-3.5 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   required
                 >
-                  {connections.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      #{c.name} {c.health_status === "revoked" ? "(Revoked)" : ""}
-                    </option>
-                  ))}
+                  {connections.map((c) => {
+                    const tag =
+                      c.provider_type === "discord_webhook"
+                        ? "Discord"
+                        : c.provider_type === "generic_webhook"
+                        ? "Webhook"
+                        : "Slack";
+                    return (
+                      <option key={c.id} value={c.id}>
+                        [{tag}] {c.name}{" "}
+                        {c.health_status === "revoked" ? "(Revoked)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -1112,7 +1356,7 @@ export function WorkspaceIntegrationsTab({
                     onChange={(e) => setRuleIncludeEmail(e.target.checked)}
                     className="rounded text-primary focus:ring-primary"
                   />
-                  <span>Include customer email in Slack alert card</span>
+                  <span>Include customer email in alert payload</span>
                 </label>
               </div>
 
@@ -1223,7 +1467,10 @@ export function WorkspaceIntegrationsTab({
                               <span>#{att.attempt_number}</span>
                               <span
                                 className={
-                                  att.status_code === 200
+                                  att.status_code !== null &&
+                                  att.status_code !== undefined &&
+                                  att.status_code >= 200 &&
+                                  att.status_code < 300
                                     ? "text-emerald-600 dark:text-emerald-400 font-semibold"
                                     : "text-rose-600 dark:text-rose-400 font-semibold"
                                 }
@@ -1258,7 +1505,7 @@ export function WorkspaceIntegrationsTab({
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <h3 className="font-semibold text-base text-foreground">
-                Delete {deleteTarget.type === "connection" ? "Slack Channel" : "Alert Rule"}?
+                Delete {deleteTarget.type === "connection" ? "Integration Connection" : "Alert Rule"}?
               </h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">

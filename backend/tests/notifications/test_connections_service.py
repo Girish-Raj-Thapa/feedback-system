@@ -24,11 +24,16 @@ from app.features.notifications.services.connection_service import (
 
 
 def test_mask_webhook_url() -> None:
-    """Verify webhook URL secret token is masked."""
+    """Verify webhook URL secret token is masked for Slack, Discord, and generic URLs."""
     url = "https://hooks.slack.com/services/T_SAMPLE/B_SAMPLE/sample_token_7890"
     masked = mask_webhook_url(url)
     assert masked == "https://hooks.slack.com/services/T_SAMPLE/B_SAMPLE/****7890"
     assert "sample_token" not in masked
+
+    discord_url = "https://discord.com/api/webhooks/1234567890/secret_discord_token_9876"
+    masked_discord = mask_webhook_url(discord_url)
+    assert masked_discord == "https://discord.com/api/webhooks/1234567890/****9876"
+    assert "secret_discord_token" not in masked_discord
 
     # Generic short URL
     assert mask_webhook_url("") == ""
@@ -205,3 +210,17 @@ def test_schema_serialization_masks_url() -> None:
     )
     assert "SECRET" not in dto.destination_url_masked
     assert dto.destination_url_masked.endswith("9876")
+    assert dto.has_secret_token is False
+
+    conn_with_secret = NotificationConnection(
+        id=uuid4(),
+        workspace_id=uuid4(),
+        name="Zapier Hook",
+        provider_type="generic_webhook",
+        destination_url="https://hooks.zapier.com/hooks/catch/1234/abcd",
+        secret_token="hmac_secret_value",
+        is_active=True,
+        health_status="healthy",
+    )
+    dto_secret = NotificationConnectionRead.from_model(conn_with_secret)
+    assert dto_secret.has_secret_token is True

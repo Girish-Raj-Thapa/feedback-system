@@ -95,14 +95,19 @@ export const notificationsRepository = {
   async testRawDestination(
     workspaceId: string,
     destinationUrl: string,
-    providerType: string = "slack_webhook"
+    providerType: string = "slack_webhook",
+    secretToken?: string
   ): Promise<NotificationConnectionTestResponse> {
     return apiClient<NotificationConnectionTestResponse>(
       `/workspaces/${workspaceId}/connections/test-raw`,
       {
         method: "POST",
         workspaceId,
-        body: { destination_url: destinationUrl, provider_type: providerType },
+        body: {
+          destination_url: destinationUrl,
+          provider_type: providerType,
+          ...(secretToken ? { secret_token: secretToken } : {}),
+        },
       }
     );
   },

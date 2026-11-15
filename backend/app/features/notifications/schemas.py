@@ -9,12 +9,15 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+ProviderLiteral = Literal["slack_webhook", "discord_webhook", "generic_webhook"]
+
 
 def mask_webhook_url(url: str) -> str:
     """
     Mask secret webhook URL for secure API responses.
     e.g. https://hooks.slack.com/services/T0123/B0456/SECRET1234
     becomes https://hooks.slack.com/services/T0123/B0456/******1234
+    and Discord webhook tokens are masked after the webhook ID.
     """
     if not url:
         return ""
@@ -29,6 +32,15 @@ def mask_webhook_url(url: str) -> str:
             token = segments[2]
             masked_token = f"****{token[-4:]}" if len(token) > 4 else "******"
             return f"{prefix}{t}/{b}/{masked_token}"
+    if "/api/webhooks/" in url and "discord" in url.lower():
+        parts = url.split("/api/webhooks/")
+        prefix = parts[0] + "/api/webhooks/"
+        segments = parts[1].split("?")[0].split("/")
+        if len(segments) >= 2:
+            webhook_id = segments[0]
+            token = segments[1]
+            masked_token = f"****{token[-4:]}" if len(token) > 4 else "******"
+            return f"{prefix}{webhook_id}/{masked_token}"
     if len(url) > 20:
         return f"{url[:12]}...****...{url[-4:]}"
     return "******"
@@ -41,7 +53,7 @@ class NotificationConnectionCreate(BaseModel):
         max_length=100,
         description="Friendly name for the integration channel (e.g. '#customer-feedback')",
     )
-    provider_type: Literal["slack_webhook"] = Field(
+    provider_type: ProviderLiteral = Field(
         default="slack_webhook",
         description="Notification provider type",
     )
@@ -50,6 +62,11 @@ class NotificationConnectionCreate(BaseModel):
         min_length=10,
         max_length=2000,
         description="Webhook URL endpoint",
+    )
+    secret_token: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Optional HMAC signing secret for generic JSON webhooks",
     )
 
 
@@ -64,6 +81,10 @@ class NotificationConnectionUpdate(BaseModel):
         min_length=10,
         max_length=2000,
     )
+    secret_token: str | None = Field(
+        default=None,
+        max_length=255,
+    )
     is_active: bool | None = None
 
 
@@ -76,6 +97,7 @@ class NotificationConnectionRead(BaseModel):
     provider_type: str
     connection_method: str = "manual"
     destination_url_masked: str
+    has_secret_token: bool = False
     is_active: bool
     health_status: str
     failure_reason: str | None = None
@@ -95,6 +117,7 @@ class NotificationConnectionRead(BaseModel):
             provider_type=model.provider_type,
             connection_method=getattr(model, "connection_method", "manual") or "manual",
             destination_url_masked=mask_webhook_url(model.destination_url),
+            has_secret_token=bool(getattr(model, "secret_token", None)),
             is_active=model.is_active,
             health_status=model.health_status,
             failure_reason=model.failure_reason,
@@ -127,8 +150,13 @@ class NotificationConnectionTestRequest(BaseModel):
         default=None,
         description="Optional ad-hoc webhook URL to test before saving",
     )
-    provider_type: Literal["slack_webhook"] = Field(
+    provider_type: ProviderLiteral = Field(
         default="slack_webhook",
+    )
+    secret_token: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Optional HMAC signing secret for ad-hoc generic webhook tests",
     )
 
 

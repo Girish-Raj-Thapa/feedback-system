@@ -136,6 +136,11 @@ class NotificationConnectionService:
             name=payload.name.strip(),
             provider_type=payload.provider_type,
             destination_url=payload.destination_url.strip(),
+            secret_token=(
+                payload.secret_token.strip()
+                if payload.secret_token and payload.secret_token.strip()
+                else None
+            ),
             is_active=True,
             health_status="healthy",
             consecutive_failures=0,
@@ -184,6 +189,9 @@ class NotificationConnectionService:
 
         if payload.name is not None:
             conn.name = payload.name.strip()
+
+        if payload.secret_token is not None:
+            conn.secret_token = payload.secret_token.strip() or None
 
         if payload.is_active is not None:
             conn.is_active = payload.is_active
@@ -238,7 +246,10 @@ class NotificationConnectionService:
         ws = await self.session.get(Workspace, workspace_id)
         workspace_display = ws.name if ws else str(workspace_id)
 
-        test_payload = format_slack_test_card(workspace_display, conn.name)
+        if conn.provider_type in ("slack_webhook", "slack_oauth"):
+            test_payload = format_slack_test_card(workspace_display, conn.name)
+        else:
+            test_payload = provider.build_test_payload(workspace_display)
         result = await provider.dispatch(
             conn.destination_url, test_payload, conn.secret_token
         )
@@ -261,6 +272,7 @@ class NotificationConnectionService:
         workspace_id: UUID,
         provider_type: str,
         destination_url: str,
+        secret_token: str | None = None,
     ) -> ProviderResult:
         """
         Send a test notification to an arbitrary webhook destination before saving it.
@@ -279,10 +291,15 @@ class NotificationConnectionService:
         ws = await self.session.get(Workspace, workspace_id)
         workspace_display = ws.name if ws else str(workspace_id)
 
-        test_payload = format_slack_test_card(
-            workspace_display, "Unsaved Slack Webhook"
+        if provider_type in ("slack_webhook", "slack_oauth"):
+            test_payload = format_slack_test_card(
+                workspace_display, "Unsaved Slack Webhook"
+            )
+        else:
+            test_payload = provider.build_test_payload(workspace_display)
+        return await provider.dispatch(
+            destination_url, test_payload, secret_token=secret_token
         )
-        return await provider.dispatch(destination_url, test_payload)
 
     async def list_recent_deliveries(
         self,

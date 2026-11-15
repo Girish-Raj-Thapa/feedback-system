@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.core.logging import get_logger
 from app.core.tasks import broker
 from app.db.session import async_session_factory
-from app.features.feedback.formatters.slack_voc import format_slack_voc_payload
+from app.features.feedback.formatters.dispatcher import format_voc_payload
 from app.features.feedback.models.submissions import FeedbackSubmission
 from app.features.feedback.services.alert_evaluator import AlertEvaluatorService
 from app.features.notifications.services.delivery_service import (
@@ -234,7 +234,15 @@ async def evaluate_submission_alerts_task(submission_id_str: str) -> bool:
                 )
 
                 for rule in matched_rules:
-                    payload_snapshot = format_slack_voc_payload(
+                    conn = getattr(rule, "connection", None)
+                    raw_provider_type = getattr(conn, "provider_type", None)
+                    provider_type = (
+                        raw_provider_type
+                        if isinstance(raw_provider_type, str)
+                        else "slack_webhook"
+                    )
+                    payload_snapshot = format_voc_payload(
+                        provider_type=provider_type,
                         submission=submission,
                         rule=rule,
                         workspace_slug=workspace_slug,

@@ -122,7 +122,9 @@ describe("WorkspaceIntegrationsTab", () => {
     render(<WorkspaceIntegrationsTab workspaceId={workspaceId} isOwner={true} />);
 
     await waitFor(() => {
-      expect(screen.getByText("churn-alerts")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "churn-alerts" })
+      ).toBeInTheDocument();
       expect(screen.getByText("Detractor Alerts")).toBeInTheDocument();
       expect(screen.getByText("Healthy")).toBeInTheDocument();
       expect(
@@ -263,9 +265,136 @@ describe("WorkspaceIntegrationsTab", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Action Required: Slack Connection Revoked/i)
+        screen.getByText(/Action Required: Integration Connection Revoked/i)
       ).toBeInTheDocument();
       expect(screen.getByText("Reconnect Channel")).toBeInTheDocument();
+    });
+  });
+
+  it("opens modal and connects a Discord webhook", async () => {
+    const discordConn: NotificationConnection = {
+      id: "conn-discord",
+      workspace_id: workspaceId,
+      name: "discord-bugs",
+      provider_type: "discord_webhook",
+      connection_method: "manual",
+      destination_url_masked:
+        "https://discord.com/api/webhooks/123456789/****abcd",
+      is_active: true,
+      health_status: "healthy",
+      failure_reason: null,
+      consecutive_failures: 0,
+      provider_metadata: null,
+      last_dispatched_at: null,
+      created_at: "2026-11-15T10:00:00Z",
+      updated_at: "2026-11-15T10:00:00Z",
+    };
+    vi.mocked(notificationsRepository.createConnection).mockResolvedValue(
+      discordConn
+    );
+
+    render(<WorkspaceIntegrationsTab workspaceId={workspaceId} isOwner={true} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Manual Webhook/i })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Manual Webhook/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Discord" }));
+
+    const nameInput = screen.getByPlaceholderText(
+      "e.g. #product-feedback or #bug-reports"
+    );
+    const urlInput = screen.getByPlaceholderText(
+      "https://discord.com/api/webhooks/123456789/..."
+    );
+
+    fireEvent.change(nameInput, { target: { value: "discord-bugs" } });
+    fireEvent.change(urlInput, {
+      target: {
+        value: "https://discord.com/api/webhooks/123456789/token_abcd",
+      },
+    });
+
+    fireEvent.click(screen.getByText("Connect Channel"));
+
+    await waitFor(() => {
+      expect(notificationsRepository.createConnection).toHaveBeenCalledWith(
+        workspaceId,
+        {
+          name: "discord-bugs",
+          provider_type: "discord_webhook",
+          destination_url:
+            "https://discord.com/api/webhooks/123456789/token_abcd",
+        }
+      );
+    });
+  });
+
+  it("opens modal and connects a Generic JSON webhook with HMAC secret", async () => {
+    const genericConn: NotificationConnection = {
+      id: "conn-generic",
+      workspace_id: workspaceId,
+      name: "Zapier Alerts",
+      provider_type: "generic_webhook",
+      connection_method: "manual",
+      destination_url_masked: "https://hooks...****...abcd",
+      has_secret_token: true,
+      is_active: true,
+      health_status: "healthy",
+      failure_reason: null,
+      consecutive_failures: 0,
+      provider_metadata: null,
+      last_dispatched_at: null,
+      created_at: "2026-11-15T10:00:00Z",
+      updated_at: "2026-11-15T10:00:00Z",
+    };
+    vi.mocked(notificationsRepository.createConnection).mockResolvedValue(
+      genericConn
+    );
+
+    render(<WorkspaceIntegrationsTab workspaceId={workspaceId} isOwner={true} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Manual Webhook/i })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Manual Webhook/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom JSON" }));
+
+    const nameInput = screen.getByPlaceholderText(
+      "e.g. Zapier Lead Alerts or Linear Triage"
+    );
+    const urlInput = screen.getByPlaceholderText(
+      "https://hooks.zapier.com/hooks/catch/..."
+    );
+    const secretInput = screen.getByPlaceholderText(
+      "e.g. whsec_... (sent in X-FeedbackFlow-Signature)"
+    );
+
+    fireEvent.change(nameInput, { target: { value: "Zapier Alerts" } });
+    fireEvent.change(urlInput, {
+      target: { value: "https://hooks.zapier.com/hooks/catch/123/abcd" },
+    });
+    fireEvent.change(secretInput, { target: { value: "whsec_test_123" } });
+
+    fireEvent.click(screen.getByText("Connect Channel"));
+
+    await waitFor(() => {
+      expect(notificationsRepository.createConnection).toHaveBeenCalledWith(
+        workspaceId,
+        {
+          name: "Zapier Alerts",
+          provider_type: "generic_webhook",
+          destination_url: "https://hooks.zapier.com/hooks/catch/123/abcd",
+          secret_token: "whsec_test_123",
+        }
+      );
+      expect(screen.getByText("HMAC Signed")).toBeInTheDocument();
     });
   });
 });

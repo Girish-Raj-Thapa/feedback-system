@@ -2,7 +2,10 @@
  * Notification Connections, Outbound Webhooks, and Alert Rules types.
  */
 
-export type ProviderType = "slack_webhook";
+export type ProviderType =
+  | "slack_webhook"
+  | "discord_webhook"
+  | "generic_webhook";
 
 export type ConnectionHealthStatus = "healthy" | "degraded" | "revoked";
 
@@ -15,6 +18,7 @@ export interface NotificationConnection {
   provider_type: ProviderType;
   connection_method: "oauth" | "manual";
   destination_url_masked: string;
+  has_secret_token?: boolean;
   is_active: boolean;
   health_status: ConnectionHealthStatus;
   failure_reason?: string | null;
@@ -47,11 +51,13 @@ export interface NotificationConnectionCreate {
   name: string;
   provider_type?: ProviderType;
   destination_url: string;
+  secret_token?: string;
 }
 
 export interface NotificationConnectionUpdate {
   name?: string;
   destination_url?: string;
+  secret_token?: string;
   is_active?: boolean;
 }
 

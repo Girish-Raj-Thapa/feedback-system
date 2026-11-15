@@ -1,2 +1,15 @@
+# Archived & local planning docs
 frontend-past/
 docs/
+notifications.md
+slack.md
+
+# Local IDE & root build artifacts
+.vscode/
+/.next/
+
+# Graphify ephemeral caches, learning state, reflections & dated backups
+graphify-out/.graphify_learning.json
+graphify-out/20??-??-??/
+graphify-out/cache/ast/
+graphify-out/reflections/

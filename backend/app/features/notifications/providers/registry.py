@@ -6,6 +6,8 @@ Maps provider_type strings to singleton provider instances.
 from typing import ClassVar
 
 from app.features.notifications.providers.base import BaseNotificationProvider
+from app.features.notifications.providers.discord import DiscordWebhookProvider
+from app.features.notifications.providers.generic import GenericWebhookProvider
 from app.features.notifications.providers.slack import SlackWebhookProvider
 
 
@@ -20,6 +22,8 @@ class ProviderRegistry:
         self._providers: dict[str, BaseNotificationProvider] = {}
         # Register default providers
         self.register(SlackWebhookProvider())
+        self.register(DiscordWebhookProvider())
+        self.register(GenericWebhookProvider())
 
     @classmethod
     def get_instance(cls) -> "ProviderRegistry":

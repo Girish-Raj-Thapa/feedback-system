@@ -186,6 +186,7 @@ async def test_raw_destination(
         workspace_id=workspace_id,
         provider_type=payload.provider_type,
         destination_url=payload.destination_url,
+        secret_token=payload.secret_token,
     )
     msg = (
         "Test notification sent successfully"
