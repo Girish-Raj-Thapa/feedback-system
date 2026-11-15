@@ -215,9 +215,9 @@ def test_schema_serialization_masks_url() -> None:
     conn_with_secret = NotificationConnection(
         id=uuid4(),
         workspace_id=uuid4(),
-        name="Zapier Hook",
+        name="Custom JSON Hook",
         provider_type="generic_webhook",
-        destination_url="https://hooks.zapier.com/hooks/catch/1234/abcd",
+        destination_url="https://webhooks.example.com/events",
         secret_token="hmac_secret_value",
         is_active=True,
         health_status="healthy",

@@ -370,15 +370,15 @@ describe("WorkspaceIntegrationsTab", () => {
       "e.g. Zapier Lead Alerts or Linear Triage"
     );
     const urlInput = screen.getByPlaceholderText(
-      "https://hooks.zapier.com/hooks/catch/..."
+      "https://api.example.com/webhooks/feedback"
     );
     const secretInput = screen.getByPlaceholderText(
       "e.g. whsec_... (sent in X-FeedbackFlow-Signature)"
     );
 
-    fireEvent.change(nameInput, { target: { value: "Zapier Alerts" } });
+    fireEvent.change(nameInput, { target: { value: "Custom JSON Alerts" } });
     fireEvent.change(urlInput, {
-      target: { value: "https://hooks.zapier.com/hooks/catch/123/abcd" },
+      target: { value: "https://webhooks.example.com/feedback" },
     });
     fireEvent.change(secretInput, { target: { value: "whsec_test_123" } });
 
@@ -388,9 +388,9 @@ describe("WorkspaceIntegrationsTab", () => {
       expect(notificationsRepository.createConnection).toHaveBeenCalledWith(
         workspaceId,
         {
-          name: "Zapier Alerts",
+          name: "Custom JSON Alerts",
           provider_type: "generic_webhook",
-          destination_url: "https://hooks.zapier.com/hooks/catch/123/abcd",
+          destination_url: "https://webhooks.example.com/feedback",
           secret_token: "whsec_test_123",
         }
       );

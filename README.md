@@ -71,7 +71,7 @@
 * **Framework**: Next.js 15 (App Router, React 19)
 * **Styling**: Tailwind CSS, Lucide React, Sonner (Toasts)
 * **State Management**: Zustand
-* **Testing**: Vitest, React Testing Library, JSDOM (190 automated tests across 37 test suites)
+* **Testing**: Vitest, React Testing Library, JSDOM (242 automated tests across 43 test suites)
 
 ### Backend
 * **Framework**: FastAPI (Python 3.12)
@@ -92,7 +92,8 @@ feedback-system/
 │   │   ├── core/              # Config, Security, Redis, Middleware, DB Session
 │   │   ├── features/
 │   │   │   ├── auth/          # Users, Workspaces, RBAC, Sessions, Invites
-│   │   │   └── feedback/      # Forms, Submissions, Categories, Insights Math
+│   │   │   ├── feedback/      # Forms, Submissions, Categories, Insights Math, Alerts & Formatters
+│   │   │   └── notifications/ # Outbound Connections (Slack, Discord, JSON Webhooks), Outbox & Deliveries
 │   │   └── main.py            # FastAPI Entrypoint
 │   └── tests/                 # Pytest test suites (unit & integration)
 ├── frontend/

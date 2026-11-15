@@ -17,8 +17,8 @@ app/
 ├── db/             # Engine, session factory, declarative base, model registry (app/db/models.py)
 └── features/  # One folder per vertical domain slice; all business logic lives here
     ├── auth/           # Identity, Users, Workspaces, Roles, Permissions, Invites, Audit Logs
-    ├── feedback/       # Categories, Forms, Public Forms, Submissions, Insights, Decision Logs, Alert Rules, Presets, Tasks
-    └── notifications/  # Outbound Connections, Providers (Slack), Durable Outbox, Deliveries, OAuth, Tasks
+    ├── feedback/       # Categories, Forms, Public Forms, Submissions, Insights, Decision Logs, Alert Rules, Formatters, Presets, Tasks
+    └── notifications/  # Outbound Connections, Providers (Slack, Discord, Generic JSON), Durable Outbox, Deliveries, OAuth, Tasks
 migrations/    # Alembic database migrations
 tests/         # Automated pytest suite (mirrors app/)
 ```
@@ -84,10 +84,15 @@ class AuthService:
 - All AI workflows (feedback sentiment classification, topic suggestion, synthesis) must go through the abstract factory layer in `app/core/llm/`.
 - Swappable via `LLM_PROVIDER` (`gemini`, `openai`, `mock`). Never import raw AI provider SDKs directly in features.
 
+## Notifications & Provider Extensibility
+- `notifications/` owns transport, SSRF defense, secret encryption (`secret_token` via `EncryptedString`, exposed only as `has_secret_token`), outbox delivery state (`OutboundDelivery`), and retry/revocation handling (`DeliveryAttempt`).
+- Providers implement `BaseNotificationProvider` (`validate_destination_url`, `dispatch`, `build_test_payload`) in `app/features/notifications/providers/` and register in `ProviderRegistry` (`slack_webhook`, `discord_webhook`, `generic_webhook`).
+- `feedback/formatters/` owns domain-specific VoC payload rendering (`slack_voc.py`, `discord_voc.py`, `generic_voc.py`) dispatched by `format_voc_payload` in `dispatcher.py` based on `connection.provider_type`.
+
 ## Feature Roadmap & Status
 | Feature Slice | Scope | Status |
 |---|---|---|
 | `auth/` | Users, Workspaces, Roles, Permissions, Overrides, Invites, Audit Logs | **Complete** (`api_keys` table & ingestion token auth Planned) |
-| `feedback/` (`categories`, `forms`, `public_forms`, `submissions`, `insights`, `decision_logs`, `alerts`) | Locked Theme Categories, Forms/Embed/Presets, HMAC Replay + Turnstile + Heuristics, Triage + `spam`/`quarantined` Isolation + Filtered CSV Export + CSV/Paste Import (`alert_evaluated_at` backfill-safe) + Sample Data, Segment-Filtered Insights (`form_id`, `source`, `page_url`, `plan_tier`) + Score Drivers, 30d Decision Logs, Alert Rules | **Core Complete** (LLM classification/topic discovery, `workspace_customers`, and daily rollup tables Planned) |
-| `notifications/` | `NotificationConnection` (encrypted URLs/tokens), `OutboundDelivery` + `DeliveryAttempt` (`FOR UPDATE SKIP LOCKED` outbox), Slack Webhooks + 1-Click OAuth v2, immediate 404/410 revocation, `TaskiqScheduler` cron sweeps & 30d attempt pruning | **Slack Complete** (Discord/Generic JSON webhooks and theme filtering Planned) |
+| `feedback/` (`categories`, `forms`, `public_forms`, `submissions`, `insights`, `decision_logs`, `alerts`) | Locked Theme Categories, Forms/Embed/Presets, HMAC Replay + Turnstile + Heuristics, Triage + `spam`/`quarantined` Isolation + Filtered CSV Export + CSV/Paste Import (`alert_evaluated_at` backfill-safe) + Sample Data, Segment-Filtered Insights (`form_id`, `source`, `page_url`, `plan_tier`) + Score Drivers, 30d Decision Logs, Alert Rules + Multi-Provider VoC Formatters | **Core Complete** (LLM classification/topic discovery, `workspace_customers`, and daily rollup tables Planned) |
+| `notifications/` | `NotificationConnection` (encrypted URLs/tokens, `has_secret_token`), `OutboundDelivery` + `DeliveryAttempt` (`FOR UPDATE SKIP LOCKED` outbox), Slack Webhooks + 1-Click OAuth v2, Discord Webhooks (`discord_webhook`), Generic JSON Webhooks (`generic_webhook` with DNS/IP SSRF guard + optional HMAC-SHA256 `X-FeedbackFlow-Signature`), immediate 404/410 revocation, `TaskiqScheduler` cron sweeps & 30d attempt pruning | **Slack, Discord & Generic JSON Complete** (Theme filtering & Email alert channel Planned) |
 | `billing/` | Plan Tiers, Stripe/Paddle Customer, Quota Enforcement | Planned (fields exist on `Workspace`, Stripe env vars defined, checkout/enforcement not wired) |

@@ -31,7 +31,7 @@ def test_generic_webhook_url_validation_success() -> None:
         "app.features.notifications.providers.generic.socket.getaddrinfo",
         return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))],
     ):
-        provider.validate_destination_url("https://hooks.zapier.com/hooks/catch/123/abc")
+        provider.validate_destination_url("https://webhooks.example.com/events")
         provider.validate_destination_url("https://hook.us1.make.com/abcdef123456")
 
 
@@ -39,7 +39,7 @@ def test_generic_webhook_url_validation_success() -> None:
     "invalid_url, expected_error",
     [
         ("", "Webhook URL is required"),
-        ("http://hooks.zapier.com/hooks/catch/1/2", "must use HTTPS scheme"),
+        ("http://webhooks.example.com/events", "must use HTTPS scheme"),
         ("https://localhost/webhook", "prohibited"),
         ("https://myservice.internal/hook", "prohibited"),
         ("https://127.0.0.1/hook", "prohibited"),
@@ -85,7 +85,7 @@ def test_generic_build_test_payload() -> None:
 async def test_generic_dispatch_with_hmac_signature() -> None:
     """Verify dispatch sends JSON content and valid X-FeedbackFlow-Signature header."""
     provider = GenericWebhookProvider()
-    url = "https://hooks.zapier.com/hooks/catch/123/abc"
+    url = "https://webhooks.example.com/events"
     payload = {"event": "feedback.detractor", "rating": 1}
     secret = "super_secret_signing_key"
 
@@ -125,7 +125,7 @@ async def test_generic_dispatch_with_hmac_signature() -> None:
 async def test_generic_dispatch_without_secret_omits_signature() -> None:
     """Verify signature header is omitted when no secret_token is configured."""
     provider = GenericWebhookProvider()
-    url = "https://hooks.zapier.com/hooks/catch/123/abc"
+    url = "https://webhooks.example.com/events"
 
     mock_response = httpx.Response(
         status_code=202,

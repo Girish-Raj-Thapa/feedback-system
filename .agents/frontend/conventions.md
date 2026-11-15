@@ -67,8 +67,8 @@ To maintain a high-density, professional B2B SaaS aesthetic (Linear/Vercel stand
   try {
     await workspaceRepository.createInvite(workspaceId, payload);
     toast.success("Invitation sent successfully");
-  } catch (err: any) {
-    toast.error(err.message || "Failed to send invitation");
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Request failed");
   }
   ```
 - Inline field errors must appear directly next to the input using `aria-invalid` and `role="alert"`.

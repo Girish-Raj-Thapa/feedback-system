@@ -78,7 +78,7 @@ const PROVIDER_CONFIG: Record<
     shortLabel: "JSON Webhook",
     namePlaceholder: "e.g. Zapier Lead Alerts or Linear Triage",
     urlLabel: "HTTPS Endpoint URL",
-    urlPlaceholder: "https://hooks.zapier.com/hooks/catch/...",
+    urlPlaceholder: "https://api.example.com/webhooks/feedback",
     urlHint:
       "Must use HTTPS and resolve to a public internet address (Zapier, Make, n8n, or your API).",
     docsUrl: null,
