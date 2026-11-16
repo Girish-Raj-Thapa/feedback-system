@@ -8,9 +8,13 @@ from app.features.notifications.repositories.connections import (
 from app.features.notifications.repositories.deliveries import (
     OutboundDeliveryRepository,
 )
+from app.features.notifications.repositories.quotas import (
+    NotificationQuotaRepository,
+)
 
 __all__ = [
     "NotificationConnectionRepository",
+    "NotificationQuotaRepository",
     "OutboundDeliveryRepository",
 ]
 

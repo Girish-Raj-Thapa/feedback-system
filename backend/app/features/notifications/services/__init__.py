@@ -9,6 +9,9 @@ from app.features.notifications.services.connection_service import (
 from app.features.notifications.services.delivery_service import (
     NotificationDeliveryService,
 )
+from app.features.notifications.services.quota_service import (
+    NotificationQuotaService,
+)
 from app.features.notifications.services.slack_oauth_service import (
     SlackOAuthService,
 )
@@ -16,6 +19,7 @@ from app.features.notifications.services.slack_oauth_service import (
 __all__ = [
     "NotificationConnectionService",
     "NotificationDeliveryService",
+    "NotificationQuotaService",
     "SlackOAuthService",
     "format_slack_test_card",
 ]

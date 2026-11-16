@@ -9,18 +9,29 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-ProviderLiteral = Literal["slack_webhook", "discord_webhook", "generic_webhook"]
+ProviderLiteral = Literal[
+    "slack_webhook",
+    "discord_webhook",
+    "generic_webhook",
+    "email_alert",
+]
 
 
 def mask_webhook_url(url: str) -> str:
     """
-    Mask secret webhook URL for secure API responses.
+    Mask secret webhook URL or email recipient for secure API responses.
     e.g. https://hooks.slack.com/services/T0123/B0456/SECRET1234
     becomes https://hooks.slack.com/services/T0123/B0456/******1234
-    and Discord webhook tokens are masked after the webhook ID.
+    and email addresses become fo***@domain.com.
     """
     if not url:
         return ""
+    if "@" in url and "://" not in url:
+        local, _, domain = url.strip().partition("@")
+        if not domain:
+            return "******"
+        prefix = local[:2] if len(local) > 2 else local[:1]
+        return f"{prefix}***@{domain}"
     if "hooks.slack.com/services/" in url:
         parts = url.split("hooks.slack.com/services/")
         prefix = parts[0] + "hooks.slack.com/services/"
@@ -59,9 +70,9 @@ class NotificationConnectionCreate(BaseModel):
     )
     destination_url: str = Field(
         ...,
-        min_length=10,
+        min_length=3,
         max_length=2000,
-        description="Webhook URL endpoint",
+        description="Webhook URL endpoint or recipient email address",
     )
     secret_token: str | None = Field(
         default=None,
@@ -78,7 +89,7 @@ class NotificationConnectionUpdate(BaseModel):
     )
     destination_url: str | None = Field(
         default=None,
-        min_length=10,
+        min_length=3,
         max_length=2000,
     )
     secret_token: str | None = Field(
@@ -194,3 +205,21 @@ class OutboundDeliveryRead(BaseModel):
     delivered_at: datetime | None = None
     created_at: datetime
     attempts: list[DeliveryAttemptRead] = []
+
+
+class WorkspaceNotificationQuotaRead(BaseModel):
+    plan_tier: Literal["free", "pro"]
+    max_connections: int
+    connections_used: int
+    max_alert_rules: int
+    alert_rules_used: int
+    monthly_email_limit: int
+    monthly_email_used: int
+    monthly_webhook_limit: int
+    monthly_webhook_used: int
+    hourly_email_burst_limit: int
+    hourly_email_used: int
+    hourly_webhook_burst_limit: int
+    hourly_webhook_used: int
+    cycle_starts_at: datetime
+

@@ -50,6 +50,22 @@ class FeedbackCategoryRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_existing_ids(
+        self,
+        workspace_id: UUID,
+        category_ids: Sequence[UUID],
+    ) -> set[UUID]:
+        """Return the subset of category_ids that exist and belong to this workspace in one query."""
+        if not category_ids:
+            return set()
+        stmt = select(FeedbackCategory.id).where(
+            FeedbackCategory.workspace_id == workspace_id,
+            FeedbackCategory.id.in_(category_ids),
+            FeedbackCategory.deleted_at.is_(None),
+        )
+        result = await self.session.execute(stmt)
+        return set(result.scalars().all())
+
     async def get_by_name(
         self,
         workspace_id: UUID,

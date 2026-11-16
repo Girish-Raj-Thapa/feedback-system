@@ -20,6 +20,7 @@ from app.features.notifications.schemas import (
     NotificationConnectionUpdate,
     OutboundDeliveryRead,
     SlackOAuthAuthorizeResponse,
+    WorkspaceNotificationQuotaRead,
 )
 
 router = APIRouter(
@@ -61,6 +62,37 @@ async def create_connection(
     """
     connection = await service.create_connection(workspace_id, payload)
     return NotificationConnectionRead.from_model(connection)
+
+
+@router.get(
+    "/quota",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_permission("webhooks:manage"))],
+)
+async def get_workspace_notification_quota(
+    workspace_id: UUID,
+    service: ConnectionServiceDep,
+) -> WorkspaceNotificationQuotaRead:
+    """
+    Get current Free/Pro notification quota limits and cycle usage for this workspace.
+    """
+    status_obj = await service.get_workspace_quota(workspace_id)
+    return WorkspaceNotificationQuotaRead(
+        plan_tier=status_obj.plan_tier,
+        max_connections=status_obj.limits.max_connections,
+        connections_used=status_obj.connections_used,
+        max_alert_rules=status_obj.limits.max_alert_rules,
+        alert_rules_used=status_obj.alert_rules_used,
+        monthly_email_limit=status_obj.limits.monthly_email_alerts,
+        monthly_email_used=status_obj.monthly_email_used,
+        monthly_webhook_limit=status_obj.limits.monthly_webhook_alerts,
+        monthly_webhook_used=status_obj.monthly_webhook_used,
+        hourly_email_burst_limit=status_obj.limits.hourly_email_burst,
+        hourly_email_used=status_obj.hourly_email_used,
+        hourly_webhook_burst_limit=status_obj.limits.hourly_webhook_burst,
+        hourly_webhook_used=status_obj.hourly_webhook_used,
+        cycle_starts_at=status_obj.cycle_starts_at,
+    )
 
 
 @router.get(

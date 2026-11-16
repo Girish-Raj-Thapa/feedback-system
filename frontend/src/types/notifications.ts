@@ -5,7 +5,8 @@
 export type ProviderType =
   | "slack_webhook"
   | "discord_webhook"
-  | "generic_webhook";
+  | "generic_webhook"
+  | "email_alert";
 
 export type ConnectionHealthStatus = "healthy" | "degraded" | "revoked";
 
@@ -74,6 +75,7 @@ export interface AlertRule {
   name: string;
   trigger_type: AlertTriggerType;
   form_ids?: string[] | null;
+  category_ids?: string[] | null;
   include_customer_email: boolean;
   is_active: boolean;
   connection_name?: string | null;
@@ -87,6 +89,7 @@ export interface AlertRuleCreate {
   name: string;
   trigger_type: AlertTriggerType;
   form_ids?: string[] | null;
+  category_ids?: string[] | null;
   include_customer_email?: boolean;
 }
 
@@ -95,8 +98,26 @@ export interface AlertRuleUpdate {
   name?: string;
   trigger_type?: AlertTriggerType;
   form_ids?: string[] | null;
+  category_ids?: string[] | null;
   include_customer_email?: boolean;
   is_active?: boolean;
+}
+
+export interface WorkspaceNotificationQuota {
+  plan_tier: "free" | "pro";
+  max_connections: number;
+  connections_used: number;
+  max_alert_rules: number;
+  alert_rules_used: number;
+  monthly_email_limit: number;
+  monthly_email_used: number;
+  monthly_webhook_limit: number;
+  monthly_webhook_used: number;
+  hourly_email_burst_limit: number;
+  hourly_email_used: number;
+  hourly_webhook_burst_limit: number;
+  hourly_webhook_used: number;
+  cycle_starts_at: string;
 }
 
 export interface DeliveryAttempt {

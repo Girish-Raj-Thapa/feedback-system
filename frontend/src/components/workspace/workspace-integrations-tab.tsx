@@ -13,6 +13,7 @@ import {
   History,
   KeyRound,
   Loader2,
+  Mail,
   MessageSquare,
   Plus,
   Send,
@@ -23,9 +24,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { authRepository } from "@/repositories/auth.repository";
 import { feedbackRepository } from "@/repositories/feedback.repository";
 import { notificationsRepository } from "@/repositories/notifications.repository";
-import type { FeedbackForm } from "@/types/feedback";
+import type { WorkspaceMemberRead } from "@/types/auth";
+import type { FeedbackCategory, FeedbackForm } from "@/types/feedback";
 import type {
   AlertRule,
   AlertRuleCreate,
@@ -37,6 +40,7 @@ import type {
   NotificationConnectionUpdate,
   OutboundDelivery,
   ProviderType,
+  WorkspaceNotificationQuota,
 } from "@/types/notifications";
 
 const PROVIDER_CONFIG: Record<
@@ -84,11 +88,23 @@ const PROVIDER_CONFIG: Record<
     docsUrl: null,
     docsLabel: null,
   },
+  email_alert: {
+    label: "Email",
+    shortLabel: "Email Alerts",
+    namePlaceholder: "e.g. Owner Email Alerts",
+    urlLabel: "Workspace Member Recipient",
+    urlPlaceholder: "owner@company.com",
+    urlHint:
+      "Instant alerts are sent only to verified members of this workspace (defaults to Workspace Owner).",
+    docsUrl: null,
+    docsLabel: null,
+  },
 };
 
 function getProviderBadgeLabel(conn: NotificationConnection): string {
   if (conn.provider_type === "discord_webhook") return "Discord Webhook";
   if (conn.provider_type === "generic_webhook") return "JSON Webhook";
+  if (conn.provider_type === "email_alert") return "Email Alert";
   return conn.connection_method === "oauth" ? "OAuth ⚡" : "Manual Webhook";
 }
 
@@ -117,6 +133,9 @@ export function WorkspaceIntegrationsTab({
   const [connections, setConnections] = useState<NotificationConnection[]>([]);
   const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
   const [forms, setForms] = useState<FeedbackForm[]>([]);
+  const [categories, setCategories] = useState<FeedbackCategory[]>([]);
+  const [members, setMembers] = useState<WorkspaceMemberRead[]>([]);
+  const [quota, setQuota] = useState<WorkspaceNotificationQuota | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Connection Modals
@@ -128,6 +147,7 @@ export function WorkspaceIntegrationsTab({
   const [connName, setConnName] = useState("");
   const [connUrl, setConnUrl] = useState("");
   const [connSecret, setConnSecret] = useState("");
+  const [autoCreateStarterRule, setAutoCreateStarterRule] = useState(false);
   const [isSubmittingConn, setIsSubmittingConn] = useState(false);
   const [isTestingUrl, setIsTestingUrl] = useState(false);
   const [isConnectingSlack, setIsConnectingSlack] = useState(false);
@@ -144,6 +164,12 @@ export function WorkspaceIntegrationsTab({
     useState<AlertTriggerType>("detractors_only");
   const [ruleFormScope, setRuleFormScope] = useState<"all" | "selected">("all");
   const [ruleSelectedForms, setRuleSelectedForms] = useState<string[]>([]);
+  const [ruleCategoryScope, setRuleCategoryScope] = useState<"all" | "selected">(
+    "all"
+  );
+  const [ruleSelectedCategories, setRuleSelectedCategories] = useState<string[]>(
+    []
+  );
   const [ruleIncludeEmail, setRuleIncludeEmail] = useState(true);
   const [isSubmittingRule, setIsSubmittingRule] = useState(false);
 
@@ -166,13 +192,40 @@ export function WorkspaceIntegrationsTab({
       notificationsRepository.listConnections(workspaceId),
       notificationsRepository.listAlertRules(workspaceId),
       feedbackRepository.listForms(workspaceId),
+      Promise.resolve(
+        feedbackRepository.listCategories
+          ? feedbackRepository.listCategories(workspaceId)
+          : []
+      ).catch(() => [] as FeedbackCategory[]),
+      Promise.resolve(
+        authRepository?.listWorkspaceMembers
+          ? authRepository.listWorkspaceMembers(workspaceId)
+          : []
+      ).catch(() => [] as WorkspaceMemberRead[]),
+      Promise.resolve(
+        notificationsRepository.getQuota
+          ? notificationsRepository.getQuota(workspaceId)
+          : null
+      ).catch(() => null),
     ])
-      .then(([fetchedConnections, fetchedRules, fetchedForms]) => {
-        if (!active) return;
-        setConnections(fetchedConnections);
-        setAlertRules(fetchedRules);
-        setForms(fetchedForms);
-      })
+      .then(
+        ([
+          fetchedConnections,
+          fetchedRules,
+          fetchedForms,
+          fetchedCategories,
+          fetchedMembers,
+          fetchedQuota,
+        ]) => {
+          if (!active) return;
+          setConnections(fetchedConnections);
+          setAlertRules(fetchedRules);
+          setForms(fetchedForms);
+          setCategories(fetchedCategories || []);
+          setMembers(fetchedMembers || []);
+          setQuota(fetchedQuota || null);
+        }
+      )
       .catch(() => {
         if (active) {
           toast.error("Failed to load integrations and alert rules");
@@ -188,6 +241,24 @@ export function WorkspaceIntegrationsTab({
       active = false;
     };
   }, [workspaceId]);
+
+  function getDefaultOwnerEmail(): string {
+    const owner =
+      members.find((m) => m.role_slug === "owner") || members[0];
+    return owner?.email || "";
+  }
+
+  async function refreshQuota() {
+    if (!notificationsRepository.getQuota) return;
+    try {
+      const updatedQuota = await notificationsRepository.getQuota(workspaceId);
+      if (updatedQuota) {
+        setQuota(updatedQuota);
+      }
+    } catch {
+      // Keep existing quota display if refresh fails transiently
+    }
+  }
 
   // Connection Handlers
   async function handleConnectSlackOAuth() {
@@ -206,8 +277,15 @@ export function WorkspaceIntegrationsTab({
   function openAddConnection(defaultProvider: ProviderType = "slack_webhook") {
     setEditingConnection(null);
     setConnProvider(defaultProvider);
-    setConnName("");
-    setConnUrl("");
+    if (defaultProvider === "email_alert") {
+      setConnName("Owner Email Alerts");
+      setConnUrl(getDefaultOwnerEmail());
+      setAutoCreateStarterRule(true);
+    } else {
+      setConnName("");
+      setConnUrl("");
+      setAutoCreateStarterRule(false);
+    }
     setConnSecret("");
     setIsConnectionModalOpen(true);
   }
@@ -218,6 +296,7 @@ export function WorkspaceIntegrationsTab({
     setConnName(conn.name);
     setConnUrl(""); // Don't prefill masked URL, operator can leave blank to keep unchanged
     setConnSecret("");
+    setAutoCreateStarterRule(false);
     setIsConnectionModalOpen(true);
   }
 
@@ -272,7 +351,29 @@ export function WorkspaceIntegrationsTab({
           payload
         );
         setConnections((prev) => [created, ...prev]);
+
+        if (autoCreateStarterRule && notificationsRepository.createAlertRule) {
+          try {
+            const starterRule = await notificationsRepository.createAlertRule(
+              workspaceId,
+              {
+                name: `${connName.trim()} (Low Ratings ≤ 3★)`,
+                connection_id: created.id,
+                trigger_type: "detractors_only",
+                form_ids: null,
+                category_ids: null,
+                include_customer_email: true,
+              }
+            );
+            if (starterRule) {
+              setAlertRules((prev) => [starterRule, ...prev]);
+            }
+          } catch {
+            // Connection succeeded; rule can still be added manually if rule quota reached
+          }
+        }
         toast.success(`${providerMeta.shortLabel} connected!`);
+        void refreshQuota();
       }
       setIsConnectionModalOpen(false);
     } catch (err: unknown) {
@@ -384,7 +485,7 @@ export function WorkspaceIntegrationsTab({
   // Alert Rule Handlers
   function openAddRule() {
     if (connections.length === 0) {
-      toast.error("Connect a Slack channel first before adding alert rules");
+      toast.error("Connect a channel first before adding alert rules");
       return;
     }
     setEditingRule(null);
@@ -393,6 +494,8 @@ export function WorkspaceIntegrationsTab({
     setRuleTrigger("detractors_only");
     setRuleFormScope("all");
     setRuleSelectedForms([]);
+    setRuleCategoryScope("all");
+    setRuleSelectedCategories([]);
     setRuleIncludeEmail(true);
     setIsRuleModalOpen(true);
   }
@@ -409,6 +512,13 @@ export function WorkspaceIntegrationsTab({
       setRuleFormScope("all");
       setRuleSelectedForms([]);
     }
+    if (rule.category_ids && rule.category_ids.length > 0) {
+      setRuleCategoryScope("selected");
+      setRuleSelectedCategories(rule.category_ids);
+    } else {
+      setRuleCategoryScope("all");
+      setRuleSelectedCategories([]);
+    }
     setRuleIncludeEmail(rule.include_customer_email);
     setIsRuleModalOpen(true);
   }
@@ -420,11 +530,20 @@ export function WorkspaceIntegrationsTab({
       return;
     }
     if (!ruleConnId) {
-      toast.error("Please select a destination Slack channel");
+      toast.error("Please select a destination channel");
       return;
     }
     if (ruleFormScope === "selected" && ruleSelectedForms.length === 0) {
       toast.error("Please select at least one form or choose 'All Forms'");
+      return;
+    }
+    if (
+      ruleCategoryScope === "selected" &&
+      ruleSelectedCategories.length === 0
+    ) {
+      toast.error(
+        "Please select at least one category or choose 'All Categories'"
+      );
       return;
     }
 
@@ -432,6 +551,8 @@ export function WorkspaceIntegrationsTab({
     try {
       const targetFormIds =
         ruleFormScope === "all" ? null : ruleSelectedForms;
+      const targetCategoryIds =
+        ruleCategoryScope === "all" ? null : ruleSelectedCategories;
 
       if (editingRule) {
         const payload: AlertRuleUpdate = {
@@ -439,6 +560,10 @@ export function WorkspaceIntegrationsTab({
           connection_id: ruleConnId,
           trigger_type: ruleTrigger,
           form_ids: targetFormIds,
+          ...(targetCategoryIds !== null ||
+          (editingRule.category_ids && editingRule.category_ids.length > 0)
+            ? { category_ids: targetCategoryIds }
+            : {}),
           include_customer_email: ruleIncludeEmail,
         };
         const updated = await notificationsRepository.updateAlertRule(
@@ -456,6 +581,9 @@ export function WorkspaceIntegrationsTab({
           connection_id: ruleConnId,
           trigger_type: ruleTrigger,
           form_ids: targetFormIds,
+          ...(targetCategoryIds !== null
+            ? { category_ids: targetCategoryIds }
+            : {}),
           include_customer_email: ruleIncludeEmail,
         };
         const created = await notificationsRepository.createAlertRule(
@@ -464,6 +592,7 @@ export function WorkspaceIntegrationsTab({
         );
         setAlertRules((prev) => [created, ...prev]);
         toast.success("Alert rule created!");
+        void refreshQuota();
       }
       setIsRuleModalOpen(false);
     } catch (err: unknown) {
@@ -515,6 +644,7 @@ export function WorkspaceIntegrationsTab({
         setAlertRules((prev) => prev.filter((r) => r.id !== deleteTarget.id));
         toast.success("Alert rule deleted");
       }
+      void refreshQuota();
       setDeleteTarget(null);
     } catch {
       toast.error("Failed to delete target");
@@ -588,6 +718,14 @@ export function WorkspaceIntegrationsTab({
             Add to Slack
           </button>
           <button
+            onClick={() => openAddConnection("email_alert")}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition cursor-pointer"
+            title="Receive instant email notifications on negative feedback"
+          >
+            <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            Email Alerts
+          </button>
+          <button
             onClick={() => openAddConnection("slack_webhook")}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition cursor-pointer"
             title="Connect Slack, Discord, or custom JSON webhook"
@@ -605,6 +743,58 @@ export function WorkspaceIntegrationsTab({
           </button>
         </div>
       </div>
+
+      {/* PLAN QUOTA USAGE STRIP */}
+      {quota && (
+        <div className="p-4 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <span
+              className={`px-2.5 py-1 rounded-full font-semibold uppercase tracking-wide ${
+                quota.plan_tier === "pro"
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                  : "bg-muted text-foreground border border-border"
+              }`}
+            >
+              {quota.plan_tier === "pro" ? "Pro Plan" : "Free Plan"}
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              Email Alerts:{" "}
+              <strong className="text-foreground">
+                {quota.monthly_email_used} / {quota.monthly_email_limit}
+              </strong>{" "}
+              this cycle
+            </span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground tabular-nums">
+              Webhook Alerts:{" "}
+              <strong className="text-foreground">
+                {quota.monthly_webhook_used} / {quota.monthly_webhook_limit}
+              </strong>
+            </span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground tabular-nums">
+              Channels:{" "}
+              <strong className="text-foreground">
+                {quota.connections_used} / {quota.max_connections}
+              </strong>
+            </span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground tabular-nums">
+              Rules:{" "}
+              <strong className="text-foreground">
+                {quota.alert_rules_used} / {quota.max_alert_rules}
+              </strong>
+            </span>
+          </div>
+          {quota.plan_tier === "free" &&
+            (quota.monthly_email_used >= quota.monthly_email_limit ||
+              quota.monthly_webhook_used >= quota.monthly_webhook_limit) && (
+              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                Free alert limit reached — upgrade to Pro for higher limits.
+              </span>
+            )}
+        </div>
+      )}
 
       {/* SECTION 1: SLACK CONNECTIONS */}
       <div className="space-y-4">
@@ -676,6 +866,13 @@ export function WorkspaceIntegrationsTab({
                 1-Click Add to Slack
               </button>
               <button
+                onClick={() => openAddConnection("email_alert")}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition cursor-pointer"
+              >
+                <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                Email Alerts to Me
+              </button>
+              <button
                 onClick={() => openAddConnection("discord_webhook")}
                 className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-[#5865F2] hover:bg-[#4752C4] text-white transition shadow-sm cursor-pointer"
               >
@@ -714,6 +911,10 @@ export function WorkspaceIntegrationsTab({
                       ) : conn.provider_type === "generic_webhook" ? (
                         <div className="w-9 h-9 rounded-lg bg-slate-500/10 dark:bg-slate-400/15 text-slate-700 dark:text-slate-300 flex items-center justify-center">
                           <Webhook className="w-4 h-4" />
+                        </div>
+                      ) : conn.provider_type === "email_alert" ? (
+                        <div className="w-9 h-9 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                          <Mail className="w-4 h-4" />
                         </div>
                       ) : (
                         <div className="w-9 h-9 rounded-lg bg-[#4A154B]/10 dark:bg-[#4A154B]/20 text-[#4A154B] dark:text-[#E01E5A] flex items-center justify-center font-bold text-lg">
@@ -895,6 +1096,7 @@ export function WorkspaceIntegrationsTab({
                   <th className="px-4 py-3">Rule Name</th>
                   <th className="px-4 py-3">Condition</th>
                   <th className="px-4 py-3">Form Scope</th>
+                  <th className="px-4 py-3">Categories</th>
                   <th className="px-4 py-3">Destination Channel</th>
                   <th className="px-4 py-3">Privacy</th>
                   <th className="px-4 py-3">Status</th>
@@ -933,6 +1135,15 @@ export function WorkspaceIntegrationsTab({
                           <span>{rule.form_ids.length} specific forms</span>
                         )}
                       </td>
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                        {!rule.category_ids || rule.category_ids.length === 0 ? (
+                          <span className="font-medium text-foreground">
+                            All Categories
+                          </span>
+                        ) : (
+                          <span>{rule.category_ids.length} selected</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3.5 text-xs font-medium text-foreground">
                         {(() => {
                           const targetConn = connections.find(
@@ -943,6 +1154,8 @@ export function WorkspaceIntegrationsTab({
                               ? "Discord"
                               : targetConn?.provider_type === "generic_webhook"
                               ? "Webhook"
+                              : targetConn?.provider_type === "email_alert"
+                              ? "Email"
                               : "Slack";
                           return (
                             <span className="inline-flex items-center gap-1.5">
@@ -1035,9 +1248,14 @@ export function WorkspaceIntegrationsTab({
               </div>
 
               {!editingConnection && (
-                <div className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-muted/60 border border-border">
+                <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-muted/60 border border-border">
                   {(
-                    ["slack_webhook", "discord_webhook", "generic_webhook"] as ProviderType[]
+                    [
+                      "slack_webhook",
+                      "discord_webhook",
+                      "generic_webhook",
+                      "email_alert",
+                    ] as ProviderType[]
                   ).map((ptype) => {
                     const cfg = PROVIDER_CONFIG[ptype];
                     const isSelected = connProvider === ptype;
@@ -1047,10 +1265,19 @@ export function WorkspaceIntegrationsTab({
                         type="button"
                         onClick={() => {
                           setConnProvider(ptype);
-                          setConnUrl("");
                           setConnSecret("");
+                          if (ptype === "email_alert") {
+                            if (!connName.trim()) {
+                              setConnName("Owner Email Alerts");
+                            }
+                            setConnUrl(getDefaultOwnerEmail());
+                            setAutoCreateStarterRule(true);
+                          } else {
+                            setConnUrl("");
+                            setAutoCreateStarterRule(false);
+                          }
                         }}
-                        className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                        className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                           isSelected
                             ? "bg-background text-foreground shadow-sm border border-border"
                             : "text-muted-foreground hover:text-foreground"
@@ -1060,6 +1287,8 @@ export function WorkspaceIntegrationsTab({
                           <MessageSquare className="w-3.5 h-3.5 text-[#5865F2]" />
                         ) : ptype === "generic_webhook" ? (
                           <Globe className="w-3.5 h-3.5 text-slate-500" />
+                        ) : ptype === "email_alert" ? (
+                          <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         ) : (
                           <span className="font-bold text-[#4A154B] dark:text-[#E01E5A]">
                             #
@@ -1103,22 +1332,67 @@ export function WorkspaceIntegrationsTab({
                       </a>
                     )}
                   </div>
-                  <input
-                    type="url"
-                    placeholder={
-                      editingConnection
-                        ? "Leave blank to keep existing webhook URL"
-                        : providerMeta.urlPlaceholder
-                    }
-                    value={connUrl}
-                    onChange={(e) => setConnUrl(e.target.value)}
-                    className="w-full px-3.5 py-2 text-sm font-mono rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    required={!editingConnection}
-                  />
+                  {activeProvider === "email_alert" && members.length > 0 ? (
+                    <select
+                      aria-label="Workspace Member Recipient"
+                      value={connUrl}
+                      onChange={(e) => setConnUrl(e.target.value)}
+                      className="w-full px-3.5 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      required={!editingConnection}
+                    >
+                      {editingConnection && (
+                        <option value="">
+                          Keep existing recipient ({editingConnection.destination_url_masked})
+                        </option>
+                      )}
+                      {members.map((m) => (
+                        <option key={m.user_id} value={m.email}>
+                          {m.full_name ? `${m.full_name} (${m.email})` : m.email} •{" "}
+                          {m.role_name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={activeProvider === "email_alert" ? "email" : "url"}
+                      placeholder={
+                        editingConnection
+                          ? "Leave blank to keep existing destination"
+                          : providerMeta.urlPlaceholder
+                      }
+                      value={connUrl}
+                      onChange={(e) => setConnUrl(e.target.value)}
+                      className="w-full px-3.5 py-2 text-sm font-mono rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      required={!editingConnection}
+                    />
+                  )}
                   <p className="text-[11px] text-muted-foreground">
                     {providerMeta.urlHint}
                   </p>
                 </div>
+
+                {!editingConnection && (
+                  <div className="p-3 rounded-xl border border-border bg-muted/30">
+                    <label className="flex items-start gap-2.5 text-xs text-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoCreateStarterRule}
+                        onChange={(e) =>
+                          setAutoCreateStarterRule(e.target.checked)
+                        }
+                        className="mt-0.5 rounded text-primary focus:ring-primary"
+                      />
+                      <span>
+                        <strong className="font-semibold">
+                          Automatically alert on negative feedback (≤ 3★)
+                        </strong>
+                        <span className="block text-[11px] text-muted-foreground mt-0.5">
+                          Creates a starter alert rule across all forms and categories immediately so you don&apos;t miss unhappy customers.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                )}
 
                 {activeProvider === "generic_webhook" && (
                   <div className="space-y-1.5">
@@ -1158,7 +1432,9 @@ export function WorkspaceIntegrationsTab({
                       ) : (
                         <Send className="w-3.5 h-3.5" />
                       )}
-                      Test Webhook URL
+                      {activeProvider === "email_alert"
+                        ? "Send Test Email"
+                        : "Test Webhook URL"}
                     </button>
                   </div>
                 )}
@@ -1238,6 +1514,8 @@ export function WorkspaceIntegrationsTab({
                         ? "Discord"
                         : c.provider_type === "generic_webhook"
                         ? "Webhook"
+                        : c.provider_type === "email_alert"
+                        ? "Email"
                         : "Slack";
                     return (
                       <option key={c.id} value={c.id}>
@@ -1343,6 +1621,75 @@ export function WorkspaceIntegrationsTab({
                         <span className="truncate">{f.title || f.name}</span>
                       </label>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Category Filter Selection */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground">
+                  Which Categories? (Category Filter)
+                </label>
+                <div className="flex items-center gap-4 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="categoryScope"
+                      checked={ruleCategoryScope === "all"}
+                      onChange={() => setRuleCategoryScope("all")}
+                      className="text-primary focus:ring-primary"
+                    />
+                    <span>All categories</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="categoryScope"
+                      checked={ruleCategoryScope === "selected"}
+                      onChange={() => setRuleCategoryScope("selected")}
+                      className="text-primary focus:ring-primary"
+                    />
+                    <span>Selected categories</span>
+                  </label>
+                </div>
+
+                {ruleCategoryScope === "selected" && (
+                  <div className="max-h-36 overflow-y-auto p-2.5 rounded-lg border border-border bg-muted/20 space-y-1.5">
+                    {categories.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        No categories found in this workspace.
+                      </p>
+                    ) : (
+                      categories.map((cat) => (
+                        <label
+                          key={cat.id}
+                          className="flex items-center gap-2 text-xs text-foreground cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={ruleSelectedCategories.includes(cat.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setRuleSelectedCategories((prev) => [
+                                  ...prev,
+                                  cat.id,
+                                ]);
+                              } else {
+                                setRuleSelectedCategories((prev) =>
+                                  prev.filter((id) => id !== cat.id)
+                                );
+                              }
+                            }}
+                            className="rounded text-primary focus:ring-primary"
+                          />
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: cat.color || "#64748b" }}
+                          />
+                          <span className="truncate">{cat.name}</span>
+                        </label>
+                      ))
+                    )}
                   </div>
                 )}
               </div>

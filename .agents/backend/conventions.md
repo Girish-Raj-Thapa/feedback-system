@@ -32,11 +32,12 @@ Scope: `backend/`. Formatter and linter handle style; this file covers judgment 
 - Never expose secrets or internal fields (hashes, tokens, audit internals) in Read schemas.
 
 ## Database access
+- All SQLAlchemy queries (`select()`, `update()`, `session.get()`) live strictly inside `repositories/`. Services must call repository methods and never issue inline SQL directly.
 - Load relationships explicitly (`selectinload`, `joinedload`). Why: async sessions raise on lazy loads.
-- Avoid N+1: fetch related rows in the same query, not in loops.
+- Avoid N+1 and chatty SQL round-trips: validate ID lists via a single `WHERE id IN (...)` query, and consolidate related counts into one aggregated query (`func.count().filter(...)` or scalar subqueries) instead of multiple separate `COUNT(*)` calls or loops.
 - Every list endpoint is paginated. Pagination shape: limit/offset.
 - IDs: UUID. Timestamps: timezone-aware UTC only.
-- Select only what you need. No `SELECT *` equivalents on wide tables for list views.
+- Select only what you need (`select(Model.col)` or scalar subqueries). No `SELECT *` equivalents on wide tables for count/lookup checks.
 
 ## Error handling
 - Raise the most specific domain exception. Messages are user-safe: no SQL, stack traces or internal paths.

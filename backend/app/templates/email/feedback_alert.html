@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subject_title }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+  <span style="display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; {% if is_detractor %}background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;{% else %}background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;{% endif %}">
+    {{ badge_label }}
+  </span>
+</div>
+
+<h2 style="margin: 0 0 8px; font-size: 18px; font-weight: 700; color: #0f172a;">
+  {{ header_text }}
+</h2>
+
+{% if is_test %}
+<p style="margin: 0 0 20px; font-size: 14px; color: #475569; line-height: 1.6;">
+  Your workspace email alert channel for <strong>{{ workspace_name }}</strong> is verified and active. Instant customer feedback notifications matching your alert rules will be delivered to this inbox.
+</p>
+{% else %}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 16px 0 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+  <tr>
+    <td style="padding: 8px 12px; font-size: 13px; color: #64748b; width: 34%;">Rating</td>
+    <td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #0f172a;">{{ score_text }}</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px 12px; font-size: 13px; color: #64748b;">Category</td>
+    <td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #0f172a;">{{ category_display }}</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px 12px; font-size: 13px; color: #64748b;">Sentiment</td>
+    <td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #0f172a;">{{ sentiment_display }}</td>
+  </tr>
+  {% if customer_email %}
+  <tr>
+    <td style="padding: 8px 12px; font-size: 13px; color: #64748b;">Customer</td>
+    <td style="padding: 8px 12px; font-size: 13px; color: #0f172a;">
+      {% if customer_name %}{{ customer_name }} ({{ customer_email }}){% else %}{{ customer_email }}{% endif %}
+    </td>
+  </tr>
+  {% endif %}
+  {% if plan_tier %}
+  <tr>
+    <td style="padding: 8px 12px; font-size: 13px; color: #64748b;">Plan Tier</td>
+    <td style="padding: 8px 12px; font-size: 13px; color: #0f172a;">{{ plan_tier }}</td>
+  </tr>
+  {% endif %}
+  {% if ref %}
+  <tr>
+    <td style="padding: 8px 12px; font-size: 13px; color: #64748b;">Source</td>
+    <td style="padding: 8px 12px; font-size: 13px; color: #0f172a;">{{ ref }}</td>
+  </tr>
+  {% endif %}
+</table>
+
+{% if comment_text %}
+<div style="margin: 0 0 24px; padding: 14px 16px; border-left: 3px solid {% if is_detractor %}#ef4444{% else %}#10b981{% endif %}; background-color: #f8fafc; border-radius: 0 8px 8px 0;">
+  <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b;">
+    Customer Comment
+  </p>
+  <p style="margin: 0; font-size: 14px; color: #1e293b; line-height: 1.6; white-space: pre-wrap;">{{ comment_text }}</p>
+</div>
+{% else %}
+<p style="margin: 0 0 24px; font-size: 13px; font-style: italic; color: #64748b;">
+  No written comment was provided with this rating.
+</p>
+{% endif %}
+
+{% if triage_url %}
+<div style="margin-top: 24px;">
+  <a href="{{ triage_url }}" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 13px; font-weight: 600; text-decoration: none; padding: 10px 18px; border-radius: 8px;">
+    Open in Triage Inbox &rarr;
+  </a>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

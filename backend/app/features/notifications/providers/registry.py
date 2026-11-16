@@ -7,6 +7,7 @@ from typing import ClassVar
 
 from app.features.notifications.providers.base import BaseNotificationProvider
 from app.features.notifications.providers.discord import DiscordWebhookProvider
+from app.features.notifications.providers.email import EmailAlertProvider
 from app.features.notifications.providers.generic import GenericWebhookProvider
 from app.features.notifications.providers.slack import SlackWebhookProvider
 
@@ -24,6 +25,7 @@ class ProviderRegistry:
         self.register(SlackWebhookProvider())
         self.register(DiscordWebhookProvider())
         self.register(GenericWebhookProvider())
+        self.register(EmailAlertProvider())
 
     @classmethod
     def get_instance(cls) -> "ProviderRegistry":

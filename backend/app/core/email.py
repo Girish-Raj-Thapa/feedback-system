@@ -47,7 +47,7 @@ def render_email_template(template_name: str, **context: Any) -> str:
     return template.render(**context)
 
 
-def _send_smtp(message: EmailMessage) -> None:
+def _send_smtp(message: EmailMessage, *, raise_on_error: bool = False) -> None:
     try:
         with smtplib.SMTP(
             host=settings.SMTP_HOST,
@@ -66,7 +66,7 @@ def _send_smtp(message: EmailMessage) -> None:
             recipient=message["To"],
             subject=message["Subject"],
         )
-        if settings.is_production:
+        if settings.is_production or raise_on_error:
             raise
 
 
@@ -74,6 +74,8 @@ async def send_email(
     to_email: str,
     subject: str,
     html_content: str,
+    *,
+    raise_on_error: bool = False,
 ) -> None:
     """
     Send an HTML email asynchronously via the configured SMTP server.
@@ -84,4 +86,4 @@ async def send_email(
     message["Subject"] = subject
     message.set_content(html_content, subtype="html")
 
-    await asyncio.to_thread(_send_smtp, message)
+    await asyncio.to_thread(_send_smtp, message, raise_on_error=raise_on_error)

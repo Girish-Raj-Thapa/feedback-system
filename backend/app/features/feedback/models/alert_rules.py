@@ -76,6 +76,12 @@ class AlertRule(Base):
         nullable=True,
         default=None,
     )
+    # category_ids: None means all categories; list of UUID strings filters by category
+    category_ids: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=None,
+    )
 
     # ─── Privacy Controls ────────────────────────────────────────────────────────
     include_customer_email: Mapped[bool] = mapped_column(

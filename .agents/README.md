@@ -2,11 +2,12 @@
 
 Documentation is tool-neutral, structured by area, and designed so any autonomous AI coding agent can immediately understand architecture, rules, and workflows without scanning the entire codebase.
 
-## Knowledge Graph (Graphify)
-The codebase is fully indexed into a persistent knowledge graph in `graphify-out/`:
-- **Query the codebase:** `graphify query "<question>"` (BFS semantic traversal)
+## Knowledge Graph (Graphify — Query First!)
+The codebase is indexed into a persistent knowledge graph in `graphify-out/`. Whenever `graphify-out/graph.json` exists, **treat codebase exploration as a Graphify query first** before reaching for `grep`:
+- **Query architecture & callers:** `graphify query "<question>"` (BFS semantic traversal; use `--dfs` to trace call chains)
 - **Trace connections:** `graphify path "<SymbolA>" "<SymbolB>"`
 - **Explain concepts:** `graphify explain "<Symbol>"`
+- **When to use `grep`:** Reserve `grep` / `rg` for exact literal strings (URLs, error text, env keys) or pinpointing exact line numbers before `read_file`.
 - **Update after code changes:** `graphify update .` (fast, no API cost)
 - **Visual report:** `graphify-out/graph.html` and `graphify-out/GRAPH_REPORT.md`
 

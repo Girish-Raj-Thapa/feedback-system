@@ -349,3 +349,63 @@ async def test_find_matching_rules_service_query() -> None:
             sub_promoter, conn.workspace_id
         )
         assert len(matches_empty) == 0
+
+
+@pytest.mark.asyncio
+async def test_alert_evaluator_category_filtering() -> None:
+    """Verify rule with specific category_ids only matches submissions in those categories."""
+    session = AsyncMock()
+    evaluator = AlertEvaluatorService(session)
+
+    bugs_cat_id = uuid4()
+    pricing_cat_id = uuid4()
+    ux_cat_id = uuid4()
+
+    conn = NotificationConnection(
+        id=uuid4(),
+        workspace_id=uuid4(),
+        name="Bugs Channel",
+        provider_type="slack_webhook",
+        destination_url="https://hooks.slack.com/services/T1/B2/token",
+        is_active=True,
+        health_status="healthy",
+    )
+
+    rule = AlertRule(
+        workspace_id=conn.workspace_id,
+        connection_id=conn.id,
+        name="Bugs & Pricing Alerts",
+        is_active=True,
+        trigger_type="all_feedback",
+        form_ids=None,
+        category_ids=[str(bugs_cat_id), str(pricing_cat_id)],
+    )
+    rule.connection = conn
+
+    # 1. Matching category (bugs_cat_id) -> Match
+    sub_bugs = MagicMock(spec=FeedbackSubmission)
+    sub_bugs.form_id = uuid4()
+    sub_bugs.category_id = bugs_cat_id
+    sub_bugs.rating = 2
+    sub_bugs.rating_scale_type = "5_star"
+    sub_bugs.sentiment = "negative"
+    assert evaluator._matches(sub_bugs, rule) is True
+
+    # 2. Non-matching category (ux_cat_id) -> No Match
+    sub_ux = MagicMock(spec=FeedbackSubmission)
+    sub_ux.form_id = uuid4()
+    sub_ux.category_id = ux_cat_id
+    sub_ux.rating = 2
+    sub_ux.rating_scale_type = "5_star"
+    sub_ux.sentiment = "negative"
+    assert evaluator._matches(sub_ux, rule) is False
+
+    # 3. Uncategorized submission (category_id=None) -> No Match when category filter is set
+    sub_none = MagicMock(spec=FeedbackSubmission)
+    sub_none.form_id = uuid4()
+    sub_none.category_id = None
+    sub_none.rating = 1
+    sub_none.rating_scale_type = "5_star"
+    sub_none.sentiment = "negative"
+    assert evaluator._matches(sub_none, rule) is False
+

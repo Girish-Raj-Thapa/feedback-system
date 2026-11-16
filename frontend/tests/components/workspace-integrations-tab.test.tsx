@@ -1,21 +1,30 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { WorkspaceIntegrationsTab } from "@/components/workspace/workspace-integrations-tab";
+import { authRepository } from "@/repositories/auth.repository";
 import { feedbackRepository } from "@/repositories/feedback.repository";
 import { notificationsRepository } from "@/repositories/notifications.repository";
-import type { FeedbackForm } from "@/types/feedback";
+import type { FeedbackCategory, FeedbackForm } from "@/types/feedback";
 import type {
   AlertRule,
   NotificationConnection,
 } from "@/types/notifications";
 
+vi.mock("@/repositories/auth.repository", () => ({
+  authRepository: {
+    listWorkspaceMembers: vi.fn(),
+  },
+}));
+
 vi.mock("@/repositories/feedback.repository", () => ({
   feedbackRepository: {
     listForms: vi.fn(),
+    listCategories: vi.fn(),
   },
 }));
 
 vi.mock("@/repositories/notifications.repository", () => ({
   notificationsRepository: {
+    getQuota: vi.fn(),
     listConnections: vi.fn(),
     getConnection: vi.fn(),
     getSlackAuthorizeUrl: vi.fn(),
@@ -107,6 +116,39 @@ describe("WorkspaceIntegrationsTab", () => {
     },
   ];
 
+  const mockCategories: FeedbackCategory[] = [
+    {
+      id: "cat-bugs",
+      workspace_id: workspaceId,
+      name: "Bugs & Quality",
+      slug: "bugs-quality",
+      description: "Product bugs",
+      color: "#ef4444",
+      icon: "bug",
+      keywords: ["bug", "crash"],
+      display_order: 1,
+      is_active: true,
+      is_uncategorized: false,
+      created_at: "2026-11-06T08:00:00Z",
+      updated_at: "2026-11-06T08:00:00Z",
+    },
+    {
+      id: "cat-pricing",
+      workspace_id: workspaceId,
+      name: "Pricing & Billing",
+      slug: "pricing-billing",
+      description: "Billing questions",
+      color: "#f59e0b",
+      icon: "dollar",
+      keywords: ["price", "invoice"],
+      display_order: 2,
+      is_active: true,
+      is_uncategorized: false,
+      created_at: "2026-11-06T08:00:00Z",
+      updated_at: "2026-11-06T08:00:00Z",
+    },
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(notificationsRepository.listConnections).mockResolvedValue(
@@ -116,6 +158,40 @@ describe("WorkspaceIntegrationsTab", () => {
       mockAlertRules
     );
     vi.mocked(feedbackRepository.listForms).mockResolvedValue(mockForms);
+    vi.mocked(feedbackRepository.listCategories).mockResolvedValue(
+      mockCategories
+    );
+    vi.mocked(authRepository.listWorkspaceMembers).mockResolvedValue([
+      {
+        id: "mem-1",
+        workspace_id: workspaceId,
+        user_id: "usr-1",
+        email: "owner@acme.com",
+        full_name: "Alex Founder",
+        role_id: "role-1",
+        role_name: "Owner",
+        role_slug: "owner",
+        overrides: {},
+        effective_permissions: ["webhooks:manage"],
+        created_at: "2026-11-06T08:00:00Z",
+      },
+    ]);
+    vi.mocked(notificationsRepository.getQuota).mockResolvedValue({
+      plan_tier: "free",
+      max_connections: 2,
+      connections_used: 1,
+      max_alert_rules: 2,
+      alert_rules_used: 1,
+      monthly_email_limit: 25,
+      monthly_email_used: 4,
+      monthly_webhook_limit: 100,
+      monthly_webhook_used: 18,
+      hourly_email_burst_limit: 10,
+      hourly_email_used: 0,
+      hourly_webhook_burst_limit: 30,
+      hourly_webhook_used: 0,
+      cycle_starts_at: "2026-11-01T00:00:00Z",
+    });
   });
 
   it("renders connections and alert rules correctly", async () => {
@@ -395,6 +471,149 @@ describe("WorkspaceIntegrationsTab", () => {
         }
       );
       expect(screen.getByText("HMAC Signed")).toBeInTheDocument();
+    });
+  });
+
+  it("creates an Email Alerts connection defaulting to Workspace Owner and auto-creates a starter rule", async () => {
+    const emailConn: NotificationConnection = {
+      id: "conn-email",
+      workspace_id: workspaceId,
+      name: "Owner Email Alerts",
+      provider_type: "email_alert",
+      connection_method: "manual",
+      destination_url_masked: "ow***@acme.com",
+      has_secret_token: false,
+      is_active: true,
+      health_status: "healthy",
+      failure_reason: null,
+      consecutive_failures: 0,
+      provider_metadata: null,
+      last_dispatched_at: null,
+      created_at: "2026-11-16T10:00:00Z",
+      updated_at: "2026-11-16T10:00:00Z",
+    };
+    const starterRule: AlertRule = {
+      id: "rule-email",
+      workspace_id: workspaceId,
+      connection_id: "conn-email",
+      name: "Owner Email Alerts (Low Ratings ≤ 3★)",
+      trigger_type: "detractors_only",
+      form_ids: null,
+      category_ids: null,
+      include_customer_email: true,
+      is_active: true,
+      connection_name: "Owner Email Alerts",
+      connection_health: "healthy",
+      created_at: "2026-11-16T10:00:00Z",
+      updated_at: "2026-11-16T10:00:00Z",
+    };
+    vi.mocked(notificationsRepository.createConnection).mockResolvedValue(
+      emailConn
+    );
+    vi.mocked(notificationsRepository.createAlertRule).mockResolvedValue(
+      starterRule
+    );
+
+    render(<WorkspaceIntegrationsTab workspaceId={workspaceId} isOwner={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Free Plan")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /^Email Alerts$/i })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Email Alerts$/i }));
+
+    // Recipient select is pre-populated with Workspace Owner email and starter rule checkbox is checked
+    const recipientSelect = screen.getByLabelText("Workspace Member Recipient");
+    expect(recipientSelect).toHaveValue("owner@acme.com");
+    expect(
+      screen.getByRole("button", { name: /Send Test Email/i })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Connect Channel"));
+
+    await waitFor(() => {
+      expect(notificationsRepository.createConnection).toHaveBeenCalledWith(
+        workspaceId,
+        {
+          name: "Owner Email Alerts",
+          provider_type: "email_alert",
+          destination_url: "owner@acme.com",
+        }
+      );
+      expect(notificationsRepository.createAlertRule).toHaveBeenCalledWith(
+        workspaceId,
+        {
+          name: "Owner Email Alerts (Low Ratings ≤ 3★)",
+          connection_id: "conn-email",
+          trigger_type: "detractors_only",
+          form_ids: null,
+          category_ids: null,
+          include_customer_email: true,
+        }
+      );
+      expect(screen.getByText("Email Alert")).toBeInTheDocument();
+      // Initial mount + refresh after connection creation
+      expect(notificationsRepository.getQuota).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("creates an alert rule filtered by selected categories", async () => {
+    const newRule: AlertRule = {
+      id: "rule-cat",
+      workspace_id: workspaceId,
+      connection_id: "conn-1",
+      name: "Bugs Only Alert",
+      trigger_type: "detractors_only",
+      form_ids: null,
+      category_ids: ["cat-bugs"],
+      include_customer_email: true,
+      is_active: true,
+      connection_name: "churn-alerts",
+      connection_health: "healthy",
+      created_at: "2026-11-16T10:05:00Z",
+      updated_at: "2026-11-16T10:05:00Z",
+    };
+    vi.mocked(notificationsRepository.createAlertRule).mockResolvedValue(
+      newRule
+    );
+
+    render(<WorkspaceIntegrationsTab workspaceId={workspaceId} isOwner={true} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /New Alert Rule/i })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /New Alert Rule/i }));
+
+    const ruleNameInput = screen.getByPlaceholderText(
+      "e.g. Critical Detractor Alerts"
+    );
+    fireEvent.change(ruleNameInput, { target: { value: "Bugs Only Alert" } });
+
+    // Switch Category Filter to "Selected categories" and check "Bugs & Quality"
+    fireEvent.click(screen.getByLabelText("Selected categories"));
+    fireEvent.click(screen.getByLabelText("Bugs & Quality"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Create Rule" }));
+
+    await waitFor(() => {
+      expect(notificationsRepository.createAlertRule).toHaveBeenCalledWith(
+        workspaceId,
+        {
+          name: "Bugs Only Alert",
+          connection_id: "conn-1",
+          trigger_type: "detractors_only",
+          form_ids: null,
+          category_ids: ["cat-bugs"],
+          include_customer_email: true,
+        }
+      );
+      expect(screen.getByText("1 selected")).toBeInTheDocument();
     });
   });
 });

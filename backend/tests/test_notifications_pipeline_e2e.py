@@ -4,6 +4,7 @@ Tests submission alert evaluation -> outbox delivery persistence -> provider dis
 Verifies cross-module imports and mappers across the full lifecycle.
 """
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -65,6 +66,7 @@ async def test_full_pipeline_evaluation_to_slack_delivery_success() -> None:
     conn.destination_url = "https://hooks.slack.com/services/T111/B222/token999"
     conn.secret_token = None
     conn.paused_until = None
+    rule.connection = conn
 
     # Setup Delivery
     delivery = OutboundDelivery(
@@ -87,8 +89,29 @@ async def test_full_pipeline_evaluation_to_slack_delivery_success() -> None:
     mock_evaluator = AsyncMock()
     mock_evaluator.find_matching_rules.return_value = [rule]
 
+    from app.features.notifications.services.quota_service import (
+        PLAN_QUOTA_MATRIX,
+        WorkspaceNotificationQuotaStatus,
+    )
+
     mock_delivery_service = AsyncMock()
     mock_delivery_service.create_delivery_in_tx.return_value = delivery
+
+    mock_quota_service = MagicMock()
+    mock_quota_service.get_quota_status = AsyncMock(
+        return_value=WorkspaceNotificationQuotaStatus(
+            plan_tier="free",
+            limits=PLAN_QUOTA_MATRIX["free"],
+            connections_used=1,
+            alert_rules_used=1,
+            monthly_email_used=0,
+            monthly_webhook_used=0,
+            hourly_email_used=0,
+            hourly_webhook_used=0,
+            cycle_starts_at=datetime.now(UTC),
+        )
+    )
+    mock_quota_service.check_dispatch_budget.return_value = (True, None)
 
     # 2. Mock DB Session for Phase 2 (Dispatch)
     dispatch_session = AsyncMock()
@@ -123,6 +146,10 @@ async def test_full_pipeline_evaluation_to_slack_delivery_success() -> None:
         patch(
             "app.features.feedback.tasks.NotificationDeliveryService",
             return_value=mock_delivery_service,
+        ),
+        patch(
+            "app.features.notifications.services.quota_service.NotificationQuotaService",
+            return_value=mock_quota_service,
         ),
         patch(
             "app.features.feedback.tasks.dispatch_outbound_delivery_task.kiq",

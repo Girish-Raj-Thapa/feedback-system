@@ -25,6 +25,10 @@ from app.features.notifications.schemas import (
     NotificationConnectionCreate,
     NotificationConnectionUpdate,
 )
+from app.features.notifications.services.quota_service import (
+    NotificationQuotaService,
+    WorkspaceNotificationQuotaStatus,
+)
 
 logger = get_logger("app.features.notifications.services.connections")
 
@@ -88,7 +92,31 @@ class NotificationConnectionService:
         self.session = session
         self.connection_repo = NotificationConnectionRepository(session)
         self.delivery_repo = OutboundDeliveryRepository(session)
+        self.quota_service = NotificationQuotaService(session)
         self.registry = provider_registry
+
+    async def get_workspace_quota(
+        self, workspace_id: UUID
+    ) -> WorkspaceNotificationQuotaStatus:
+        """Return active Free/Pro quota limits and current cycle usage."""
+        return await self.quota_service.get_quota_status(workspace_id)
+
+    async def _verify_workspace_member_email(
+        self,
+        workspace_id: UUID,
+        email_address: str,
+    ) -> str:
+        """
+        Ensure an email_alert recipient belongs to an active, verified member of this workspace.
+        """
+        matched = await self.connection_repo.get_verified_member_email(
+            workspace_id, email_address
+        )
+        if not matched:
+            raise ValidationError(
+                "Email alert recipient must be an active, verified member of this workspace"
+            )
+        return matched
 
     async def list_connections(
         self,
@@ -118,8 +146,10 @@ class NotificationConnectionService:
     ) -> NotificationConnection:
         """
         Create a new notification destination connection.
-        Performs SSRF and URL format validation before saving.
+        Enforces workspace plan quota and performs SSRF / member email validation before saving.
         """
+        await self.quota_service.enforce_connection_creation_quota(workspace_id)
+
         provider = self.registry.get(payload.provider_type)
         if not provider:
             raise ValidationError(
@@ -131,11 +161,17 @@ class NotificationConnectionService:
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
 
+        cleaned_destination = payload.destination_url.strip()
+        if payload.provider_type == "email_alert":
+            cleaned_destination = await self._verify_workspace_member_email(
+                workspace_id, cleaned_destination
+            )
+
         connection = NotificationConnection(
             workspace_id=workspace_id,
             name=payload.name.strip(),
             provider_type=payload.provider_type,
-            destination_url=payload.destination_url.strip(),
+            destination_url=cleaned_destination,
             secret_token=(
                 payload.secret_token.strip()
                 if payload.secret_token and payload.secret_token.strip()
@@ -182,7 +218,13 @@ class NotificationConnectionService:
             except ValueError as exc:
                 raise ValidationError(str(exc)) from exc
 
-            conn.destination_url = payload.destination_url.strip()
+            cleaned_destination = payload.destination_url.strip()
+            if conn.provider_type == "email_alert":
+                cleaned_destination = await self._verify_workspace_member_email(
+                    workspace_id, cleaned_destination
+                )
+
+            conn.destination_url = cleaned_destination
             conn.health_status = "healthy"
             conn.failure_reason = None
             conn.consecutive_failures = 0
@@ -234,6 +276,7 @@ class NotificationConnectionService:
         Send an instant test notification to an existing connection.
         Synchronous HTTP dispatch with short timeout; returns result immediately to UI.
         """
+        await self.quota_service.enforce_test_ping_rate_limit(workspace_id)
         conn = await self.get_connection(workspace_id, connection_id)
         provider = self.registry.get(conn.provider_type)
         if not provider:
@@ -241,10 +284,8 @@ class NotificationConnectionService:
                 f"Unsupported provider type '{conn.provider_type}'"
             )
 
-        from app.features.auth.models import Workspace
-
-        ws = await self.session.get(Workspace, workspace_id)
-        workspace_display = ws.name if ws else str(workspace_id)
+        ws_name = await self.connection_repo.get_workspace_name(workspace_id)
+        workspace_display = ws_name or str(workspace_id)
 
         if conn.provider_type in ("slack_webhook", "slack_oauth"):
             test_payload = format_slack_test_card(workspace_display, conn.name)
@@ -277,6 +318,7 @@ class NotificationConnectionService:
         """
         Send a test notification to an arbitrary webhook destination before saving it.
         """
+        await self.quota_service.enforce_test_ping_rate_limit(workspace_id)
         provider = self.registry.get(provider_type)
         if not provider:
             raise ValidationError(f"Unsupported provider type '{provider_type}'")
@@ -286,10 +328,14 @@ class NotificationConnectionService:
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
 
-        from app.features.auth.models import Workspace
+        cleaned_destination = destination_url.strip()
+        if provider_type == "email_alert":
+            cleaned_destination = await self._verify_workspace_member_email(
+                workspace_id, cleaned_destination
+            )
 
-        ws = await self.session.get(Workspace, workspace_id)
-        workspace_display = ws.name if ws else str(workspace_id)
+        ws_name = await self.connection_repo.get_workspace_name(workspace_id)
+        workspace_display = ws_name or str(workspace_id)
 
         if provider_type in ("slack_webhook", "slack_oauth"):
             test_payload = format_slack_test_card(
@@ -298,7 +344,7 @@ class NotificationConnectionService:
         else:
             test_payload = provider.build_test_payload(workspace_display)
         return await provider.dispatch(
-            destination_url, test_payload, secret_token=secret_token
+            cleaned_destination, test_payload, secret_token=secret_token
         )
 
     async def list_recent_deliveries(

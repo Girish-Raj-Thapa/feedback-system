@@ -29,6 +29,10 @@ class AlertRuleCreate(BaseModel):
         default=None,
         description="List of target form IDs. If empty or null, applies to all workspace forms.",
     )
+    category_ids: list[UUID] | None = Field(
+        default=None,
+        description="List of target category IDs. If empty or null, applies to all workspace categories.",
+    )
     include_customer_email: bool = Field(
         default=True,
         description="Whether to include customer email in notification cards",
@@ -44,6 +48,7 @@ class AlertRuleUpdate(BaseModel):
     )
     trigger_type: Literal["detractors_only", "all_feedback"] | None = None
     form_ids: list[UUID] | None = None
+    category_ids: list[UUID] | None = None
     include_customer_email: bool | None = None
     is_active: bool | None = None
 
@@ -57,6 +62,7 @@ class AlertRuleRead(BaseModel):
     name: str
     trigger_type: str
     form_ids: list[str] | None = None
+    category_ids: list[str] | None = None
     include_customer_email: bool
     is_active: bool
     connection_name: str | None = None
@@ -71,6 +77,10 @@ class AlertRuleRead(BaseModel):
         conn_health = conn.health_status if conn else None
         raw_forms = model.form_ids
         formatted_forms = [str(f) for f in raw_forms] if raw_forms else None
+        raw_categories = getattr(model, "category_ids", None)
+        formatted_categories = (
+            [str(c) for c in raw_categories] if raw_categories else None
+        )
 
         now = datetime.now()
         return cls(
@@ -80,6 +90,7 @@ class AlertRuleRead(BaseModel):
             name=model.name,
             trigger_type=model.trigger_type,
             form_ids=formatted_forms,
+            category_ids=formatted_categories,
             include_customer_email=model.include_customer_email,
             is_active=model.is_active,
             connection_name=conn_name,

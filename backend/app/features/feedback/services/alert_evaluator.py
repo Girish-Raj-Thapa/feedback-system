@@ -66,7 +66,18 @@ class AlertEvaluatorService:
             if str(submission.form_id) not in allowed_forms:
                 return False
 
-        # 3. Trigger condition filter
+        # 3. Category filter
+        # If category_ids is populated, submission must belong to one of the selected categories
+        rule_categories = getattr(rule, "category_ids", None)
+        if rule_categories and len(rule_categories) > 0:
+            submission_category_id = getattr(submission, "category_id", None)
+            if submission_category_id is None:
+                return False
+            allowed_categories = {str(cid) for cid in rule_categories}
+            if str(submission_category_id) not in allowed_categories:
+                return False
+
+        # 4. Trigger condition filter
         trigger_type = (rule.trigger_type or "detractors_only").lower()
 
         if trigger_type == "all_feedback":

@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.features.notifications.providers.base import (
     BaseNotificationProvider,
@@ -88,6 +89,16 @@ class GenericWebhookProvider(BaseNotificationProvider):
         ):
             raise ValueError(
                 "Destination host is prohibited (internal or localhost address)."
+            )
+
+        # Prevent self-loop webhooks targeting our own application domains
+        own_hosts = {
+            (urlparse(settings.FRONTEND_URL).hostname or "").lower(),
+            (urlparse(settings.PUBLIC_FEEDBACK_URL).hostname or "").lower(),
+        } - {""}
+        if hostname in own_hosts:
+            raise ValueError(
+                "Destination host cannot point to this FeedbackFlow instance (loop protection)."
             )
 
         # Check explicit IP literal first

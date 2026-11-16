@@ -222,7 +222,19 @@ async def evaluate_submission_alerts_task(submission_id_str: str) -> bool:
             )
 
             if matched_rules:
+                from dataclasses import replace
+
+                from app.features.notifications.services.quota_service import (
+                    NotificationQuotaService,
+                )
+
                 delivery_service = NotificationDeliveryService(session)
+                quota_service = NotificationQuotaService(session)
+                # Fetch workspace quota snapshot once for all matched rules (2 aggregated queries total)
+                quota_status = await quota_service.get_quota_status(
+                    submission.workspace_id
+                )
+
                 form_title = submission.form.title if submission.form else "Feedback"
                 category_name = (
                     submission.category.name
@@ -234,13 +246,28 @@ async def evaluate_submission_alerts_task(submission_id_str: str) -> bool:
                 )
 
                 for rule in matched_rules:
-                    conn = getattr(rule, "connection", None)
-                    raw_provider_type = getattr(conn, "provider_type", None)
-                    provider_type = (
-                        raw_provider_type
-                        if isinstance(raw_provider_type, str)
-                        else "slack_webhook"
+                    if rule.connection is None:
+                        logger.warning(
+                            "feedback.alerts.missing_connection",
+                            submission_id=submission_id_str,
+                            rule_id=str(rule.id),
+                        )
+                        continue
+                    provider_type = rule.connection.provider_type
+                    allowed, block_reason = quota_service.check_dispatch_budget(
+                        quota_status, provider_type
                     )
+                    if not allowed:
+                        logger.warning(
+                            "notifications.quota.exceeded",
+                            workspace_id=str(submission.workspace_id),
+                            submission_id=submission_id_str,
+                            rule_id=str(rule.id),
+                            provider_type=provider_type,
+                            reason=block_reason,
+                        )
+                        continue
+
                     payload_snapshot = format_voc_payload(
                         provider_type=provider_type,
                         submission=submission,
@@ -259,6 +286,19 @@ async def evaluate_submission_alerts_task(submission_id_str: str) -> bool:
                     )
                     if delivery:
                         delivery_ids_to_dispatch.append(delivery.id)
+                        if provider_type == "email_alert":
+                            quota_status = replace(
+                                quota_status,
+                                monthly_email_used=quota_status.monthly_email_used + 1,
+                                hourly_email_used=quota_status.hourly_email_used + 1,
+                            )
+                        else:
+                            quota_status = replace(
+                                quota_status,
+                                monthly_webhook_used=quota_status.monthly_webhook_used
+                                + 1,
+                                hourly_webhook_used=quota_status.hourly_webhook_used + 1,
+                            )
 
             # Mark evaluated regardless of whether 0 or N rules matched
             submission.alert_evaluated_at = datetime.now(UTC)

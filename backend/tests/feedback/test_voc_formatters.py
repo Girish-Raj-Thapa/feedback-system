@@ -145,3 +145,42 @@ def test_format_voc_payload_dispatcher_routing() -> None:
     generic_out = format_voc_payload("generic_webhook", sub, rule, "acme")
     assert generic_out["event"] == "feedback.detractor"
     assert "feedback" in generic_out
+
+    email_out = format_voc_payload(
+        "email_alert",
+        sub,
+        rule,
+        "acme",
+        form_title="Checkout Survey",
+        category_name="Product Bugs",
+        frontend_base_url="https://app.voc.test",
+    )
+    assert email_out["event"] == "feedback.detractor"
+    assert "Checkout Survey" in email_out["subject"]
+    assert "Product Bugs" in email_out["subject"]
+    assert "Checkout crashed on Safari." in email_out["html"]
+    assert "buyer@acme.io" in email_out["html"]
+    assert (
+        email_out["triage_url"]
+        == f"https://app.voc.test/workspace/acme?tab=inbox&id={sub.id}"
+    )
+    assert f"https://app.voc.test/workspace/acme?tab=inbox&amp;id={sub.id}" in email_out["html"]
+
+
+def test_format_email_voc_payload_escapes_html_and_redacts_email() -> None:
+    """Verify email formatter auto-escapes XSS in comments and respects include_customer_email=False."""
+    sub = _make_submission(
+        rating=1,
+        sentiment="negative",
+        comment='<script>alert("xss")</script>',
+        email="secret@customer.io",
+    )
+    rule = MagicMock(spec=AlertRule)
+    rule.include_customer_email = False
+
+    email_out = format_voc_payload("email_alert", sub, rule, "acme")
+    html = email_out["html"]
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "secret@customer.io" not in html
+

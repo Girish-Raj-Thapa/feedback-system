@@ -59,7 +59,12 @@ async def test_create_alert_rule_success_all_forms() -> None:
     )
 
     with (
-        patch.object(service.connection_repo, "get_by_id", return_value=conn),
+        patch.object(
+            service.quota_service,
+            "enforce_alert_rule_creation_quota",
+            new_callable=AsyncMock,
+        ),
+        patch.object(service.connection_repo, "exists_by_id", return_value=True),
         patch.object(service.rule_repo, "create", return_value=rule),
     ):
         created = await service.create_alert_rule(workspace_id, payload)
@@ -82,7 +87,14 @@ async def test_create_alert_rule_missing_connection_fails() -> None:
         trigger_type="detractors_only",
     )
 
-    with patch.object(service.connection_repo, "get_by_id", return_value=None):
+    with (
+        patch.object(
+            service.quota_service,
+            "enforce_alert_rule_creation_quota",
+            new_callable=AsyncMock,
+        ),
+        patch.object(service.connection_repo, "exists_by_id", return_value=False),
+    ):
         with pytest.raises(ValidationError, match="connection does not exist"):
             await service.create_alert_rule(workspace_id, payload)
 
@@ -95,16 +107,6 @@ async def test_create_alert_rule_missing_form_fails() -> None:
 
     workspace_id = uuid4()
     conn_id = uuid4()
-    conn = NotificationConnection(
-        id=conn_id,
-        workspace_id=workspace_id,
-        name="Slack",
-        provider_type="slack_webhook",
-        destination_url="https://hooks.slack.com/services/T1/B2/token",
-        is_active=True,
-        health_status="healthy",
-    )
-
     bad_form_id = uuid4()
     payload = AlertRuleCreate(
         connection_id=conn_id,
@@ -114,8 +116,18 @@ async def test_create_alert_rule_missing_form_fails() -> None:
     )
 
     with (
-        patch.object(service.connection_repo, "get_by_id", return_value=conn),
-        patch.object(service.form_repo, "get_by_id", return_value=None),
+        patch.object(
+            service.quota_service,
+            "enforce_alert_rule_creation_quota",
+            new_callable=AsyncMock,
+        ),
+        patch.object(service.connection_repo, "exists_by_id", return_value=True),
+        patch.object(
+            service.form_repo,
+            "get_existing_ids",
+            new_callable=AsyncMock,
+            return_value=set(),
+        ),
     ):
         with pytest.raises(ValidationError, match="Form ID .* was not found"):
             await service.create_alert_rule(workspace_id, payload)
@@ -148,7 +160,12 @@ async def test_update_alert_rule_success() -> None:
 
     with (
         patch.object(service.rule_repo, "get_by_id", return_value=rule),
-        patch.object(service.form_repo, "get_by_id", return_value=valid_form),
+        patch.object(
+            service.form_repo,
+            "get_existing_ids",
+            new_callable=AsyncMock,
+            return_value={valid_form.id},
+        ),
     ):
         update_payload = AlertRuleUpdate(
             name="Updated Rule",

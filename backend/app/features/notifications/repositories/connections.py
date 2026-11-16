@@ -7,9 +7,10 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.auth.models import User, Workspace, WorkspaceMember
 from app.features.notifications.models.connections import NotificationConnection
 
 
@@ -28,6 +29,20 @@ class NotificationConnectionRepository:
         self.session.add(connection)
         await self.session.flush()
         return connection
+
+    async def exists_by_id(
+        self,
+        workspace_id: UUID,
+        connection_id: UUID,
+    ) -> bool:
+        """Check whether an active connection ID exists in a workspace without loading the row."""
+        stmt = select(NotificationConnection.id).where(
+            NotificationConnection.id == connection_id,
+            NotificationConnection.workspace_id == workspace_id,
+            NotificationConnection.deleted_at.is_(None),
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none() is not None
 
     async def get_by_id(
         self,
@@ -145,4 +160,36 @@ class NotificationConnectionRepository:
 
         await self.session.flush()
         return conn
+
+    async def get_verified_member_email(
+        self,
+        workspace_id: UUID,
+        email_address: str,
+    ) -> str | None:
+        """
+        Look up an active, verified workspace member by email (case-insensitive).
+        Selects only User.email to avoid wide row loads.
+        """
+        normalized_email = email_address.strip().lower()
+        stmt = (
+            select(User.email)
+            .join(WorkspaceMember, WorkspaceMember.user_id == User.id)
+            .where(
+                WorkspaceMember.workspace_id == workspace_id,
+                func.lower(User.email) == normalized_email,
+                User.is_active.is_(True),
+                User.is_verified.is_(True),
+                User.deleted_at.is_(None),
+            )
+        )
+        result = await self.session.execute(stmt)
+        matched = result.scalar_one_or_none()
+        return matched.strip().lower() if matched is not None else None
+
+    async def get_workspace_name(self, workspace_id: UUID) -> str | None:
+        """Select only Workspace.name for display formatting."""
+        stmt = select(Workspace.name).where(Workspace.id == workspace_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
 

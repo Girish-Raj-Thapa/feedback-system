@@ -46,6 +46,7 @@ async def test_evaluate_submission_alerts_success_creates_deliveries() -> None:
     mock_rule.connection_id = conn_id
     mock_rule.name = "Detractor Alerts"
     mock_rule.include_customer_email = True
+    mock_rule.connection = MagicMock(provider_type="slack_webhook")
 
     mock_session = AsyncMock()
     # Mock scalar_one_or_none returning the submission
@@ -56,9 +57,30 @@ async def test_evaluate_submission_alerts_success_creates_deliveries() -> None:
     mock_evaluator = AsyncMock()
     mock_evaluator.find_matching_rules.return_value = [mock_rule]
 
+    from app.features.notifications.services.quota_service import (
+        PLAN_QUOTA_MATRIX,
+        WorkspaceNotificationQuotaStatus,
+    )
+
     mock_delivery = MagicMock(id=uuid4())
     mock_delivery_service = AsyncMock()
     mock_delivery_service.create_delivery_in_tx.return_value = mock_delivery
+
+    mock_quota_service = MagicMock()
+    mock_quota_service.get_quota_status = AsyncMock(
+        return_value=WorkspaceNotificationQuotaStatus(
+            plan_tier="free",
+            limits=PLAN_QUOTA_MATRIX["free"],
+            connections_used=1,
+            alert_rules_used=1,
+            monthly_email_used=0,
+            monthly_webhook_used=0,
+            hourly_email_used=0,
+            hourly_webhook_used=0,
+            cycle_starts_at=datetime.now(UTC),
+        )
+    )
+    mock_quota_service.check_dispatch_budget.return_value = (True, None)
 
     with (
         patch(
@@ -75,6 +97,10 @@ async def test_evaluate_submission_alerts_success_creates_deliveries() -> None:
         patch(
             "app.features.feedback.tasks.NotificationDeliveryService",
             return_value=mock_delivery_service,
+        ),
+        patch(
+            "app.features.notifications.services.quota_service.NotificationQuotaService",
+            return_value=mock_quota_service,
         ),
         patch(
             "app.features.feedback.tasks.dispatch_outbound_delivery_task.kiq",

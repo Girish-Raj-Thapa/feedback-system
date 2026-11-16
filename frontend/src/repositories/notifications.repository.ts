@@ -14,9 +14,18 @@ import type {
   OutboundDelivery,
   SlackOAuthAuthorizeResponse,
   SlackOAuthCallbackResponse,
+  WorkspaceNotificationQuota,
 } from "@/types/notifications";
 
 export const notificationsRepository = {
+  // Quota
+  async getQuota(workspaceId: string): Promise<WorkspaceNotificationQuota> {
+    return apiClient<WorkspaceNotificationQuota>(
+      `/workspaces/${workspaceId}/connections/quota`,
+      { workspaceId }
+    );
+  },
+
   // Connections
   async listConnections(
     workspaceId: string
