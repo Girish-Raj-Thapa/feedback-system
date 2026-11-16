@@ -1,7 +1,6 @@
-__pycache__
-*.pyc
-*.pyo
-*.pyd
+__pycache__/
+*.py[cod]
+*$py.class
 .Python
 env/
 venv/
@@ -19,10 +18,11 @@ htmlcov/
 .env.*
 !.env.example
 
-.git
+.git/
 .gitignore
+.DS_Store
 
 reference/
 keys/*.pem
 !keys/README.md
-
+*.md

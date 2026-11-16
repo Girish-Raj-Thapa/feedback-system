@@ -1,9 +1,12 @@
 services:
-  # FastAPI application server
+  # FastAPI application server (dev mode with hot reload and test toolchain)
   api:
+    image: feedback-backend:dev
+    pull_policy: build
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     container_name: feedback_api
     restart: unless-stopped
     ports:
@@ -25,9 +28,12 @@ services:
 
   # Taskiq background worker
   worker:
+    image: feedback-backend:dev
+    pull_policy: build
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     container_name: feedback_worker
     restart: unless-stopped
     env_file:
@@ -44,9 +50,12 @@ services:
 
   # Taskiq cron scheduler
   scheduler:
+    image: feedback-backend:dev
+    pull_policy: build
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     container_name: feedback_scheduler
     restart: unless-stopped
     env_file:

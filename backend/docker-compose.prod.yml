@@ -1,0 +1,117 @@
+services:
+  # FastAPI application server (hardened prod image, no host bind mounts or --reload)
+  api:
+    image: feedback-backend:prod
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    container_name: feedback_api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8005}:8000"
+    env_file:
+      - .env
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Taskiq background worker
+  worker:
+    image: feedback-backend:prod
+    pull_policy: never
+    container_name: feedback_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["taskiq", "worker", "app.core.tasks:broker", "--fs-discover"]
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Taskiq cron scheduler (must remain a single replica)
+  scheduler:
+    image: feedback-backend:prod
+    pull_policy: never
+    container_name: feedback_scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["taskiq", "scheduler", "app.core.tasks:scheduler", "--fs-discover"]
+    deploy:
+      replicas: 1
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    container_name: feedback_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=feedback_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - feedback_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d feedback_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis message broker and cache
+  redis:
+    image: redis:7-alpine
+    container_name: feedback_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - feedback_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  feedback_pgdata:
+  feedback_redisdata:

@@ -5,9 +5,12 @@ Compose service names (use these in commands): `api`, `worker`, `scheduler`, `db
 
 ## Setup
 - Env: copy `.env.example` to `.env`. Never commit `.env` or print its values.
-- Start everything: `docker compose up -d --build`
+- Start dev stack (hot reload, `target: dev`, pytest/ruff/pyright included): `docker compose up -d --build`
+- Simulate/run prod stack locally (`target: prod`, read-only FS, no `--reload`): `docker compose -f docker-compose.prod.yml up -d --build`
+- Run prod DB migrations explicitly before/during deploy: `docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head`
+- Switch back to dev cleanly (same service topology, zero orphaned containers): `docker compose up -d`
 - Status/logs: `docker compose ps`, `docker compose logs -f api worker scheduler`
-- Docs: `/docs` on the API port when running.
+- Docs: `/docs` on the API port when running (`ENVIRONMENT != prod`).
 
 ## Running commands
 Run all project tools inside the API container, never on the host:
