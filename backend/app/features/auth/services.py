@@ -75,6 +75,7 @@ from app.features.auth.tasks import (
     send_workspace_invite_email_task,
 )
 from app.features.feedback.services import FeedbackService
+from app.features.notifications.services.quota_service import resolve_plan_tier
 
 logger = get_logger("app.features.auth.services")
 
@@ -584,6 +585,15 @@ class AuthService:
             ws.business_type = payload.business_type.strip() or None
         if payload.timezone is not None:
             ws.timezone = payload.timezone.strip()
+        if payload.weekly_digest_enabled is not None:
+            if (
+                payload.weekly_digest_enabled
+                and resolve_plan_tier(ws.plan_tier) != "pro"
+            ):
+                raise ValidationError(
+                    "Monday Morning VoC Digest is available on the Pro plan. Upgrade to Pro to enable weekly digests."
+                )
+            ws.weekly_digest_enabled = payload.weekly_digest_enabled
 
         await self.repo.update_workspace(ws)
         await self.repo.create_audit_log(

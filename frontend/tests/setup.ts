@@ -77,3 +77,12 @@ vi.mock("sonner", () => ({
     warning: vi.fn(),
   },
 }));
+
+// Block accidental unmocked real network fetch calls across all Vitest suites
+globalThis.fetch = vi.fn((input: RequestInfo | URL) =>
+  Promise.reject(
+    new Error(
+      `Blocked real network fetch in Vitest: ${String(input)}. Mock fetch or repository cleanly.`
+    )
+  )
+) as typeof fetch;

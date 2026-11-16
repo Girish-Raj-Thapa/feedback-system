@@ -12,6 +12,7 @@ from app.features.feedback.services.decision_logs import DecisionLogService
 from app.features.feedback.services.forms import FormService
 from app.features.feedback.services.insights import InsightsService
 from app.features.feedback.services.submissions import SubmissionService
+from app.features.feedback.services.weekly_digest import WeeklyDigestService
 
 # Alias for feature-level service orchestration
 FeedbackService = FeedbackCategoryService
@@ -25,5 +26,6 @@ __all__ = [
     "FormService",
     "InsightsService",
     "SubmissionService",
+    "WeeklyDigestService",
     "slugify",
 ]

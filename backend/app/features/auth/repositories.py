@@ -3,9 +3,10 @@ Database queries for authentication, users, and RBAC models.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.auth.models import (
@@ -344,3 +345,55 @@ class AuthRepository:
         )
         result = await self.session.execute(query)
         return result.scalars().all()
+
+    async def list_digest_eligible_workspaces_with_owners(
+        self,
+    ) -> list[tuple[UUID, str, str, str, datetime | None, str]]:
+        """
+        Return narrow tuples (workspace_id, name, slug, timezone, last_weekly_digest_at, owner_email)
+        for active Pro-tier workspaces with weekly digest enabled and a verified active owner.
+        """
+        stmt = (
+            select(
+                Workspace.id,
+                Workspace.name,
+                Workspace.slug,
+                Workspace.timezone,
+                Workspace.last_weekly_digest_at,
+                User.email,
+            )
+            .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+            .join(Role, Role.id == WorkspaceMember.role_id)
+            .join(User, User.id == WorkspaceMember.user_id)
+            .where(
+                Workspace.deleted_at.is_(None),
+                Workspace.weekly_digest_enabled.is_(True),
+                func.lower(Workspace.plan_tier).in_(("pro", "growth", "starter")),
+                func.lower(Role.slug) == "owner",
+                User.is_active.is_(True),
+                User.is_verified.is_(True),
+                User.deleted_at.is_(None),
+            )
+            .order_by(Workspace.id, WorkspaceMember.created_at.asc())
+        )
+        result = await self.session.execute(stmt)
+        seen_workspaces: set[UUID] = set()
+        rows: list[tuple[UUID, str, str, str, datetime | None, str]] = []
+        for row in result.all():
+            ws_id = row[0]
+            if ws_id in seen_workspaces:
+                continue
+            seen_workspaces.add(ws_id)
+            rows.append((ws_id, row[1], row[2], row[3], row[4], row[5]))
+        return rows
+
+    async def mark_weekly_digest_sent(
+        self, workspace_id: UUID, sent_at: datetime
+    ) -> None:
+        """Persist last_weekly_digest_at without loading or touching other columns."""
+        stmt = (
+            update(Workspace)
+            .where(Workspace.id == workspace_id)
+            .values(last_weekly_digest_at=sent_at)
+        )
+        await self.session.execute(stmt)

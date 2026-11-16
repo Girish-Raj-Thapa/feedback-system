@@ -103,6 +103,7 @@ export interface WorkspaceRead {
   monthly_submission_limit: number;
   current_cycle_submissions_count: number;
   ai_classification_enabled: boolean;
+  weekly_digest_enabled: boolean;
   created_at: string;
 }
 
@@ -177,6 +178,7 @@ export interface WorkspaceUpdateRequest {
   industry?: string | null;
   business_type?: string | null;
   timezone?: string | null;
+  weekly_digest_enabled?: boolean;
 }
 
 export interface MemberRoleUpdateRequest {

@@ -219,6 +219,7 @@ class WorkspaceUpdateRequest(BaseModel):
     industry: str | None = Field(default=None, max_length=50)
     business_type: str | None = Field(default=None, max_length=50)
     timezone: str | None = Field(default=None, max_length=50)
+    weekly_digest_enabled: bool | None = None
 
 
 class WorkspaceRead(BaseModel):
@@ -235,4 +236,5 @@ class WorkspaceRead(BaseModel):
     monthly_submission_limit: int
     current_cycle_submissions_count: int
     ai_classification_enabled: bool
+    weekly_digest_enabled: bool = True
     created_at: datetime

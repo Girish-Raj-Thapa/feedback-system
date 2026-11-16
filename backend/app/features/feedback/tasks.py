@@ -377,3 +377,20 @@ async def reconcile_unnotified_submissions_task(batch_size: int = 50) -> int:
     )
     return enqueued_count
 
+
+@broker.task(schedule=[{"cron": "0 * * * *"}])
+async def send_monday_voc_digests_task() -> int:
+    """
+    Hourly cron checking Pro workspaces at Monday 08:00–08:59 in their local timezone
+    and sending their Weekly Monday Morning VoC Digest email once per week.
+    """
+    from app.features.feedback.services.weekly_digest import WeeklyDigestService
+
+    logger.info("feedback.digest.cron_started")
+    async with async_session_factory() as session:
+        service = WeeklyDigestService(session)
+        sent_count = await service.process_due_digests()
+
+    logger.info("feedback.digest.cron_completed", sent_count=sent_count)
+    return sent_count
+

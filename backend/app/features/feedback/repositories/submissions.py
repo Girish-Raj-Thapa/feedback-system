@@ -264,6 +264,68 @@ class SubmissionRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def list_for_weekly_digest(
+        self,
+        workspace_id: UUID,
+        window_start: datetime,
+        window_end: datetime,
+    ) -> list[
+        tuple[
+            UUID,
+            int | None,
+            str,
+            str | None,
+            UUID | None,
+            str | None,
+            str | None,
+            str,
+            datetime,
+        ]
+    ]:
+        """
+        Fetch minimal columns for non-spam, non-quarantined, non-sample submissions
+        within [window_start, window_end) for weekly Monday digest aggregation.
+        """
+        stmt = (
+            select(
+                FeedbackSubmission.id,
+                FeedbackSubmission.rating,
+                FeedbackSubmission.rating_scale_type,
+                FeedbackSubmission.sentiment,
+                FeedbackSubmission.category_id,
+                FeedbackSubmission.comment,
+                FeedbackSubmission.customer_name,
+                FeedbackSubmission.status,
+                FeedbackSubmission.created_at,
+            )
+            .where(
+                FeedbackSubmission.workspace_id == workspace_id,
+                FeedbackSubmission.status.notin_(("spam", "quarantined")),
+                FeedbackSubmission.created_at >= window_start,
+                FeedbackSubmission.created_at < window_end,
+                func.coalesce(
+                    FeedbackSubmission.customer_metadata["is_sample"].astext, ""
+                )
+                != "true",
+            )
+            .order_by(FeedbackSubmission.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        return [
+            (
+                row[0],
+                row[1],
+                row[2],
+                row[3],
+                row[4],
+                row[5],
+                row[6],
+                row[7],
+                row[8],
+            )
+            for row in result.all()
+        ]
+
     async def list_segment_options(
         self,
         workspace_id: UUID,

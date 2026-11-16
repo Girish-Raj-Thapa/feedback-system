@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "prod"
 
+    @property
+    def is_test(self) -> bool:
+        return self.ENVIRONMENT == "test"
+
     # -----------------------------------------------------------------------
     # Database (PostgreSQL 16 via asyncpg)
     # -----------------------------------------------------------------------

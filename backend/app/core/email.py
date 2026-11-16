@@ -48,6 +48,12 @@ def render_email_template(template_name: str, **context: Any) -> str:
 
 
 def _send_smtp(message: EmailMessage, *, raise_on_error: bool = False) -> None:
+    if settings.is_test:
+        raise RuntimeError(
+            "Real SMTP delivery is disabled in test environment. "
+            "Mock app.core.email.send_email or the task boundary cleanly."
+        )
+
     try:
         with smtplib.SMTP(
             host=settings.SMTP_HOST,

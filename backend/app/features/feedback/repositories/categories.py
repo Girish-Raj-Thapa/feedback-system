@@ -34,6 +34,15 @@ class FeedbackCategoryRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def list_id_name_map(self, workspace_id: UUID) -> dict[UUID, str]:
+        """Return {category_id: category_name} selecting only id and name columns."""
+        stmt = select(FeedbackCategory.id, FeedbackCategory.name).where(
+            FeedbackCategory.workspace_id == workspace_id,
+            FeedbackCategory.deleted_at.is_(None),
+        )
+        result = await self.session.execute(stmt)
+        return {row[0]: row[1] for row in result.all()}
+
     async def get_by_id(
         self,
         workspace_id: UUID,

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}{{ workspace_name }} Weekly VoC Digest - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 16px;">
+  <span style="display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; background-color: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe;">
+    Monday Morning VoC Digest
+  </span>
+</div>
+
+<h2 style="margin: 0 0 6px; font-size: 19px; font-weight: 700; color: #0f172a;">
+  {{ workspace_name }} — Weekly Summary
+</h2>
+<p style="margin: 0 0 20px; font-size: 13px; color: #64748b;">
+  {{ period_label }} ({{ timezone_name }})
+</p>
+
+<!-- KPI Summary Grid -->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 20px; border-collapse: separate; border-spacing: 8px 0;">
+  <tr>
+    <td width="33%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; vertical-align: top;">
+      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b;">Responses</p>
+      <p style="margin: 0; font-size: 20px; font-weight: 700; color: #0f172a;">{{ total_responses }}</p>
+      <p style="margin: 4px 0 0; font-size: 12px; color: {% if volume_delta >= 0 %}#047857{% else %}#b91c1c{% endif %};">{{ volume_delta_text }}</p>
+    </td>
+    <td width="34%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; vertical-align: top;">
+      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b;">Avg Rating</p>
+      <p style="margin: 0; font-size: 20px; font-weight: 700; color: #0f172a;">{{ average_rating_text }}</p>
+      <p style="margin: 4px 0 0; font-size: 12px; color: {% if rating_delta is not none and rating_delta < 0 %}#b91c1c{% elif rating_delta is not none and rating_delta > 0 %}#047857{% else %}#64748b{% endif %};">{{ rating_delta_text }}</p>
+    </td>
+    <td width="33%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; vertical-align: top;">
+      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b;">At-Risk Open</p>
+      <p style="margin: 0; font-size: 20px; font-weight: 700; color: {% if at_risk_count > 0 %}#b91c1c{% else %}#0f172a{% endif %};">{{ at_risk_count }}</p>
+      <p style="margin: 4px 0 0; font-size: 12px; color: #64748b;">Neg / Low rating</p>
+    </td>
+  </tr>
+</table>
+
+<!-- Score Drivers -->
+{% if top_negative_driver or top_positive_driver %}
+<h3 style="margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #0f172a;">
+  Top Score Drivers
+</h3>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 20px;">
+  {% if top_negative_driver %}
+  <tr>
+    <td style="padding: 10px 14px; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+      <span style="font-size: 12px; font-weight: 600; color: #b91c1c;">#1 Negative Driver: {{ top_negative_driver.category_name }}</span>
+      <span style="font-size: 13px; color: #7f1d1d;">
+        — {{ "%.2f"|format(top_negative_driver.average_rating) }} ★ ({{ "%+.2f"|format(top_negative_driver.score_impact) }} ★ impact, {{ top_negative_driver.count }} rated)
+      </span>
+    </td>
+  </tr>
+  {% endif %}
+  {% if top_negative_driver and top_positive_driver %}
+  <tr><td style="height: 8px;"></td></tr>
+  {% endif %}
+  {% if top_positive_driver %}
+  <tr>
+    <td style="padding: 10px 14px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px;">
+      <span style="font-size: 12px; font-weight: 600; color: #047857;">#1 Positive Driver: {{ top_positive_driver.category_name }}</span>
+      <span style="font-size: 13px; color: #065f46;">
+        — {{ "%.2f"|format(top_positive_driver.average_rating) }} ★ ({{ "%+.2f"|format(top_positive_driver.score_impact) }} ★ impact, {{ top_positive_driver.count }} rated)
+      </span>
+    </td>
+  </tr>
+  {% endif %}
+</table>
+{% endif %}
+
+<!-- Highlighted Quotes -->
+{% if highlighted_quotes %}
+<h3 style="margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #0f172a;">
+  Highlighted Customer Feedback
+</h3>
+{% for q in highlighted_quotes %}
+<div style="margin: 0 0 12px; padding: 12px 14px; background-color: #f8fafc; border-left: 3px solid #4f46e5; border-radius: 0 8px 8px 0;">
+  <p style="margin: 0 0 6px; font-size: 12px; font-weight: 600; color: #475569;">
+    {{ q.score_text }} &bull; {{ q.category_name }} &bull; {{ q.customer_display }}
+  </p>
+  <p style="margin: 0 0 6px; font-size: 13px; color: #1e293b; line-height: 1.5;">
+    "{{ q.comment }}"
+  </p>
+  <a href="{{ q.triage_url }}" style="font-size: 12px; font-weight: 600; color: #4f46e5; text-decoration: none;">
+    View in Triage &rarr;
+  </a>
+</div>
+{% endfor %}
+{% endif %}
+
+<div style="margin-top: 24px;">
+  <a href="{{ dashboard_url }}" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 13px; font-weight: 600; text-decoration: none; padding: 10px 18px; border-radius: 8px;">
+    Open Insights Dashboard &rarr;
+  </a>
+</div>
+
+<p style="margin: 20px 0 0; font-size: 12px; color: #94a3b8;">
+  Sent Mondays at 8:00 AM ({{ timezone_name }}) to Pro workspace owners.
+  <a href="{{ settings_url }}" style="color: #64748b;">Manage digest settings</a>.
+</p>
+{% endblock %}

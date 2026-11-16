@@ -103,6 +103,7 @@ export default function WorkspaceSettingsPage() {
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("SaaS and software");
   const [timezone, setTimezone] = useState("Asia/Kathmandu");
+  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(true);
   const [isSavingGeneral, setIsSavingGeneral] = useState(false);
 
   // Members tab state
@@ -167,6 +168,7 @@ export default function WorkspaceSettingsPage() {
         setName(wsDetails.name);
         setIndustry(wsDetails.industry || "SaaS and software");
         setTimezone(wsDetails.timezone || "Asia/Kathmandu");
+        setWeeklyDigestEnabled(wsDetails.weekly_digest_enabled ?? true);
         setMembers(membersList);
         setRoles(rolesList);
         setInvites(invitesList);
@@ -218,18 +220,24 @@ export default function WorkspaceSettingsPage() {
   );
   const isOwner = currentMembership?.role_slug.toLowerCase() === "owner";
 
+  const isProPlan = ["pro", "growth", "starter"].includes(
+    (workspace?.plan_tier || "free").toLowerCase()
+  );
+
   // General tab change detection
   const hasGeneralChanges =
     workspace &&
     (name.trim() !== workspace.name ||
       industry !== (workspace.industry || "SaaS and software") ||
-      timezone !== (workspace.timezone || "Asia/Kathmandu"));
+      timezone !== (workspace.timezone || "Asia/Kathmandu") ||
+      (isProPlan && weeklyDigestEnabled !== workspace.weekly_digest_enabled));
 
   const handleDiscardGeneral = () => {
     if (!workspace) return;
     setName(workspace.name);
     setIndustry(workspace.industry || "SaaS and software");
     setTimezone(workspace.timezone || "Asia/Kathmandu");
+    setWeeklyDigestEnabled(workspace.weekly_digest_enabled ?? true);
   };
 
   const handleSaveGeneral = async (e: React.FormEvent) => {
@@ -242,11 +250,13 @@ export default function WorkspaceSettingsPage() {
         name: name.trim(),
         industry,
         timezone,
+        ...(isProPlan ? { weekly_digest_enabled: weeklyDigestEnabled } : {}),
       });
       setWorkspace(updated);
       setName(updated.name);
       setIndustry(updated.industry || "SaaS and software");
       setTimezone(updated.timezone || "Asia/Kathmandu");
+      setWeeklyDigestEnabled(updated.weekly_digest_enabled ?? true);
 
       // Update store
       const updatedList = workspaces.map((w) =>
@@ -728,6 +738,57 @@ export default function WorkspaceSettingsPage() {
                       ))}
                     </select>
                   </div>
+                </div>
+              </div>
+
+              {/* Row 5: Monday Morning VoC Digest */}
+              <div className="flex flex-col gap-6 p-6 md:flex-row md:items-start">
+                <div className="w-[240px] shrink-0">
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="toggle-weekly-digest"
+                      className="block text-[14px] font-medium text-[#161C26] dark:text-white"
+                    >
+                      Monday VoC Digest
+                    </label>
+                    <span className="rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-semibold text-[#363BA6] dark:bg-[#4249C9]/20 dark:text-[#2997FF]">
+                      Pro
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[13px] text-[#556070] dark:text-[#8E8E93]">
+                    Sent Mondays at 8:00 AM local time to the Workspace Owner.
+                  </p>
+                </div>
+                <div className="w-full flex-1">
+                  <label
+                    htmlFor="toggle-weekly-digest"
+                    className={`flex items-start justify-between gap-4 rounded-[10px] border p-3.5 transition-colors ${
+                      isProPlan
+                        ? "cursor-pointer border-[#E1E5EB] bg-white hover:border-[#C9CFD9] dark:border-white/15 dark:bg-[#2C2C2E]"
+                        : "cursor-not-allowed border-[#E1E5EB] bg-[#F7F9FC] opacity-80 dark:border-white/10 dark:bg-white/5"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-medium text-[#161C26] dark:text-white">
+                        {isProPlan
+                          ? "Receive weekly Score Driver email summary"
+                          : "Available on Pro plan"}
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-[#556070] dark:text-[#8E8E93]">
+                        {isProPlan
+                          ? "Includes weekly volume, rating delta, top Score Drivers, and key quotes. Automatically skipped when there are 0 responses."
+                          : "Upgrade to Pro to get automated Monday morning Score Driver summaries delivered to the workspace owner."}
+                      </p>
+                    </div>
+                    <input
+                      id="toggle-weekly-digest"
+                      type="checkbox"
+                      checked={isProPlan ? weeklyDigestEnabled : false}
+                      disabled={!isProPlan}
+                      onChange={(e) => setWeeklyDigestEnabled(e.target.checked)}
+                      className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[#4249C9] disabled:cursor-not-allowed dark:accent-[#2997FF]"
+                    />
+                  </label>
                 </div>
               </div>
             </div>

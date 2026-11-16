@@ -65,3 +65,10 @@ Scope: `backend/`. Formatter and linter handle style; this file covers judgment 
 ## Do not
 - Add a dependency without asking. Prefer the standard library and existing packages.
 - Introduce a second way of doing something the codebase already does (second logger, second HTTP client, second pagination style). Extend the existing one.
+
+## Test Isolation & Side-Effect Guards
+- All tests (unit, integration, E2E) MUST run completely isolated from dev/live infrastructure via `tests/conftest.py`:
+  - `ENVIRONMENT=test`, isolated PostgreSQL database (`feedback_test`), and isolated Redis DB (`/15`).
+  - `broker.kick`, `smtplib.SMTP` / `SMTP_SSL`, and real outbound `httpx` network calls are globally blocked by default (`isolate_external_side_effects`).
+  - Never add new outbound clients (`boto3`, `resend`, SDKs, raw `urllib`) without mocking or adding an equivalent guard in `tests/conftest.py`.
+  - Use `kicked_tasks` (or `@patch`) to assert background task dispatches cleanly without waking live Docker workers.
