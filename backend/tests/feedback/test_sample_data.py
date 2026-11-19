@@ -12,6 +12,7 @@ from app.features.auth.models import Workspace
 from app.features.feedback.models.categories import FeedbackCategory
 from app.features.feedback.models.forms import Form
 from app.features.feedback.models.submissions import FeedbackSubmission
+from app.features.feedback.repositories.submissions import CategoryInsightAggregate
 from app.features.feedback.services.insights import InsightsService
 from app.features.feedback.services.submissions import SubmissionService
 
@@ -127,16 +128,19 @@ async def test_insights_detects_has_sample_data():
     cat_repo = AsyncMock()
     cat_repo.list_active.return_value = []
 
-    sub = MagicMock(spec=FeedbackSubmission)
-    sub.workspace_id = workspace_id
-    sub.rating = 5
-    sub.rating_scale_type = "5_star"
-    sub.status = "new"
-    sub.sentiment = "positive"
-    sub.category_id = None
-    sub.customer_metadata = {"is_sample": True}
-
-    sub_repo.list_for_insights.return_value = [sub]
+    sub_repo.aggregate_for_insights.return_value = [
+        CategoryInsightAggregate(
+            category_id=None,
+            total_count=1,
+            rated_count=1,
+            normalized_rating_sum=5.0,
+            positive_count=1,
+            neutral_count=0,
+            negative_count=0,
+            at_risk_count=0,
+            sample_count=1,
+        )
+    ]
     sub_repo.list_segment_options.return_value = ([], [], [])
 
     insights_service = InsightsService(session, sub_repo, cat_repo)

@@ -11,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.auth.models import Workspace
 from app.features.feedback.repositories.categories import FeedbackCategoryRepository
-from app.features.feedback.repositories.submissions import SubmissionRepository
+from app.features.feedback.repositories.submissions import (
+    CategoryInsightAggregate,
+    SubmissionRepository,
+)
 from app.features.feedback.schemas.insights import (
     CategoryInsightItem,
     FeedbackInsightsResponse,
@@ -70,7 +73,7 @@ class InsightsService:
         if days is not None and days > 0:
             since = datetime.now(UTC) - timedelta(days=days)
 
-        submissions = await self.submission_repo.list_for_insights(
+        aggregates = await self.submission_repo.aggregate_for_insights(
             workspace_id=workspace_id,
             since=since,
             form_id=form_id,
@@ -86,51 +89,38 @@ class InsightsService:
         )
         categories = await self.category_repo.list_active(workspace_id)
 
-        total_count = len(submissions)
-        rated_submissions = [s for s in submissions if s.rating is not None]
-
-        overall_avg: float | None = None
-        if rated_submissions:
-            norm_ratings = [
-                _normalize_rating(s.rating, s.rating_scale_type)
-                for s in rated_submissions
-                if s.rating is not None
-            ]
-            overall_avg = round(sum(norm_ratings) / len(norm_ratings), 2)
-
-        sentiment_breakdown = SentimentBreakdown(
-            positive=sum(1 for s in submissions if s.sentiment == "positive"),
-            neutral=sum(1 for s in submissions if s.sentiment == "neutral"),
-            negative=sum(1 for s in submissions if s.sentiment == "negative"),
+        total_count = sum(a.total_count for a in aggregates)
+        rated_count = sum(a.rated_count for a in aggregates)
+        total_rating_sum = sum(a.normalized_rating_sum for a in aggregates)
+        overall_avg: float | None = (
+            round(total_rating_sum / rated_count, 2) if rated_count > 0 else None
         )
 
-        # At-risk count: unresolved (new or in_progress) submissions with negative sentiment or low score
-        at_risk_count = 0
-        for s in submissions:
-            if s.status in ("new", "in_progress"):
-                is_low_rating = False
-                if s.rating is not None:
-                    if s.rating_scale_type in ("5_star", "5_emoji") and s.rating <= 2:
-                        is_low_rating = True
-                    elif s.rating_scale_type == "1_10_numeric" and s.rating <= 4:
-                        is_low_rating = True
-                if is_low_rating or s.sentiment == "negative":
-                    at_risk_count += 1
+        sentiment_breakdown = SentimentBreakdown(
+            positive=sum(a.positive_count for a in aggregates),
+            neutral=sum(a.neutral_count for a in aggregates),
+            negative=sum(a.negative_count for a in aggregates),
+        )
+        at_risk_count = sum(a.at_risk_count for a in aggregates)
+        has_sample_data = any(a.sample_count > 0 for a in aggregates)
+
+        agg_by_cat: dict[UUID | None, CategoryInsightAggregate] = {
+            a.category_id: a for a in aggregates
+        }
 
         cat_items: list[CategoryInsightItem] = []
 
         for cat in categories:
-            cat_subs = [s for s in submissions if s.category_id == cat.id]
-            c_count = len(cat_subs)
+            agg = agg_by_cat.get(cat.id)
+            c_count = agg.total_count if agg else 0
             c_percentage = (
                 round((c_count / total_count) * 100, 1) if total_count > 0 else 0.0
             )
-            c_rated = [
-                _normalize_rating(s.rating, s.rating_scale_type)
-                for s in cat_subs
-                if s.rating is not None
-            ]
-            c_avg = round(sum(c_rated) / len(c_rated), 2) if c_rated else None
+            c_avg = (
+                round(agg.normalized_rating_sum / agg.rated_count, 2)
+                if agg and agg.rated_count > 0
+                else None
+            )
 
             c_impact = 0.0
             if c_avg is not None and overall_avg is not None:
@@ -147,26 +137,25 @@ class InsightsService:
                     average_rating=c_avg,
                     score_impact=c_impact,
                     sentiment_counts=SentimentBreakdown(
-                        positive=sum(1 for s in cat_subs if s.sentiment == "positive"),
-                        neutral=sum(1 for s in cat_subs if s.sentiment == "neutral"),
-                        negative=sum(1 for s in cat_subs if s.sentiment == "negative"),
+                        positive=agg.positive_count if agg else 0,
+                        neutral=agg.neutral_count if agg else 0,
+                        negative=agg.negative_count if agg else 0,
                     ),
                 )
             )
 
         # Include Uncategorized bucket if any uncategorized submissions exist
-        uncat_subs = [s for s in submissions if s.category_id is None]
-        if uncat_subs:
-            u_count = len(uncat_subs)
+        uncat_agg = agg_by_cat.get(None)
+        if uncat_agg and uncat_agg.total_count > 0:
+            u_count = uncat_agg.total_count
             u_percentage = (
                 round((u_count / total_count) * 100, 1) if total_count > 0 else 0.0
             )
-            u_rated = [
-                _normalize_rating(s.rating, s.rating_scale_type)
-                for s in uncat_subs
-                if s.rating is not None
-            ]
-            u_avg = round(sum(u_rated) / len(u_rated), 2) if u_rated else None
+            u_avg = (
+                round(uncat_agg.normalized_rating_sum / uncat_agg.rated_count, 2)
+                if uncat_agg.rated_count > 0
+                else None
+            )
             u_impact = 0.0
             if u_avg is not None and overall_avg is not None:
                 u_impact = round(u_avg - overall_avg, 2)
@@ -182,9 +171,9 @@ class InsightsService:
                     average_rating=u_avg,
                     score_impact=u_impact,
                     sentiment_counts=SentimentBreakdown(
-                        positive=sum(1 for s in uncat_subs if s.sentiment == "positive"),
-                        neutral=sum(1 for s in uncat_subs if s.sentiment == "neutral"),
-                        negative=sum(1 for s in uncat_subs if s.sentiment == "negative"),
+                        positive=uncat_agg.positive_count,
+                        neutral=uncat_agg.neutral_count,
+                        negative=uncat_agg.negative_count,
                     ),
                 )
             )
@@ -221,15 +210,9 @@ class InsightsService:
                 count=best_pos.count,
             )
 
-        has_sample_data = any(
-            isinstance(s.customer_metadata, dict)
-            and s.customer_metadata.get("is_sample") is True
-            for s in submissions
-        )
-
         summary = InsightSummary(
             total_submissions=total_count,
-            rated_submissions_count=len(rated_submissions),
+            rated_submissions_count=rated_count,
             average_rating=overall_avg,
             sentiment_breakdown=sentiment_breakdown,
             at_risk_count=at_risk_count,

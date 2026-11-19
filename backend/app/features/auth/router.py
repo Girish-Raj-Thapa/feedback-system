@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response, status
 
 from app.core.config import settings
+from app.core.rate_limit import rate_limit
 from app.features.auth.dependencies import (
     AuthServiceDep,
     CurrentTokenPayload,
@@ -58,6 +59,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("auth_register"))],
 )
 async def register(
     payload: UserRegisterRequest,
@@ -74,6 +76,7 @@ async def register(
 @router.post(
     "/login",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit("auth_login"))],
 )
 async def login(
     payload: UserLoginRequest,
@@ -113,6 +116,7 @@ async def login(
 @router.post(
     "/refresh",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit("auth_refresh"))],
 )
 async def refresh_tokens(
     payload: RefreshTokenRequest,
@@ -250,6 +254,7 @@ async def change_password(
 @router.post(
     "/forgot-password",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit("auth_forgot_password"))],
 )
 async def forgot_password(
     payload: ForgotPasswordRequest,
@@ -268,6 +273,7 @@ async def forgot_password(
 @router.post(
     "/reset-password",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit("auth_reset_password"))],
 )
 async def reset_password(
     payload: ResetPasswordRequest,
@@ -283,6 +289,7 @@ async def reset_password(
 @router.post(
     "/verify-email",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit("auth_verify_email"))],
 )
 async def verify_email(
     payload: VerifyEmailRequest,
@@ -298,6 +305,7 @@ async def verify_email(
 @router.post(
     "/resend-verification",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit("auth_resend_verification"))],
 )
 async def resend_verification(
     payload: ResendVerificationRequest,

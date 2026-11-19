@@ -189,15 +189,15 @@ class FeedbackSubmission(Base):
 
     workspace: Mapped["Workspace"] = relationship(
         "Workspace",
-        lazy="selectin",
+        lazy="raise",
     )
     form: Mapped["Form"] = relationship(
         "Form",
-        lazy="selectin",
+        lazy="raise",
     )
     category: Mapped["FeedbackCategory | None"] = relationship(
         "FeedbackCategory",
-        lazy="selectin",
+        lazy="raise",
     )
 
     __table_args__ = (
