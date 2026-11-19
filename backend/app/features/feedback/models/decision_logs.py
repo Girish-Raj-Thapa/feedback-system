@@ -88,15 +88,15 @@ class DecisionLog(Base):
 
     workspace: Mapped["Workspace"] = relationship(
         "Workspace",
-        lazy="selectin",
+        lazy="raise",
     )
     category: Mapped["FeedbackCategory | None"] = relationship(
         "FeedbackCategory",
-        lazy="selectin",
+        lazy="raise",
     )
     created_by: Mapped["User | None"] = relationship(
         "User",
-        lazy="selectin",
+        lazy="raise",
     )
 
     __table_args__ = (

@@ -170,7 +170,7 @@ class Form(Base):
         nullable=True,
     )
 
-    workspace: Mapped["Workspace"] = relationship("Workspace", lazy="selectin")
+    workspace: Mapped["Workspace"] = relationship("Workspace", lazy="raise")
 
     __table_args__ = (
         Index(

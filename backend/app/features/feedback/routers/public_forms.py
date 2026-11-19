@@ -3,8 +3,9 @@ Public unauthenticated router for Feedback Forms.
 Used by embeddable widgets and standalone hosted pages (/f/{workspace_slug}/{form_slug}).
 """
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Depends, Request, status
 
+from app.core.rate_limit import rate_limit
 from app.features.feedback.dependencies import FormServiceDep, SubmissionServiceDep
 from app.features.feedback.schemas.forms import PublicFormRead, PublicFormTokenResponse
 from app.features.feedback.schemas.submissions import (
@@ -22,6 +23,7 @@ router = APIRouter(
     "/{workspace_slug}/{form_slug}",
     status_code=status.HTTP_200_OK,
     response_model=PublicFormRead,
+    dependencies=[Depends(rate_limit("public_form_read"))],
 )
 async def get_public_form(
     workspace_slug: str,
@@ -43,6 +45,7 @@ async def get_public_form(
     "/{workspace_slug}/{form_slug}/token",
     status_code=status.HTTP_200_OK,
     response_model=PublicFormTokenResponse,
+    dependencies=[Depends(rate_limit("public_form_token"))],
 )
 async def get_public_form_token(
     workspace_slug: str,
@@ -65,6 +68,7 @@ async def get_public_form_token(
     "/{workspace_slug}/{form_slug}/submit",
     status_code=status.HTTP_201_CREATED,
     response_model=FeedbackSubmissionResponse,
+    dependencies=[Depends(rate_limit("public_form_submit"))],
 )
 async def submit_feedback(
     workspace_slug: str,

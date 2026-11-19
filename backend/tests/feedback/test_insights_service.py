@@ -10,7 +10,7 @@ import pytest
 
 from app.features.auth.models import Workspace
 from app.features.feedback.models.categories import FeedbackCategory
-from app.features.feedback.models.submissions import FeedbackSubmission
+from app.features.feedback.repositories.submissions import CategoryInsightAggregate
 from app.features.feedback.services.insights import InsightsService, _normalize_rating
 
 
@@ -32,7 +32,7 @@ async def test_get_insights_zero_submissions():
     session.get.return_value = mock_ws
 
     sub_repo = AsyncMock()
-    sub_repo.list_for_insights.return_value = []
+    sub_repo.aggregate_for_insights.return_value = []
     sub_repo.list_segment_options.return_value = ([], [], [])
 
     cat_repo = AsyncMock()
@@ -76,46 +76,37 @@ async def test_get_insights_score_drivers_calculation():
     cat2.color = "#10B981"
     cat2.icon = None
 
-    # Submissions:
-    # Cat 1 has two ratings: 1 star and 2 stars -> avg = 1.5
-    # Cat 2 has two ratings: 5 stars and 5 stars -> avg = 5.0
-    # Overall average = (1 + 2 + 5 + 5) / 4 = 3.25
+    # Aggregated category stats:
+    # Cat 1 has two ratings: 1 star and 2 stars -> sum=3.0, count=2, avg = 1.5
+    # Cat 2 has two ratings: 5 stars and 5 stars -> sum=10.0, count=2, avg = 5.0
+    # Overall average = (3.0 + 10.0) / 4 = 3.25
     # Cat 1 score impact = 1.5 - 3.25 = -1.75 (Top Negative Driver)
     # Cat 2 score impact = 5.0 - 3.25 = +1.75 (Top Positive Driver)
-    s1 = MagicMock(spec=FeedbackSubmission)
-    s1.id = uuid4()
-    s1.category_id = cat1_id
-    s1.rating = 1
-    s1.rating_scale_type = "5_star"
-    s1.sentiment = "negative"
-    s1.status = "new"
-
-    s2 = MagicMock(spec=FeedbackSubmission)
-    s2.id = uuid4()
-    s2.category_id = cat1_id
-    s2.rating = 2
-    s2.rating_scale_type = "5_star"
-    s2.sentiment = "negative"
-    s2.status = "in_progress"
-
-    s3 = MagicMock(spec=FeedbackSubmission)
-    s3.id = uuid4()
-    s3.category_id = cat2_id
-    s3.rating = 5
-    s3.rating_scale_type = "5_star"
-    s3.sentiment = "positive"
-    s3.status = "new"
-
-    s4 = MagicMock(spec=FeedbackSubmission)
-    s4.id = uuid4()
-    s4.category_id = cat2_id
-    s4.rating = 5
-    s4.rating_scale_type = "5_star"
-    s4.sentiment = "positive"
-    s4.status = "resolved"
-
     sub_repo = AsyncMock()
-    sub_repo.list_for_insights.return_value = [s1, s2, s3, s4]
+    sub_repo.aggregate_for_insights.return_value = [
+        CategoryInsightAggregate(
+            category_id=cat1_id,
+            total_count=2,
+            rated_count=2,
+            normalized_rating_sum=3.0,
+            positive_count=0,
+            neutral_count=0,
+            negative_count=2,
+            at_risk_count=2,
+            sample_count=0,
+        ),
+        CategoryInsightAggregate(
+            category_id=cat2_id,
+            total_count=2,
+            rated_count=2,
+            normalized_rating_sum=10.0,
+            positive_count=2,
+            neutral_count=0,
+            negative_count=0,
+            at_risk_count=0,
+            sample_count=0,
+        ),
+    ]
     sub_repo.list_segment_options.return_value = ([], [], [])
 
     cat_repo = AsyncMock()
@@ -162,7 +153,7 @@ async def test_get_insights_forwards_segment_filters_and_returns_available_segme
     session.get.return_value = mock_ws
 
     sub_repo = AsyncMock()
-    sub_repo.list_for_insights.return_value = []
+    sub_repo.aggregate_for_insights.return_value = []
     sub_repo.list_segment_options.return_value = (
         ["csv_import", "widget"],
         ["https://app.example.com/pricing"],
@@ -182,7 +173,7 @@ async def test_get_insights_forwards_segment_filters_and_returns_available_segme
         plan_tier="pro",
     )
 
-    sub_repo.list_for_insights.assert_awaited_once_with(
+    sub_repo.aggregate_for_insights.assert_awaited_once_with(
         workspace_id=workspace_id,
         since=None,
         form_id=form_id,

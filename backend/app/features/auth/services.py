@@ -802,8 +802,14 @@ class AuthService:
             if user_id:
                 await redis.delete(f"auth:perms:{workspace_id}:{user_id}")
             else:
-                # Invalidate all users in this workspace
-                keys = await redis.keys(f"auth:perms:{workspace_id}:*")
+                # Invalidate all users in this workspace using non-blocking SCAN
+                keys = [
+                    key
+                    async for key in redis.scan_iter(
+                        match=f"auth:perms:{workspace_id}:*",
+                        count=500,
+                    )
+                ]
                 if keys:
                     await redis.delete(*keys)
         except Exception:

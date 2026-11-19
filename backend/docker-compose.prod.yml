@@ -1,14 +1,23 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   # FastAPI application server (hardened prod image, no host bind mounts or --reload)
+  # Deploy image updates explicitly with: docker compose -f docker-compose.prod.yml up -d --build
   api:
     image: feedback-backend:prod
-    pull_policy: build
     build:
       context: .
       dockerfile: Dockerfile
       target: prod
     container_name: feedback_api
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: "1.0"
+    logging: *default-logging
     ports:
       - "${API_PORT:-8005}:8000"
     env_file:
@@ -38,6 +47,9 @@ services:
     pull_policy: never
     container_name: feedback_worker
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: "0.75"
+    logging: *default-logging
     env_file:
       - .env
     command: ["taskiq", "worker", "app.core.tasks:broker", "--fs-discover"]
@@ -60,6 +72,9 @@ services:
     pull_policy: never
     container_name: feedback_scheduler
     restart: unless-stopped
+    mem_limit: 192m
+    cpus: "0.25"
+    logging: *default-logging
     env_file:
       - .env
     command: ["taskiq", "scheduler", "app.core.tasks:scheduler", "--fs-discover"]
@@ -79,31 +94,51 @@ services:
         condition: service_healthy
 
   # PostgreSQL database
+  # NOTE: Host port 5433 is kept open temporarily for local DBeaver debugging.
+  # Remove `ports:` and set strong POSTGRES_* credentials in .env before public prod launch
+  # (see docs/PRODUCTION_DEFERRED_OPTIMIZATIONS.md).
   db:
     image: postgres:16-alpine
     container_name: feedback_db
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: "1.0"
+    logging: *default-logging
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=feedback_dev
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-feedback_dev}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - feedback_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d feedback_dev"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-feedback_dev}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   # Redis message broker and cache
+  # NOTE: Remove host `ports:` before public prod launch (see docs/PRODUCTION_DEFERRED_OPTIMIZATIONS.md).
   redis:
     image: redis:7-alpine
     container_name: feedback_redis
     restart: unless-stopped
+    mem_limit: 300m
+    cpus: "0.5"
+    logging: *default-logging
+    command:
+      [
+        "redis-server",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "volatile-lru",
+        "--appendonly",
+        "yes",
+      ]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - feedback_redisdata:/data
     healthcheck:
