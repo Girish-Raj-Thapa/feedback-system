@@ -65,6 +65,15 @@ class FormRepository:
         result = await self.session.execute(stmt)
         return set(result.scalars().all())
 
+    async def count_active(self, workspace_id: UUID) -> int:
+        """Return count of active non-deleted forms for a workspace."""
+        stmt = select(func.count(Form.id)).where(
+            Form.workspace_id == workspace_id,
+            Form.deleted_at.is_(None),
+        )
+        result = await self.session.execute(stmt)
+        return int(result.scalar() or 0)
+
     async def get_by_slug(
         self,
         workspace_id: UUID,

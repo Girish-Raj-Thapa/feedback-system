@@ -19,6 +19,23 @@ logger = get_logger("app.features.notifications.services.quota")
 
 PlanTierLiteral = Literal["free", "pro"]
 
+FREE_MONTHLY_SUBMISSION_LIMIT = 10
+PRO_MONTHLY_SUBMISSION_LIMIT = 2500
+FREE_MAX_FORMS = 2
+PRO_MAX_FORMS = 25
+
+
+def get_monthly_submission_limit(raw_tier: str | None) -> int:
+    return (
+        PRO_MONTHLY_SUBMISSION_LIMIT
+        if resolve_plan_tier(raw_tier) == "pro"
+        else FREE_MONTHLY_SUBMISSION_LIMIT
+    )
+
+
+def get_max_forms_limit(raw_tier: str | None) -> int:
+    return PRO_MAX_FORMS if resolve_plan_tier(raw_tier) == "pro" else FREE_MAX_FORMS
+
 
 @dataclass(frozen=True)
 class PlanQuotaLimits:
@@ -35,13 +52,13 @@ class PlanQuotaLimits:
 PLAN_QUOTA_MATRIX: dict[PlanTierLiteral, PlanQuotaLimits] = {
     "free": PlanQuotaLimits(
         plan_tier="free",
-        max_connections=2,
-        max_alert_rules=2,
-        monthly_email_alerts=25,
-        monthly_webhook_alerts=100,
-        hourly_email_burst=10,
-        hourly_webhook_burst=30,
-        test_pings_per_10_min=5,
+        max_connections=1,
+        max_alert_rules=1,
+        monthly_email_alerts=0,
+        monthly_webhook_alerts=0,
+        hourly_email_burst=0,
+        hourly_webhook_burst=0,
+        test_pings_per_10_min=0,
     ),
     "pro": PlanQuotaLimits(
         plan_tier="pro",
@@ -195,6 +212,10 @@ class NotificationQuotaService:
 
         raw_tier = await self.quota_repo.get_workspace_plan_tier(workspace_id)
         limits = get_plan_quota_limits(raw_tier)
+        if limits.test_pings_per_10_min <= 0:
+            raise ValidationError(
+                "Email and webhook notifications are disabled on the Free plan. Upgrade to Pro to send test pings and live alerts."
+            )
         try:
             redis = get_redis()
             key = f"notifications:test_rate:{workspace_id}"

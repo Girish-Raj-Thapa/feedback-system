@@ -415,6 +415,16 @@ class SubmissionService:
             triage_state="pending",
         )
 
+        allowed = await self.submission_repo.consume_submission_quota(ws.id)
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Monthly feedback limit reached ({ws.monthly_submission_limit} responses). "
+                    "Upgrade to Pro to collect up to 2,500 monthly responses."
+                ),
+            )
+
         await self.submission_repo.create(submission)
         await self.session.commit()
         await self.session.refresh(submission)

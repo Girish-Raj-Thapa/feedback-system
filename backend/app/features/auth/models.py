@@ -124,7 +124,7 @@ class Workspace(Base):
     )
     monthly_submission_limit: Mapped[int] = mapped_column(
         Integer,
-        default=500,
+        default=10,
         nullable=False,
     )
     current_cycle_submissions_count: Mapped[int] = mapped_column(

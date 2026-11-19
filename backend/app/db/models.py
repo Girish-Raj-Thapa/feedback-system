@@ -33,6 +33,12 @@ from app.features.notifications.models.attempts import DeliveryAttempt
 from app.features.notifications.models.connections import NotificationConnection
 from app.features.notifications.models.deliveries import OutboundDelivery
 
+# 4. Payments Feature Models
+from app.features.payments.models import (
+    PaymentWebhookEvent,
+    WorkspaceSubscription,
+)
+
 # Pre-compile and validate all relationship definitions across all registered models
 configure_mappers()
 
@@ -47,6 +53,7 @@ __all__ = [
     "MemberPermissionOverride",
     "NotificationConnection",
     "OutboundDelivery",
+    "PaymentWebhookEvent",
     "Permission",
     "Role",
     "RolePermission",
@@ -54,5 +61,6 @@ __all__ = [
     "Workspace",
     "WorkspaceInvite",
     "WorkspaceMember",
+    "WorkspaceSubscription",
 ]
 

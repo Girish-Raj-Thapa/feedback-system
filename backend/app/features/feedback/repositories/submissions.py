@@ -3,13 +3,14 @@ Repository layer for Feedback Submissions.
 """
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
+from app.features.auth.models import Workspace
 from app.features.feedback.models.submissions import FeedbackSubmission
 
 
@@ -28,6 +29,41 @@ class SubmissionRepository:
         self.session.add(submission)
         await self.session.flush()
         return submission
+
+    async def consume_submission_quota(self, workspace_id: UUID) -> bool:
+        """
+        Atomically roll forward expired billing cycles and consume 1 submission slot.
+        Returns True if under monthly_submission_limit, False if quota exhausted.
+        """
+        now = datetime.now(UTC)
+        next_reset = now + timedelta(days=30)
+        expired = Workspace.cycle_reset_at <= now
+
+        stmt = (
+            update(Workspace)
+            .where(
+                Workspace.id == workspace_id,
+                Workspace.deleted_at.is_(None),
+                expired
+                | (
+                    Workspace.current_cycle_submissions_count
+                    < Workspace.monthly_submission_limit
+                ),
+            )
+            .values(
+                current_cycle_submissions_count=case(
+                    (expired, 1),
+                    else_=Workspace.current_cycle_submissions_count + 1,
+                ),
+                cycle_reset_at=case(
+                    (expired, next_reset),
+                    else_=Workspace.cycle_reset_at,
+                ),
+            )
+            .returning(Workspace.id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none() is not None
 
     async def get_by_id(self, submission_id: UUID) -> FeedbackSubmission | None:
         """

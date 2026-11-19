@@ -338,19 +338,19 @@ async def test_free_vs_pro_quota_enforcement() -> None:
     quota_svc = NotificationQuotaService(session)
     ws_id = uuid4()
 
-    # Free plan max_connections = 2 -> blocked when count == 2
+    # Free plan max_connections = 1 -> blocked when count == 1
     with (
         patch.object(
             quota_svc.quota_repo,
             "get_workspace_plan_and_connection_count",
             new_callable=AsyncMock,
-            return_value=("free", 2),
+            return_value=("free", 1),
         ),
         pytest.raises(ValidationError, match="Free plan limit reached"),
     ):
         await quota_svc.enforce_connection_creation_quota(ws_id)
 
-    # Free plan monthly_email_alerts = 25 -> blocked when monthly_used == 25
+    # Free plan monthly_email_alerts = 0 -> blocked even at 0 sent
     with patch.object(
         quota_svc,
         "get_quota_status",
@@ -360,7 +360,7 @@ async def test_free_vs_pro_quota_enforcement() -> None:
             limits=PLAN_QUOTA_MATRIX["free"],
             connections_used=1,
             alert_rules_used=1,
-            monthly_email_used=25,
+            monthly_email_used=0,
             monthly_webhook_used=0,
             hourly_email_used=0,
             hourly_webhook_used=0,
@@ -370,13 +370,13 @@ async def test_free_vs_pro_quota_enforcement() -> None:
         allowed, reason = await quota_svc.can_dispatch_alert(ws_id, "email_alert")
         assert allowed is False
         assert reason is not None
-        assert "25" in reason
+        assert "0" in reason
         assert "Upgrade to Pro" in reason
 
 
 @pytest.mark.asyncio
 async def test_test_ping_rate_limit_blocks_excess_and_prod_redis_failure() -> None:
-    """Verify Redis test ping rate limit raises at threshold and fails closed in production."""
+    """Verify Free blocks test pings, and Pro enforces Redis rate limit + prod fail-closed."""
     from types import SimpleNamespace
 
     from app.features.notifications.services.quota_service import (
@@ -387,15 +387,27 @@ async def test_test_ping_rate_limit_blocks_excess_and_prod_redis_failure() -> No
     quota_svc = NotificationQuotaService(session)
     ws_id = uuid4()
 
-    mock_redis = AsyncMock()
-    mock_redis.incr = AsyncMock(return_value=6)  # Free limit is 5 per 10 min
-
+    # Free tier has 0 test pings allowed -> blocked before Redis
     with (
         patch.object(
             quota_svc.quota_repo,
             "get_workspace_plan_tier",
             new_callable=AsyncMock,
             return_value="free",
+        ),
+        pytest.raises(ValidationError, match="disabled on the Free plan"),
+    ):
+        await quota_svc.enforce_test_ping_rate_limit(ws_id)
+
+    mock_redis = AsyncMock()
+    mock_redis.incr = AsyncMock(return_value=21)  # Pro limit is 20 per 10 min
+
+    with (
+        patch.object(
+            quota_svc.quota_repo,
+            "get_workspace_plan_tier",
+            new_callable=AsyncMock,
+            return_value="pro",
         ),
         patch("app.core.redis.get_redis", return_value=mock_redis),
         pytest.raises(ValidationError, match="Test rate limit reached"),
@@ -411,7 +423,7 @@ async def test_test_ping_rate_limit_blocks_excess_and_prod_redis_failure() -> No
             quota_svc.quota_repo,
             "get_workspace_plan_tier",
             new_callable=AsyncMock,
-            return_value="free",
+            return_value="pro",
         ),
         patch("app.core.redis.get_redis", return_value=broken_redis),
         patch("app.core.config.settings", SimpleNamespace(is_production=True)),

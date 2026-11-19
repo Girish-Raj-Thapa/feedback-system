@@ -75,7 +75,10 @@ from app.features.auth.tasks import (
     send_workspace_invite_email_task,
 )
 from app.features.feedback.services import FeedbackService
-from app.features.notifications.services.quota_service import resolve_plan_tier
+from app.features.notifications.services.quota_service import (
+    FREE_MONTHLY_SUBMISSION_LIMIT,
+    resolve_plan_tier,
+)
 
 logger = get_logger("app.features.auth.services")
 
@@ -514,7 +517,7 @@ class AuthService:
             else None,
             timezone=payload.timezone.strip() if payload.timezone else "UTC",
             plan_tier="free",
-            monthly_submission_limit=500,
+            monthly_submission_limit=FREE_MONTHLY_SUBMISSION_LIMIT,
             current_cycle_submissions_count=0,
             cycle_reset_at=datetime.now(UTC) + timedelta(days=30),
             ai_classification_enabled=True,

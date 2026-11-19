@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.errors import ValidationError
 from app.features.auth.models import Workspace
 from app.features.feedback.models.forms import Form
 from app.features.feedback.presets.form_templates import get_form_template
@@ -23,6 +24,10 @@ from app.features.feedback.schemas.forms import (
 )
 from app.features.feedback.services.form_token import FormTokenService
 from app.features.feedback.utils import is_domain_allowed
+from app.features.notifications.services.quota_service import (
+    get_max_forms_limit,
+    resolve_plan_tier,
+)
 
 
 def slugify(text: str) -> str:
@@ -48,6 +53,16 @@ class FormService:
                 detail="Workspace not found",
             )
         return ws
+
+    async def _enforce_form_quota(self, ws: Workspace) -> None:
+        max_forms = get_max_forms_limit(ws.plan_tier)
+        used = await self.form_repo.count_active(ws.id)
+        if used >= max_forms:
+            plan_label = resolve_plan_tier(ws.plan_tier).capitalize()
+            raise ValidationError(
+                f"{plan_label} plan limit reached ({max_forms} forms). "
+                "Upgrade to Pro to create more forms."
+            )
 
     async def _generate_unique_slug(
         self,
@@ -163,7 +178,8 @@ class FormService:
         """
         Create a new feedback form, applying template defaults if requested.
         """
-        await self._ensure_workspace_exists(workspace_id)
+        ws = await self._ensure_workspace_exists(workspace_id)
+        await self._enforce_form_quota(ws)
 
         # Base template defaults
         template = get_form_template(payload.template_type)
@@ -290,6 +306,8 @@ class FormService:
         """
         Clone an existing form with all its questions, pills, theme, and outcome screens.
         """
+        ws = await self._ensure_workspace_exists(workspace_id)
+        await self._enforce_form_quota(ws)
         source = await self.get_form(workspace_id, form_id)
 
         dup_name = (

@@ -90,10 +90,14 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
 
     # -----------------------------------------------------------------------
-    # Billing & Subscriptions (Stripe / Paddle)
+    # Billing & Subscriptions (Paddle Billing v2)
     # -----------------------------------------------------------------------
-    STRIPE_SECRET_KEY: str | None = None
-    STRIPE_WEBHOOK_SECRET: str | None = None
+    PADDLE_ENVIRONMENT: Literal["sandbox", "production"] = "sandbox"
+    PADDLE_API_KEY: str = ""
+    PADDLE_WEBHOOK_SECRET: str = ""
+    PADDLE_CLIENT_TOKEN: str = ""
+    PADDLE_PRO_MONTHLY_PRICE_ID: str = ""
+    PADDLE_PRO_ANNUAL_PRICE_ID: str = ""
 
     # -----------------------------------------------------------------------
     # Database Encryption at Rest (Field-Level / Envelope Encryption)

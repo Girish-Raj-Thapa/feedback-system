@@ -23,7 +23,6 @@ from app.features.notifications.schemas import NotificationConnectionCreate
 from app.features.notifications.services.connection_service import (
     NotificationConnectionService,
 )
-from app.features.notifications.services.quota_service import NotificationQuotaService
 
 
 @pytest.mark.asyncio
@@ -59,7 +58,32 @@ async def test_email_connection_member_verification_and_quota_in_db(
     assert email_conn.provider_type == "email_alert"
     assert email_conn.destination_url == test_user.email.lower()
 
-    # 3. Second connection allowed on Free plan (max_connections = 2)
+    # 3. Second connection rejected on Free plan (max_connections = 1)
+    with pytest.raises(ValidationError, match="Free plan limit reached"):
+        await conn_svc.create_connection(
+            test_workspace.id,
+            NotificationConnectionCreate(
+                name="Main Slack",
+                provider_type="slack_webhook",
+                destination_url="https://hooks.slack.com/services/T1/B2/token_db_test",
+            ),
+        )
+
+    # 4. Inspect Free quota API before upgrading
+    free_resp = await auth_client.get(
+        f"/api/v1/workspaces/{test_workspace.id}/connections/quota"
+    )
+    assert free_resp.status_code == 200
+    free_body = free_resp.json()
+    assert free_body["plan_tier"] == "free"
+    assert free_body["max_connections"] == 1
+    assert free_body["monthly_email_limit"] == 0
+    assert free_body["monthly_webhook_limit"] == 0
+
+    # 5. Upgrading workspace to 'pro' unlocks higher connection & monthly limits
+    test_workspace.plan_tier = "pro"
+    await db_session.commit()
+
     slack_conn = await conn_svc.create_connection(
         test_workspace.id,
         NotificationConnectionCreate(
@@ -69,18 +93,7 @@ async def test_email_connection_member_verification_and_quota_in_db(
         ),
     )
 
-    # 4. Third connection rejected on Free plan
-    with pytest.raises(ValidationError, match="Free plan limit reached"):
-        await conn_svc.create_connection(
-            test_workspace.id,
-            NotificationConnectionCreate(
-                name="Extra Discord",
-                provider_type="discord_webhook",
-                destination_url="https://discord.com/api/webhooks/123456/abcdef_token",
-            ),
-        )
-
-    # 5. Insert real OutboundDelivery rows (active + cancelled) and inspect quota SQL JOIN
+    # 6. Insert real OutboundDelivery rows (active + cancelled) and inspect quota SQL JOIN
     now = datetime.now(UTC)
     test_workspace.cycle_reset_at = now + timedelta(days=29)
     db_session.add_all(
@@ -118,25 +131,16 @@ async def test_email_connection_member_verification_and_quota_in_db(
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["plan_tier"] == "free"
-    assert body["max_connections"] == 2
+    assert body["plan_tier"] == "pro"
+    assert body["max_connections"] == 15
     assert body["connections_used"] == 2
+    assert body["monthly_email_limit"] == 1000
     # Cancelled delivery is excluded from counts
     assert body["monthly_email_used"] == 1
     assert body["hourly_email_used"] == 1
     # Slack delivery from 3h ago counts toward monthly but not hourly burst
     assert body["monthly_webhook_used"] == 1
     assert body["hourly_webhook_used"] == 0
-
-    # 6. Upgrading workspace to 'pro' unlocks higher connection & monthly limits
-    test_workspace.plan_tier = "pro"
-    await db_session.commit()
-
-    quota_svc = NotificationQuotaService(db_session)
-    pro_status = await quota_svc.get_quota_status(test_workspace.id)
-    assert pro_status.plan_tier == "pro"
-    assert pro_status.limits.max_connections == 15
-    assert pro_status.limits.monthly_email_alerts == 1000
 
 
 @pytest.mark.asyncio

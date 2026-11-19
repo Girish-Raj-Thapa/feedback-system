@@ -10,6 +10,10 @@ from app.features.notifications.routers import (
     connections_router,
     oauth_router,
 )
+from app.features.payments.router import (
+    paddle_webhook_router,
+    workspace_billing_router,
+)
 
 api_router = APIRouter()
 
@@ -18,3 +22,5 @@ api_router.include_router(feedback_router)
 api_router.include_router(public_forms_router)
 api_router.include_router(connections_router)
 api_router.include_router(oauth_router)
+api_router.include_router(workspace_billing_router)
+api_router.include_router(paddle_webhook_router)

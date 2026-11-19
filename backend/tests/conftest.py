@@ -68,6 +68,12 @@ def _configure_isolated_test_env() -> None:
     os.environ["SMTP_PORT"] = "0"
     os.environ["SMTP_USER"] = ""
     os.environ["SMTP_PASSWORD"] = ""
+    os.environ["PADDLE_ENVIRONMENT"] = "sandbox"
+    os.environ["PADDLE_API_KEY"] = ""
+    os.environ["PADDLE_WEBHOOK_SECRET"] = ""
+    os.environ["PADDLE_CLIENT_TOKEN"] = ""
+    os.environ["PADDLE_PRO_MONTHLY_PRICE_ID"] = "pri_test_monthly"
+    os.environ["PADDLE_PRO_ANNUAL_PRICE_ID"] = "pri_test_annual"
 
 
 _configure_isolated_test_env()

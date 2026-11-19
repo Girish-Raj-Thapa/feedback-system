@@ -23,6 +23,7 @@ import { toast } from "sonner";
 
 import { authRepository } from "@/repositories/auth.repository";
 import { AccountSettingsTab } from "@/components/workspace/account-settings-tab";
+import { WorkspaceBillingTab } from "@/components/workspace/workspace-billing-tab";
 import { WorkspaceCategoriesTab } from "@/components/workspace/workspace-categories-tab";
 import { WorkspaceIntegrationsTab } from "@/components/workspace/workspace-integrations-tab";
 import { useAuthStore } from "@/store/auth.store";
@@ -207,6 +208,7 @@ export default function WorkspaceSettingsPage() {
       | "invitations"
       | "categories"
       | "integrations"
+      | "billing"
       | "account"
   ) => {
     router.replace(`/workspace/${workspaceSlug}/settings?tab=${tab}`, {
@@ -583,6 +585,22 @@ export default function WorkspaceSettingsPage() {
           >
             <span>Integrations</span>
             {currentTab === "integrations" && (
+              <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
+            )}
+          </button>
+
+          {/* Billing & Plan Tab */}
+          <button
+            type="button"
+            onClick={() => setTab("billing")}
+            className={`relative flex items-center gap-2 pb-3 text-[14px] transition-colors cursor-pointer ${
+              currentTab === "billing"
+                ? "font-semibold text-text"
+                : "font-medium text-text-muted hover:text-text"
+            }`}
+          >
+            <span>Billing &amp; Plan</span>
+            {currentTab === "billing" && (
               <div className="absolute right-0 bottom-0 left-0 h-[2px] bg-action" />
             )}
           </button>
@@ -1153,7 +1171,22 @@ export default function WorkspaceSettingsPage() {
         />
       )}
 
-      {/* ================= TAB 6: MY PROFILE & SECURITY ================= */}
+      {/* ================= TAB 6: BILLING & PLAN ================= */}
+      {currentTab === "billing" && workspace && (
+        <WorkspaceBillingTab
+          workspaceId={workspace.id}
+          userId={user?.id}
+          userEmail={user?.email}
+          onPlanUpdated={() => {
+            authRepository.getWorkspace(workspace.id).then((wsDetails) => {
+              setWorkspace(wsDetails);
+              setWeeklyDigestEnabled(wsDetails.weekly_digest_enabled ?? true);
+            });
+          }}
+        />
+      )}
+
+      {/* ================= TAB 7: MY PROFILE & SECURITY ================= */}
       {currentTab === "account" && <AccountSettingsTab />}
 
       {/* ================= MODAL 1: INVITE TEAMMATE ================= */}
